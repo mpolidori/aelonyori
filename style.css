@@ -1,0 +1,58 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body,
+html {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.logo {
+  font-family: sans-serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 15vw, 8rem);
+  text-transform: lowercase;
+  color: #000000;
+  cursor: default;
+  user-select: none;
+  display: flex;
+}
+
+.logo span {
+  transition: color 0.1s ease;
+}
+
+.logo span:nth-child(1):hover {
+  color: #ff003c;
+}
+.logo span:nth-child(2):hover {
+  color: #00f0ff;
+}
+.logo span:nth-child(3):hover {
+  color: #abff00;
+}
+.logo span:nth-child(4):hover {
+  color: #ff00ff;
+}
+.logo span:nth-child(5):hover {
+  color: #fdf500;
+}
+.logo span:nth-child(6):hover {
+  color: #7209b7;
+}
+.logo span:nth-child(7):hover {
+  color: #ff8c00;
+}
+.logo span:nth-child(8):hover {
+  color: #0072ff;
+}
+.logo span:nth-child(9):hover {
+  color: #39ff14;
+}
