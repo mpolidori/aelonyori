@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>aelonyori</title>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
     <div class="container">
@@ -22,56 +22,52 @@
         </h1>
 
         <section id="daw" class="daw" hidden aria-label="daw">
-            <div class="global is-collapsed" id="globalSection" aria-label="global">
-                <div class="globalTop" aria-label="global top bar">
-                    <div class="controls globalBar globalBarPrimary">
-                        <div class="globalBarGroup globalPrimaryLeft" aria-label="global actions">
-                            <button type="button" class="btn" id="presetSaveBtn">save</button>
-                            <button type="button" class="btn" id="presetLoadBtn">load</button>
-                            <button type="button" class="btn" id="presetDefaultBtn">default</button>
-                        </div>
+            <div id="tracks" class="tracks" aria-label="tracks"></div>
+        </section>
+    </div>
 
-                        <div class="globalBarGroup globalPrimaryCenter" aria-label="preset and name">
-                            <label class="field">
-                                <span class="fieldLabel">preset</span>
-                                <select id="presetSelect" aria-label="preset select"></select>
-                            </label>
+    <div id="themePicker" class="themePicker" hidden>
+        <div class="themePickerBox" id="themePickerBox" role="dialog" aria-label="theme">
+            <div class="themePickerRow themePickerColors" id="themeControls" aria-label="theme colors">
+                <input type="color" id="themeColorA" class="themeSwatch" aria-label="theme color 1" value="#000000" />
+                <button type="button" class="caret themeSwapBtn" id="themeSwapBtn" aria-label="swap theme colors">⇄</button>
+                <input type="color" id="themeColorB" class="themeSwatch" aria-label="theme color 2" value="#ffffff" />
+            </div>
+        </div>
+    </div>
 
-                            <label class="field">
-                                <span class="fieldLabel">name</span>
-                                <input id="presetName" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="song" />
-                                <span id="presetStatus" class="status" aria-live="polite"></span>
-                            </label>
-                        </div>
+    <div id="transportBar" class="transportBar" aria-label="transport" data-playing="0" hidden>
+        <button type="button" id="transportSettingsBtn" class="transportIconBtn transportSettingsBtn" aria-label="settings" aria-pressed="false" title="settings">⚙</button>
+        <button type="button" id="transportPlayBtn" class="transportIconBtn transportPlayBtn" aria-label="play" aria-pressed="false">
+            <span class="transportPlayIcon" aria-hidden="true"></span>
+        </button>
+        <button type="button" id="transportRestartBtn" class="transportIconBtn transportRestartBtn" aria-label="restart" title="restart">↺</button>
+        <button type="button" id="transportSeekBtn" class="transportSeekBtn" aria-label="seek">
+            <span class="transportTicks" id="transportTicks" aria-hidden="true"></span>
+        </button>
+    </div>
 
-                        <button type="button" class="caret lockToggle globalHoverExpandBtn" id="globalHoverExpandBtn" aria-label="toggle hover expand" aria-pressed="true"></button>
-                        <button type="button" class="caret" id="globalCollapseBtn" aria-label="collapse global options" aria-expanded="false">▹</button>
-                    </div>
+    <div id="settingsModal" class="settingsModal" hidden>
+        <div class="settingsPanel" id="settingsPanel" role="dialog" aria-modal="true" aria-label="settings">
+            <div class="settingsSection" aria-label="presets">
+                <label class="field settingsField">
+                    <span class="fieldLabel">preset</span>
+                    <select id="presetSelect" aria-label="preset select"></select>
+                </label>
 
-                    <div class="controls globalBar globalBarSecondary" aria-label="range tools">
-                        <div class="globalBarGroup globalSecondaryLeft" aria-label="range actions">
-                            <button type="button" class="btn" id="rangeCopyBtn">copy</button>
-                            <button type="button" class="btn" id="rangeDeleteBtn">delete</button>
-                            <button type="button" class="btn" id="rangeDuplicateBtn">duplicate</button>
-                            <button type="button" class="btn btn-toggle" id="rangeLoopBtn" aria-pressed="false">loop</button>
-                        </div>
+                <label class="field settingsField">
+                    <span class="fieldLabel">name</span>
+                    <input id="presetName" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="song" />
+                    <span id="presetStatus" class="status" aria-live="polite"></span>
+                </label>
 
-                        <div class="globalBarGroup globalSecondaryRight" aria-label="range selection">
-                            <label class="field">
-                                <span class="fieldLabel">range</span>
-                                <select id="rangeFrom" aria-label="range start"></select>
-                                <select id="rangeTo" aria-label="range end"></select>
-                            </label>
-                        </div>
-
-                        <div class="globalBarGroup globalSecondaryTheme" aria-label="theme">
-                            <span class="fieldLabel">theme</span>
-                            <button type="button" class="switchToggle" id="themeModeBtn" aria-label="theme mode" aria-pressed="false"></button>
-                        </div>
-                    </div>
+                <div class="controls settingsRow" aria-label="preset actions">
+                    <button type="button" class="btn" id="presetSaveBtn">save</button>
+                    <button type="button" class="btn" id="presetLoadBtn">load</button>
+                    <button type="button" class="btn" id="presetDefaultBtn">default</button>
                 </div>
 
-                <details class="songIo" id="songIo">
+                <details class="songIo settingsSongIo" id="songIo">
                     <summary class="songIoSummary" aria-label="toggle song JSON">
                         <button type="button" class="btn" id="presetExportBtn">export</button>
                         <button type="button" class="btn" id="presetImportBtn">import</button>
@@ -84,69 +80,94 @@
                         </div>
                     </div>
                 </details>
+            </div>
 
-                <div class="globalGrid">
-                    <div class="globalCol">
-                        <div class="globalSliders">
-                            <label class="field">
-                                <span class="fieldLabel">tempo</span>
-                                <input id="tempo" type="range" min="20" max="360" step="1" value="120" />
-                                <input id="tempoOut" class="num" type="number" min="20" max="360" step="1" value="120" />
-                            </label>
+            <div class="settingsDivider" aria-hidden="true"></div>
 
-                            <label class="field">
-                                <span class="fieldLabel">swing</span>
-                                <input id="globalSwing" type="range" min="0" max="127" step="1" value="0" />
-                                <input id="globalSwingOut" class="num" type="number" min="0" max="127" step="1" value="0" />
-                            </label>
+            <div class="settingsSection" aria-label="range">
+                <label class="field settingsField settingsRangeField">
+                    <span class="fieldLabel">range</span>
+                    <select id="rangeFrom" aria-label="range start"></select>
+                    <select id="rangeTo" aria-label="range end"></select>
+                </label>
 
-                            <label class="field">
-                                <span class="fieldLabel">master</span>
-                                <input id="globalVolume" type="range" min="0" max="127" step="1" value="100" />
-                                <input id="globalVolumeOut" class="num" type="number" min="0" max="127" step="1" value="100" />
-                            </label>
+                <div class="controls settingsRow" aria-label="range actions">
+                    <button type="button" class="btn" id="rangeCopyBtn">copy</button>
+                    <button type="button" class="btn" id="rangeDeleteBtn">delete</button>
+                    <button type="button" class="btn" id="rangeDuplicateBtn">duplicate</button>
+                    <button type="button" class="btn btn-toggle" id="rangeLoopBtn" aria-pressed="false">loop</button>
+                </div>
+            </div>
 
-                            <label class="field">
-                                <span class="fieldLabel">steps</span>
-                                <input id="steps" type="range" min="4" max="64" step="1" value="16" />
-                                <input id="stepsOut" class="num" type="number" min="4" max="64" step="1" value="16" />
-                            </label>
+            <div class="settingsDivider" aria-hidden="true"></div>
 
-                            <label class="field">
-                                <span class="fieldLabel">beat</span>
-                                <input id="beatSteps" type="range" min="1" max="16" step="1" value="4" />
-                                <input id="beatStepsOut" class="num" type="number" min="1" max="16" step="1" value="4" />
-                            </label>
-                        </div>
+            <div class="settingsSection" aria-label="params">
+                <div class="globalSliders settingsSliders" aria-label="global params">
+                    <label class="field">
+                        <span class="fieldLabel">main</span>
+                        <input id="globalVolume" type="range" min="0" max="127" step="1" value="100" />
+                        <input id="globalVolumeOut" class="num" type="number" min="0" max="127" step="1" value="100" />
+                    </label>
 
-                    </div>
+                    <label class="field">
+                        <span class="fieldLabel">tempo</span>
+                        <input id="tempo" type="range" min="20" max="360" step="1" value="120" />
+                        <input id="tempoOut" class="num" type="number" min="20" max="360" step="1" value="120" />
+                    </label>
+
+                    <label class="field">
+                        <span class="fieldLabel">steps</span>
+                        <input id="steps" type="range" min="4" max="256" step="1" value="16" />
+                        <input id="stepsOut" class="num" type="number" min="4" max="256" step="1" value="16" />
+                    </label>
+
+                    <label class="field">
+                        <span class="fieldLabel">beat</span>
+                        <input id="beatSteps" type="range" min="1" max="16" step="1" value="4" />
+                        <input id="beatStepsOut" class="num" type="number" min="1" max="16" step="1" value="4" />
+                    </label>
+
+                    <label class="field">
+                        <span class="fieldLabel">swing</span>
+                        <input id="globalSwing" type="range" min="0" max="127" step="1" value="0" />
+                        <input id="globalSwingOut" class="num" type="number" min="0" max="127" step="1" value="0" />
+                    </label>
                 </div>
 
+                <label class="field settingsField" aria-label="follow">
+                    <span class="fieldLabel">follow playhead</span>
+                    <button type="button" class="switchToggle" id="autoscrollToggleBtn" aria-label="follow playhead" aria-pressed="true"></button>
+                </label>
             </div>
 
-            <div id="tracks" class="tracks" aria-label="tracks"></div>
-        </section>
-    </div>
+            <div class="settingsDivider" aria-hidden="true"></div>
 
-    <div id="themePicker" class="themePicker" hidden>
-        <div class="themePickerBox" role="dialog" aria-label="theme">
-            <div class="themePickerRow themePickerColors" aria-label="theme colors">
-                <input type="color" id="themeColorA" class="themeSwatch" aria-label="theme color 1" value="#000000" />
-                <button type="button" class="caret themeSwapBtn" id="themeSwapBtn" aria-label="swap theme colors">⇄</button>
-                <input type="color" id="themeColorB" class="themeSwatch" aria-label="theme color 2" value="#ffffff" />
-                <button type="button" class="caret themeResetBtn" id="themeResetBtn" aria-label="reset theme">↺</button>
+            <div class="settingsSection" aria-label="theme">
+                <label class="field settingsField">
+                    <span class="fieldLabel">theme</span>
+                    <button type="button" class="switchToggle" id="themeModeBtn" aria-label="theme mode" aria-pressed="false"></button>
+                    <button type="button" class="caret themeResetBtn" id="themeResetBtn" aria-label="reset theme">↺</button>
+                </label>
+
+                <div id="settingsThemeControlsMount" class="settingsThemeControlsMount" aria-label="theme options" hidden></div>
             </div>
 
-            <div class="themePickerRow themePickerToggles" aria-label="theme options">
-                <span class="fieldLabel">auto expand</span>
-                <button type="button" class="switchToggle" id="autoExpandToggleBtn" aria-label="auto expand" aria-pressed="false"></button>
+            <div class="settingsDivider" aria-hidden="true"></div>
+
+            <div class="settingsSection" aria-label="auto expand">
+                <label class="field settingsField">
+                    <span class="fieldLabel">auto expand</span>
+                    <button type="button" class="switchToggle" id="autoExpandToggleBtn" aria-label="auto expand" aria-pressed="false"></button>
+                </label>
+
+                <label class="field settingsField" id="autoExpandSpeedRow" aria-label="auto expand speed" hidden>
+                    <span class="fieldLabel">speed</span>
+                    <input id="autoExpandSpeed" type="range" min="0" max="200" step="1" value="100" />
+                    <input id="autoExpandSpeedOut" class="num" type="number" min="0" max="200" step="1" value="100" />
+                </label>
             </div>
         </div>
     </div>
-
-    <button type="button" id="transportBar" class="transportBar" aria-label="transport" aria-pressed="false" data-playing="0" hidden>
-        <span class="transportPlayIcon" aria-hidden="true"></span>
-    </button>
 
     <script>
         (() => {
@@ -156,11 +177,17 @@
 
             const themeStarBtn = document.getElementById('themeStarBtn');
             const themePicker = document.getElementById('themePicker');
+            const themePickerBox = document.getElementById('themePickerBox');
+            const themeControls = document.getElementById('themeControls');
             const themeColorAInput = document.getElementById('themeColorA');
             const themeColorBInput = document.getElementById('themeColorB');
             const themeSwapBtn = document.getElementById('themeSwapBtn');
             const themeResetBtn = document.getElementById('themeResetBtn');
             const autoExpandToggleBtn = document.getElementById('autoExpandToggleBtn');
+            const autoExpandSpeedRow = document.getElementById('autoExpandSpeedRow');
+            const autoExpandSpeedInput = document.getElementById('autoExpandSpeed');
+            const autoExpandSpeedOut = document.getElementById('autoExpandSpeedOut');
+            const autoscrollToggleBtn = document.getElementById('autoscrollToggleBtn');
 
             const tempoInput = document.getElementById('tempo');
             const tempoOut = document.getElementById('tempoOut');
@@ -174,9 +201,9 @@
             const beatStepsOut = document.getElementById('beatStepsOut');
             const themeModeBtn = document.getElementById('themeModeBtn');
 
-            const globalSection = document.getElementById('globalSection');
-            const globalCollapseBtn = document.getElementById('globalCollapseBtn');
-            const globalHoverExpandBtn = document.getElementById('globalHoverExpandBtn');
+            const settingsModal = document.getElementById('settingsModal');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsThemeControlsMount = document.getElementById('settingsThemeControlsMount');
 
             const rangeFromInput = document.getElementById('rangeFrom');
             const rangeToInput = document.getElementById('rangeTo');
@@ -198,10 +225,18 @@
             const songJsonHighlight = document.getElementById('songJsonHighlight');
 
             const transportBar = document.getElementById('transportBar');
+            const transportSettingsBtn = document.getElementById('transportSettingsBtn');
+            const transportPlayBtn = document.getElementById('transportPlayBtn');
+            const transportRestartBtn = document.getElementById('transportRestartBtn');
+            const transportSeekBtn = document.getElementById('transportSeekBtn');
+            const transportTicks = document.getElementById('transportTicks');
 
             const lookaheadMs = 25;
             const scheduleAheadTime = 0.12;
-            const MAX_STEPS = 64;
+            const MAX_STEPS = 256;
+
+            const NOTE_ROWS = 24; // 2 octaves (semitones)
+            const NOTE_MASK_ALL = (Math.pow(2, NOTE_ROWS) - 1);
 
             const SOUND_OPTIONS = [
                 { value: 'kick', label: 'kick', tonal: false },
@@ -257,8 +292,13 @@
             let loopStart = 0;
             let loopEnd = Math.max(0, stepsCount - 1);
 
-            let globalHoverExpand = true;
             let autoExpandEnabled = false;
+            let autoExpandSpeed = 100;
+
+            let settingsOpen = false;
+            let settingsLayoutRaf = null;
+
+            let autoscrollEnabled = true;
 
             let themeEnabled = false;
 
@@ -416,11 +456,18 @@
             }
 
             function normalizePattern(pattern) {
-                if (!Array.isArray(pattern)) return new Array(stepsCount).fill(false);
+                if (!Array.isArray(pattern)) return new Array(stepsCount).fill(0);
 
-                if (pattern.length > MAX_STEPS) return pattern.slice(0, MAX_STEPS);
-                if (pattern.length >= stepsCount) return pattern;
-                return pattern.concat(new Array(stepsCount - pattern.length).fill(false));
+                const sliced = (pattern.length > MAX_STEPS) ? pattern.slice(0, MAX_STEPS) : pattern.slice();
+                const normalized = sliced.map((v) => {
+                    if (typeof v === 'boolean') return v ? 1 : 0;
+                    const n = Number(v);
+                    if (!Number.isFinite(n)) return 0;
+                    return clampNumber(Math.round(n), 0, NOTE_MASK_ALL);
+                });
+
+                if (normalized.length >= stepsCount) return normalized;
+                return normalized.concat(new Array(stepsCount - normalized.length).fill(0));
             }
 
             function readIntFromSelect(selectEl, fallback) {
@@ -741,7 +788,7 @@
                     return {
                         key: String(key),
                         sound: String(state.sound || 'kick'),
-                        pattern: normalizePattern(state.pattern).map((v) => Boolean(v)),
+                        pattern: normalizePattern(state.pattern),
                         pitch: numberOrFallback(state.pitch, 60),
                         tuneCents: numberOrFallback(state.tuneCents, 0),
                         hold: numberOrFallback(state.hold, defaults.hold),
@@ -756,7 +803,8 @@
                         muted: Boolean(state.muted),
                         solo: Boolean(state.solo),
                         collapsed: Boolean(state.collapsed),
-                        hoverExpand: (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true,
+                        seqMode: (state.seqMode === 'roll') ? 'roll' : 'single',
+                        gridCollapsed: Boolean(state.gridCollapsed),
                     };
                 });
 
@@ -764,9 +812,9 @@
 
                 const range = readGlobalRange();
                 const ui = {
-                    globalCollapsed: Boolean(globalSection && globalSection.classList.contains('is-collapsed')),
-                    globalHoverExpand: Boolean(globalHoverExpand),
                     autoExpandEnabled: Boolean(autoExpandEnabled),
+                    autoExpandSpeed: clampNumber(Math.round(numberOrFallback(autoExpandSpeed, 100)), 0, 200),
+                    autoscrollEnabled: Boolean(autoscrollEnabled),
                     themeEnabled: Boolean(themeEnabled),
                     themeA,
                     themeB,
@@ -798,7 +846,7 @@
                 const nextTempo = clampNumber(numberOrFallback(globals.tempo, tempo), 20, 360);
                 const nextGlobalSwing = clampNumber(numberOrFallback(globals.globalSwing, globalSwing), 0, 127);
                 const nextGlobalVolume = clampNumber(numberOrFallback(globals.globalVolume, globalVolume), 0, 127);
-                const nextSteps = clampNumber(numberOrFallback(globals.steps, stepsCount), 4, 64);
+                const nextSteps = clampNumber(numberOrFallback(globals.steps, stepsCount), 4, MAX_STEPS);
                 const nextBeatSteps = clampNumber(numberOrFallback(globals.beatSteps, beatSteps), 1, nextSteps);
 
                 stop();
@@ -817,14 +865,14 @@
                     updateRangeButtons();
                 }
 
-                const nextGlobalCollapsed = (typeof ui.globalCollapsed === 'boolean') ? ui.globalCollapsed : true;
-                setGlobalCollapsed(nextGlobalCollapsed);
-
-                const nextGlobalHoverExpand = (typeof ui.globalHoverExpand === 'boolean') ? ui.globalHoverExpand : true;
-                setGlobalHoverExpand(nextGlobalHoverExpand);
-
                 const nextAutoExpandEnabled = (typeof ui.autoExpandEnabled === 'boolean') ? ui.autoExpandEnabled : false;
                 setAutoExpandEnabled(nextAutoExpandEnabled);
+
+                const nextAutoExpandSpeed = clampNumber(Math.round(numberOrFallback(ui.autoExpandSpeed, 100)), 0, 200);
+                setAutoExpandSpeed(nextAutoExpandSpeed);
+
+                const nextAutoscrollEnabled = (typeof ui.autoscrollEnabled === 'boolean') ? ui.autoscrollEnabled : true;
+                setAutoscrollEnabled(nextAutoscrollEnabled);
 
                 const nextThemeA = (typeof ui.themeA === 'string') ? ui.themeA : DEFAULT_THEME_A;
                 const nextThemeB = (typeof ui.themeB === 'string') ? ui.themeB : DEFAULT_THEME_B;
@@ -862,7 +910,7 @@
 
                     states.set(key, {
                         sound,
-                        pattern: Array.isArray(entry.pattern) ? entry.pattern.map((v) => Boolean(v)) : new Array(stepsCount).fill(false),
+                        pattern: Array.isArray(entry.pattern) ? entry.pattern.slice() : new Array(stepsCount).fill(0),
                         pitch: numberOrFallback(entry.pitch, 60),
                         tuneCents: numberOrFallback(entry.tuneCents, 0),
                         hold: numberOrFallback(entry.hold, defaults.hold),
@@ -877,7 +925,8 @@
                         muted: Boolean(entry.muted),
                         solo: Boolean(entry.solo),
                         collapsed: entryCollapsed,
-                        hoverExpand: (typeof entry.hoverExpand === 'boolean') ? entry.hoverExpand : true,
+                        seqMode: (entry.seqMode === 'roll' || entry.seqMode === 'single') ? entry.seqMode : undefined,
+                        gridCollapsed: (typeof entry.gridCollapsed === 'boolean') ? entry.gridCollapsed : Boolean(entry.notesHidden),
                     });
                     getOrInitState(key);
                 }
@@ -930,7 +979,7 @@
                     const defaults = getEnvDefaultsForSound('kick');
                     state = {
                         sound: 'kick',
-                        pattern: new Array(stepsCount).fill(false),
+                        pattern: new Array(stepsCount).fill(0),
                         pitch: 60,
                         tuneCents: 0,
                         hold: defaults.hold,
@@ -945,7 +994,8 @@
                         muted: false,
                         solo: false,
                         collapsed: true,
-                        hoverExpand: true,
+                        seqMode: 'single',
+                        gridCollapsed: false,
                     };
                     states.set(key, state);
                 }
@@ -967,7 +1017,13 @@
                 state.muted = Boolean(state.muted);
                 state.solo = Boolean(state.solo);
                 state.collapsed = Boolean(state.collapsed);
-                state.hoverExpand = (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true;
+
+                const hasMultiRowNotes = state.pattern.some((m) => (clampNumber(Math.round(numberOrFallback(m, 0)), 0, NOTE_MASK_ALL) & ~1) !== 0);
+                const mode = String(state.seqMode || '').trim();
+                state.seqMode = (mode === 'roll' || mode === 'single') ? mode : (hasMultiRowNotes ? 'roll' : 'single');
+
+                const legacyGridCollapsed = (typeof state.gridCollapsed !== 'undefined') ? state.gridCollapsed : state.notesHidden;
+                state.gridCollapsed = Boolean(legacyGridCollapsed);
                 return state;
             }
 
@@ -1218,6 +1274,29 @@
                 const open = Boolean(nextOpen);
                 if (themePicker) themePicker.hidden = !open;
                 if (themeStarBtn) themeStarBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                syncThemeControlsMount();
+            }
+
+            function syncThemeControlsMount() {
+                if (!themeControls) return;
+
+                const pickerOpen = Boolean(themePicker && !themePicker.hidden);
+                const wantInSettings = Boolean(themeEnabled && settingsOpen && !pickerOpen);
+
+                if (wantInSettings && settingsThemeControlsMount) {
+                    if (themeControls.parentElement !== settingsThemeControlsMount) {
+                        settingsThemeControlsMount.appendChild(themeControls);
+                    }
+                    settingsThemeControlsMount.hidden = false;
+                } else {
+                    if (themePickerBox && themeControls.parentElement !== themePickerBox) {
+                        themePickerBox.appendChild(themeControls);
+                    }
+                    if (settingsThemeControlsMount) settingsThemeControlsMount.hidden = true;
+                }
+
+                scheduleSettingsPanelLayout();
             }
 
             function closeThemePicker() {
@@ -1244,41 +1323,9 @@
                     return;
                 }
 
-                const palette = letters.map((btn) => getAccentFromLetter(btn));
-                const paletteRgb = palette.map((c) => parseCssColorToRgb(c));
-
-                for (let i = 0; i < letters.length; i += 1) {
-                    const base = paletteRgb[i];
-                    if (!base) {
-                        const fallback = palette[(i + 1) % palette.length];
-                        if (fallback) letters[i].style.setProperty('--hit', fallback);
-                        continue;
-                    }
-
-                    let bestIndex = -1;
-                    let bestScore = -1;
-                    for (let j = 0; j < palette.length; j += 1) {
-                        if (j === i) continue;
-                        const candidate = paletteRgb[j];
-                        if (!candidate) continue;
-
-                        const dr = base.r - candidate.r;
-                        const dg = base.g - candidate.g;
-                        const db = base.b - candidate.b;
-                        const score = (dr * dr) + (dg * dg) + (db * db);
-
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestIndex = j;
-                        }
-                    }
-
-                    if (bestIndex >= 0) {
-                        letters[i].style.setProperty('--hit', palette[bestIndex]);
-                    } else {
-                        const fallback = palette[(i + 1) % palette.length];
-                        if (fallback) letters[i].style.setProperty('--hit', fallback);
-                    }
+                for (const btn of letters) {
+                    const accent = getAccentFromLetter(btn);
+                    if (accent) btn.style.setProperty('--hit', accent);
                 }
             }
 
@@ -1301,13 +1348,74 @@
                 trackHitTimeouts.set(trackEl, timeout);
             }
 
+            function isElementVisible(el) {
+                if (!el) return false;
+                if (typeof el.getClientRects === 'function' && el.getClientRects().length === 0) return false;
+                const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+                if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+                return true;
+            }
+
+            function positionSettingsPanel() {
+                if (!settingsPanel || !transportBar) return;
+                const barRect = transportBar.getBoundingClientRect();
+                const gap = Math.max(0, window.innerHeight - barRect.bottom);
+
+                const width = Math.max(0, Math.floor(barRect.width * 0.5));
+                settingsPanel.style.width = `${width}px`;
+
+                const bottom = Math.round(barRect.height + (gap * 2));
+                settingsPanel.style.bottom = `${bottom}px`;
+
+                const topMargin = 12;
+                const available = Math.max(0, Math.round(barRect.top - gap - topMargin));
+                settingsPanel.style.maxHeight = `${available}px`;
+            }
+
+            function scheduleSettingsPanelLayout() {
+                if (settingsLayoutRaf != null) return;
+                settingsLayoutRaf = window.requestAnimationFrame(() => {
+                    settingsLayoutRaf = null;
+                    if (!settingsOpen) return;
+                    positionSettingsPanel();
+                });
+            }
+
+            function setSettingsOpen(nextOpen) {
+                const hasTracks = tracks.size > 0;
+                const open = Boolean(nextOpen) && hasTracks;
+                settingsOpen = open;
+
+                if (settingsModal) {
+                    settingsModal.hidden = !open;
+                }
+
+                if (transportSettingsBtn) {
+                    transportSettingsBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
+                    transportSettingsBtn.title = open ? 'close settings' : 'settings';
+                }
+
+                if (open) {
+                    positionSettingsPanel();
+                    if (presetSelect && typeof presetSelect.focus === 'function') {
+                        presetSelect.focus({ preventScroll: true });
+                    }
+                }
+
+                syncThemeControlsMount();
+            }
+
             function updateDawVisibility() {
                 const hasTracks = tracks.size > 0;
                 daw.hidden = !hasTracks;
                 if (transportBar) transportBar.hidden = !hasTracks;
                 document.body.classList.toggle('has-daw', hasTracks);
                 if (!hasTracks) stop();
-                if (hasTracks) updateTransportBar();
+                if (!hasTracks) setSettingsOpen(false);
+                if (hasTracks) {
+                    updateTransportBar();
+                    rebuildTransportTicks();
+                }
                 updateTransportControls();
             }
 
@@ -1354,6 +1462,39 @@
                 return stepFloat;
             }
 
+            let transportTicksKey = '';
+
+            function rebuildTransportTicks() {
+                if (!transportTicks) return;
+
+                const steps = clampNumber(Math.round(numberOrFallback(stepsCount, 1)), 1, MAX_STEPS);
+                const groupLen = clampNumber(Math.round(numberOrFallback(beatSteps, 4)), 1, steps);
+                const key = `${steps}|${groupLen}`;
+                if (key === transportTicksKey) return;
+                transportTicksKey = key;
+
+                transportTicks.innerHTML = '';
+                const frag = document.createDocumentFragment();
+
+                for (let i = 0; i < steps; i += 1) {
+                    const isBeat = (i % groupLen) === 0;
+                    const tick = document.createElement('span');
+                    tick.className = isBeat ? 'transportTick transportTickBeat' : 'transportTick transportTickStep';
+                    tick.style.left = formatPercent01(i / steps);
+
+                    if (isBeat) {
+                        const num = document.createElement('span');
+                        num.className = 'transportBeatNum';
+                        num.textContent = String(Math.floor(i / groupLen) + 1);
+                        tick.appendChild(num);
+                    }
+
+                    frag.appendChild(tick);
+                }
+
+                transportTicks.appendChild(frag);
+            }
+
             function stopTransportRaf() {
                 if (transportRaf == null) return;
                 window.cancelAnimationFrame(transportRaf);
@@ -1390,6 +1531,9 @@
                 }
 
                 currentStep = step;
+                if (!isPlaying && pausedStep != null) {
+                    pausedStep = step;
+                }
                 if (fromUser) hasManualSeek = true;
 
                 const viewTarget = (typeof viewStep === 'number')
@@ -1429,6 +1573,16 @@
 
             let followCenterLock = false;
 
+            function getFirstVisibleTrackForGrid() {
+                for (const track of tracks.values()) {
+                    if (!track || !track.grid || !Array.isArray(track.stepButtons) || track.stepButtons.length === 0) continue;
+                    if (!isElementVisible(track.grid)) continue;
+                    if (track.grid.clientWidth <= 0) continue;
+                    return track;
+                }
+                return null;
+            }
+
             function syncGridScroll(sourceEl, scrollLeft) {
                 if (isSyncingGridScroll) return;
                 isSyncingGridScroll = true;
@@ -1463,7 +1617,12 @@
                     return;
                 }
 
-                const first = tracks.values().next().value;
+                if (!autoscrollEnabled) {
+                    followCenterLock = false;
+                    return;
+                }
+
+                const first = getFirstVisibleTrackForGrid();
                 if (!first || !first.grid || !Array.isArray(first.stepButtons)) return;
 
                 const grid = first.grid;
@@ -1494,7 +1653,7 @@
             }
 
             function scrollGridsToStep(stepIndex, { behavior = 'auto', follow = false, center = false } = {}) {
-                const first = tracks.values().next().value;
+                const first = getFirstVisibleTrackForGrid();
                 if (!first || !first.grid || !Array.isArray(first.stepButtons)) return;
                 const grid = first.grid;
                 const btn = first.stepButtons[stepIndex];
@@ -1544,18 +1703,42 @@
 
             function renderTrackGrid(track) {
                 const state = getOrInitState(track.key);
-                for (let i = 0; i < stepsCount; i += 1) {
-                    const btn = track.stepButtons[i];
-                    if (!btn) continue;
-                    const on = Boolean(state.pattern[i]);
-                    btn.classList.toggle('is-on', on);
-                    btn.classList.toggle('is-current', isPlaying && i === uiStep);
-                    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                const pattern = normalizePattern(state.pattern);
+
+                const byRow = Array.isArray(track.stepButtonsByRow) ? track.stepButtonsByRow : [];
+                for (let row = 0; row < NOTE_ROWS; row += 1) {
+                    const rowButtons = byRow[row];
+                    if (!Array.isArray(rowButtons)) continue;
+                    const bit = (1 << row);
+                    for (let i = 0; i < stepsCount; i += 1) {
+                        const btn = rowButtons[i];
+                        if (!btn) continue;
+                        const mask = clampNumber(Math.round(numberOrFallback(pattern[i], 0)), 0, NOTE_MASK_ALL);
+                        const on = (mask & bit) !== 0;
+                        btn.classList.toggle('is-on', on);
+                        btn.classList.toggle('is-current', isPlaying && i === uiStep);
+                        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    }
                 }
             }
 
             function renderAllTrackGrids() {
                 for (const track of tracks.values()) renderTrackGrid(track);
+            }
+
+            function renderTrackRollLabels(track) {
+                const labelEls = track && Array.isArray(track.noteLabelEls) ? track.noteLabelEls : null;
+                if (!labelEls || labelEls.length === 0) return;
+                const state = getOrInitState(track.key);
+                const basePitch = numberOrFallback(state.pitch, 60);
+                for (let row = 0; row < NOTE_ROWS; row += 1) {
+                    const el = labelEls[row];
+                    if (!el) continue;
+                    const midi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
+                    const noteName = midiToNoteName(midi);
+                    el.textContent = noteName;
+                    el.setAttribute('aria-label', `play ${noteName}`);
+                }
             }
 
             function applyStepsCount(nextStepsCount) {
@@ -1591,6 +1774,7 @@
                 if (uiStep >= stepsCount) uiStep = -1;
 
                 updateTransportBar();
+                rebuildTransportTicks();
             }
 
             function updateBeatStepsMax() {
@@ -1614,6 +1798,9 @@
                 }
 
                 syncGridScroll(null, sharedGridScrollLeft);
+
+                updateTransportBar();
+                rebuildTransportTicks();
             }
 
             function renderTrackControls(track) {
@@ -1621,13 +1808,15 @@
 
                 track.el.classList.toggle('is-muted', state.muted);
                 track.el.classList.toggle('is-solo', state.solo);
+                track.el.classList.toggle('is-grid-collapsed', state.gridCollapsed);
+                track.el.classList.toggle('is-seq-roll', state.seqMode === 'roll');
+                track.el.classList.toggle('is-seq-single', state.seqMode !== 'roll');
                 track.button.classList.toggle('is-muted', state.muted);
 
                 track.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
                 track.soloBtn.setAttribute('aria-pressed', state.solo ? 'true' : 'false');
 
                 track.soundSelect.value = state.sound;
-                track.titleSound.textContent = state.sound;
 
                 const pitchParts = midiToNoteParts(state.pitch);
                 track.pitchNoteSelect.value = String(pitchParts.noteIndex);
@@ -1643,10 +1832,7 @@
                 track.tuneInput.value = String(tuneCents);
                 track.tuneOut.value = String(tuneCents);
 
-                const hoverEnabled = (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true;
-                track.hoverExpandBtn.setAttribute('aria-pressed', hoverEnabled ? 'true' : 'false');
-                track.hoverExpandBtn.title = hoverEnabled ? 'hover expand: on' : 'hover expand: off';
-                if (!autoExpandEnabled || !hoverEnabled) {
+                if (!autoExpandEnabled) {
                     track.el.classList.remove('is-hover-peek');
                 } else if (state.collapsed && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && track.el.matches(':hover')) {
                     track.el.classList.add('is-hover-peek');
@@ -1678,6 +1864,17 @@
 
                 track.releaseInput.value = String(state.release);
                 track.releaseOut.value = String(state.release);
+
+                if (track.notesToggleBtn) {
+                    track.notesToggleBtn.setAttribute('aria-pressed', state.gridCollapsed ? 'false' : 'true');
+                    track.notesToggleBtn.title = state.gridCollapsed ? 'grid: hidden' : 'grid: shown';
+                }
+
+                if (track.seqModeSelect) {
+                    track.seqModeSelect.value = (state.seqMode === 'roll') ? 'roll' : 'single';
+                }
+
+                renderTrackRollLabels(track);
             }
 
             function renderTrack(track) {
@@ -1687,36 +1884,83 @@
 
             function buildGrid(track) {
                 track.el.style.setProperty('--steps', String(stepsCount));
-                track.grid.innerHTML = '';
+                if (track.rollLabels) track.rollLabels.innerHTML = '';
+                if (track.rollRows) track.rollRows.innerHTML = '';
+
+                track.noteLabelEls = new Array(NOTE_ROWS);
+                track.stepButtonsByRow = new Array(NOTE_ROWS);
                 track.stepButtons = [];
 
+                const state = getOrInitState(track.key);
+                const basePitch = numberOrFallback(state.pitch, 60);
                 const groupLen = clampNumber(Math.round(numberOrFallback(beatSteps, 4)), 1, stepsCount);
-                for (let i = 0; i < stepsCount; i += 1) {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'step';
-                    btn.dataset.step = String(i);
-                    if ((i % groupLen) === 0) {
-                        btn.dataset.beat = String(Math.floor(i / groupLen) + 1);
-                    }
-                    btn.setAttribute('aria-pressed', 'false');
-                    btn.addEventListener('click', () => {
-                        const state = getOrInitState(track.key);
-                        state.pattern[i] = !state.pattern[i];
-                        renderTrackGrid(track);
+
+                const rowsToBuild = (state.seqMode === 'roll')
+                    ? Array.from({ length: NOTE_ROWS }, (_, i) => NOTE_ROWS - 1 - i)
+                    : [0];
+                const beatRow = rowsToBuild[0];
+
+                for (const row of rowsToBuild) {
+                    const labelEl = document.createElement('div');
+                    labelEl.className = 'trackRollLabel';
+                    labelEl.dataset.row = String(row);
+                    labelEl.tabIndex = 0;
+                    labelEl.setAttribute('role', 'button');
+                    labelEl.setAttribute('aria-label', 'play note preview');
+                    const midi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
+                    labelEl.textContent = midiToNoteName(midi);
+                    labelEl.addEventListener('pointerdown', (event) => {
+                        if (event && event.button !== 0) return;
+                        track.rollPreviewDragActive = true;
+                        track.rollPreviewLastRow = null;
+                        if (typeof track.previewRollRow === 'function') {
+                            track.previewRollRow(row, event);
+                        }
                     });
+                    labelEl.addEventListener('keydown', (event) => {
+                        if (!event) return;
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        if (typeof track.previewRollRow === 'function') {
+                            track.previewRollRow(row, event);
+                        }
+                    });
+                    track.noteLabelEls[row] = labelEl;
+                    if (track.rollLabels) track.rollLabels.appendChild(labelEl);
 
-                    track.stepButtons.push(btn);
-                    track.grid.appendChild(btn);
+                    const rowEl = document.createElement('div');
+                    rowEl.className = 'trackRollRow';
+                    rowEl.dataset.row = String(row);
 
-                    const isBeatBreak = ((i + 1) % groupLen) === 0 && i !== stepsCount - 1;
-                    if (isBeatBreak) {
-                        const spacer = document.createElement('div');
-                        spacer.className = 'beatSpacer';
-                        spacer.dataset.beat = String(Math.floor((i + 1) / groupLen) + 1);
-                        spacer.setAttribute('aria-hidden', 'true');
-                        track.grid.appendChild(spacer);
+                    const rowButtons = new Array(stepsCount);
+
+                    for (let i = 0; i < stepsCount; i += 1) {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'step';
+                        btn.dataset.step = String(i);
+                        btn.dataset.row = String(row);
+                        if (row === beatRow && (i % groupLen) === 0) {
+                            btn.dataset.beat = String(Math.floor(i / groupLen) + 1);
+                        }
+                        btn.setAttribute('aria-pressed', 'false');
+
+                        rowButtons[i] = btn;
+                        rowEl.appendChild(btn);
+
+                        const isBeatBreak = ((i + 1) % groupLen) === 0 && i !== stepsCount - 1;
+                        if (isBeatBreak) {
+                            const spacer = document.createElement('div');
+                            spacer.className = 'beatSpacer';
+                            spacer.dataset.beat = String(Math.floor((i + 1) / groupLen) + 1);
+                            spacer.setAttribute('aria-hidden', 'true');
+                            rowEl.appendChild(spacer);
+                        }
                     }
+
+                    track.stepButtonsByRow[row] = rowButtons;
+                    if (row === beatRow) track.stepButtons = rowButtons;
+
+                    if (track.rollRows) track.rollRows.appendChild(rowEl);
                 }
             }
 
@@ -1747,20 +1991,35 @@
                 reorderHandle.setAttribute('aria-label', 'drag to reorder sequence');
                 reorderHandle.title = 'drag to reorder';
 
+                const soundSelect = document.createElement('select');
+                soundSelect.className = 'trackSound trackInstrumentSelect';
+                soundSelect.setAttribute('aria-label', 'instrument');
+                for (const opt of SOUND_OPTIONS) {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt.value;
+                    optionEl.textContent = opt.label;
+                    soundSelect.appendChild(optionEl);
+                }
+
                 const title = document.createElement('div');
                 title.className = 'trackTitle';
                 const titleLetter = document.createElement('span');
                 titleLetter.className = 'trackLetter';
                 titleLetter.textContent = letter;
-                const titleSound = document.createElement('span');
-                titleSound.className = 'trackSound';
-                titleSound.textContent = state.sound;
                 title.appendChild(titleLetter);
-                title.appendChild(document.createTextNode(' '));
-                title.appendChild(titleSound);
+                title.appendChild(soundSelect);
 
                 const mainControls = document.createElement('div');
-                mainControls.className = 'controls trackMainControls';
+                mainControls.className = 'trackMainControls';
+
+                const volumeRow = document.createElement('div');
+                volumeRow.className = 'controls trackVolumeRow';
+
+                const panRow = document.createElement('div');
+                panRow.className = 'controls trackPanRow';
+
+                const actionControls = document.createElement('div');
+                actionControls.className = 'controls trackActionControls';
 
                 const muteBtn = document.createElement('button');
                 muteBtn.type = 'button';
@@ -1781,11 +2040,12 @@
                 collapseBtn.setAttribute('aria-label', 'collapse sequence');
                 collapseBtn.setAttribute('aria-expanded', 'true');
 
-                const hoverExpandBtn = document.createElement('button');
-                hoverExpandBtn.type = 'button';
-                hoverExpandBtn.className = 'caret lockToggle trackHoverExpandBtn';
-                hoverExpandBtn.setAttribute('aria-label', 'toggle hover expand');
-                hoverExpandBtn.setAttribute('aria-pressed', 'true');
+                const notesToggleBtn = document.createElement('button');
+                notesToggleBtn.type = 'button';
+                notesToggleBtn.className = 'caret trackNotesToggleBtn';
+                notesToggleBtn.textContent = '▦';
+                notesToggleBtn.setAttribute('aria-label', 'toggle grid');
+                notesToggleBtn.setAttribute('aria-pressed', 'false');
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
@@ -1798,21 +2058,6 @@
                 clearBtn.className = 'btn';
                 clearBtn.textContent = 'clear';
                 clearBtn.setAttribute('aria-label', 'clear notes');
-
-                const soundField = document.createElement('label');
-                soundField.className = 'field soundField';
-                const soundLabel = document.createElement('span');
-                soundLabel.className = 'fieldLabel';
-                soundLabel.textContent = 'sound';
-                const soundSelect = document.createElement('select');
-                for (const opt of SOUND_OPTIONS) {
-                    const optionEl = document.createElement('option');
-                    optionEl.value = opt.value;
-                    optionEl.textContent = opt.label;
-                    soundSelect.appendChild(optionEl);
-                }
-                soundField.appendChild(soundLabel);
-                soundField.appendChild(soundSelect);
 
                 const pitchField = document.createElement('label');
                 pitchField.className = 'field pitchField';
@@ -1874,6 +2119,30 @@
 
                 pitchField.appendChild(pitchLabel);
                 pitchField.appendChild(pitchControls);
+
+                const seqModeField = document.createElement('label');
+                seqModeField.className = 'field seqModeField';
+                const seqModeLabel = document.createElement('span');
+                seqModeLabel.className = 'fieldLabel';
+                seqModeLabel.textContent = 'mode';
+                const seqModeSelect = document.createElement('select');
+                seqModeSelect.className = 'seqModeSelect';
+                seqModeSelect.setAttribute('aria-label', 'sequencer mode');
+                {
+                    const optSingle = document.createElement('option');
+                    optSingle.value = 'single';
+                    optSingle.textContent = 'single note';
+                    const optRoll = document.createElement('option');
+                    optRoll.value = 'roll';
+                    optRoll.textContent = 'piano roll';
+                    seqModeSelect.appendChild(optSingle);
+                    seqModeSelect.appendChild(optRoll);
+                }
+                const seqModeSpacer = document.createElement('span');
+                seqModeSpacer.setAttribute('aria-hidden', 'true');
+                seqModeField.appendChild(seqModeLabel);
+                seqModeField.appendChild(seqModeSelect);
+                seqModeField.appendChild(seqModeSpacer);
 
                 const tuneField = document.createElement('label');
                 tuneField.className = 'field tuneField';
@@ -2075,25 +2344,35 @@
                 releaseField.appendChild(releaseInput);
                 releaseField.appendChild(releaseOut);
 
-                mainControls.appendChild(muteBtn);
-                mainControls.appendChild(soloBtn);
-                mainControls.appendChild(volumeField);
-                mainControls.appendChild(clearBtn);
-                mainControls.appendChild(deleteBtn);
-                mainControls.appendChild(soundField);
+                volumeRow.appendChild(volumeField);
+                panRow.appendChild(panField);
+
+                const actionRight = document.createElement('div');
+                actionRight.className = 'trackActionRight';
+                actionRight.appendChild(clearBtn);
+                actionRight.appendChild(deleteBtn);
+
+                actionControls.appendChild(notesToggleBtn);
+                actionControls.appendChild(muteBtn);
+                actionControls.appendChild(soloBtn);
+                actionControls.appendChild(actionRight);
+
+                mainControls.appendChild(volumeRow);
+                mainControls.appendChild(panRow);
+                mainControls.appendChild(actionControls);
 
                 const sliderGrid = document.createElement('div');
                 sliderGrid.className = 'grid trackSliderGrid';
-                sliderGrid.appendChild(panField);
-                sliderGrid.appendChild(swingField);
+                sliderGrid.appendChild(seqModeField);
                 sliderGrid.appendChild(pitchField);
-                sliderGrid.appendChild(offsetField);
                 sliderGrid.appendChild(tuneField);
-                sliderGrid.appendChild(attackField);
+                sliderGrid.appendChild(offsetField);
                 sliderGrid.appendChild(holdField);
+                sliderGrid.appendChild(attackField);
                 sliderGrid.appendChild(decayField);
                 sliderGrid.appendChild(sustainField);
                 sliderGrid.appendChild(releaseField);
+                sliderGrid.appendChild(swingField);
 
                 function setCollapsed(collapsed) {
                     el.classList.toggle('is-collapsed', Boolean(collapsed));
@@ -2103,24 +2382,37 @@
                     s.collapsed = Boolean(collapsed);
                     if (!s.collapsed) {
                         el.classList.remove('is-hover-peek');
-                    } else if (autoExpandEnabled && s.hoverExpand && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && el.matches(':hover')) {
+                    } else if (autoExpandEnabled && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && el.matches(':hover')) {
                         el.classList.add('is-hover-peek');
                     }
                 }
 
                 topBar.appendChild(reorderHandle);
                 topBar.appendChild(title);
-                topBar.appendChild(hoverExpandBtn);
                 topBar.appendChild(collapseBtn);
 
                 header.appendChild(topBar);
                 header.appendChild(mainControls);
                 header.appendChild(sliderGrid);
 
+                const roll = document.createElement('div');
+                roll.className = 'trackRoll';
+                roll.setAttribute('aria-label', `${letter} notes`);
+
+                const rollLabels = document.createElement('div');
+                rollLabels.className = 'trackRollLabels';
+
                 const grid = document.createElement('div');
-                grid.className = 'grid trackGrid';
+                grid.className = 'trackGrid';
                 grid.setAttribute('role', 'group');
                 grid.setAttribute('aria-label', `${letter} grid`);
+
+                const rollRows = document.createElement('div');
+                rollRows.className = 'trackRollRows';
+                grid.appendChild(rollRows);
+
+                roll.appendChild(rollLabels);
+                roll.appendChild(grid);
 
                 grid.scrollLeft = sharedGridScrollLeft;
                 grid.addEventListener('scroll', () => {
@@ -2128,7 +2420,7 @@
                 });
 
                 el.appendChild(header);
-                el.appendChild(grid);
+                el.appendChild(roll);
 
                 setCollapsed(Boolean(state.collapsed));
 
@@ -2137,11 +2429,10 @@
                     letter,
                     button,
                     el,
-                    titleSound,
                     muteBtn,
                     soloBtn,
                     collapseBtn,
-                    hoverExpandBtn,
+                    notesToggleBtn,
                     clearBtn,
                     deleteBtn,
                     soundSelect,
@@ -2162,6 +2453,7 @@
                     pitchOctaveDownBtn,
                     pitchOctaveOut,
                     pitchOctaveUpBtn,
+                    seqModeSelect,
                     tuneField,
                     tuneInput,
                     tuneOut,
@@ -2180,9 +2472,89 @@
                     releaseField,
                     releaseInput,
                     releaseOut,
+                    roll,
+                    rollLabels,
+                    rollRows,
+                    previewRollRow: null,
+                    rollPreviewDragActive: false,
+                    rollPreviewLastRow: null,
+                    noteLabelEls: [],
+                    stepButtonsByRow: [],
                     grid,
                     stepButtons: [],
                 };
+
+                track.previewRollRow = (row, event) => {
+                    if (!Number.isFinite(row)) return;
+                    const rowIndex = clampNumber(Math.round(row), 0, NOTE_ROWS - 1);
+                    if (track.rollPreviewLastRow === rowIndex) return;
+
+                    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+                    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+                    ensureAudio();
+                    if (!audio || !master) return;
+                    if (audio.state === 'suspended') {
+                        audio.resume();
+                    }
+
+                    const s = getOrInitState(track.key);
+                    const rowMidi = clampNumber(numberOrFallback(s.pitch, 60) + rowIndex, PITCH_MIN, PITCH_MAX);
+                    const tuneCents = clampNumber(numberOrFallback(s.tuneCents, 0), -100, 100);
+                    const pitchWithTune = clampNumber(rowMidi + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                    const effectiveMidi = effectiveMidiForSound(s.sound, pitchWithTune);
+                    const frequency = midiToFrequency(effectiveMidi);
+                    const volume01 = clampNumber(numberOrFallback(s.volume, 100) / 127, 0, 1);
+                    const pan01 = clampNumber(numberOrFallback(s.pan, 0) / 100, -1, 1);
+                    const env = {
+                        attack: s.attack,
+                        hold: s.hold,
+                        decay: s.decay,
+                        sustain: s.sustain,
+                        release: s.release,
+                    };
+
+                    triggerSound(s.sound, audio.currentTime + 0.001, {
+                        duration: 0.12,
+                        frequency,
+                        pitch: pitchWithTune,
+                        volume: volume01,
+                        pan: pan01,
+                        env,
+                    });
+
+                    track.rollPreviewLastRow = rowIndex;
+                };
+
+                const stopRollPreviewDrag = () => {
+                    track.rollPreviewDragActive = false;
+                    track.rollPreviewLastRow = null;
+                };
+
+                rollLabels.addEventListener('pointermove', (event) => {
+                    if (!track.rollPreviewDragActive) return;
+                    if (!event || event.buttons === 0) {
+                        stopRollPreviewDrag();
+                        return;
+                    }
+
+                    const target = event.target instanceof Element ? event.target : null;
+                    const labelEl = target ? target.closest('.trackRollLabel') : null;
+                    if (!labelEl) return;
+                    const row = Number(labelEl.dataset.row);
+                    if (!Number.isFinite(row)) return;
+
+                    if (typeof track.previewRollRow === 'function') {
+                        track.previewRollRow(row, event);
+                    }
+                });
+
+                rollLabels.addEventListener('pointerup', stopRollPreviewDrag);
+                rollLabels.addEventListener('pointercancel', stopRollPreviewDrag);
+                rollLabels.addEventListener('pointerleave', (event) => {
+                    if (event && event.buttons > 0) return;
+                    stopRollPreviewDrag();
+                });
 
                 muteBtn.addEventListener('click', () => {
                     const s = getOrInitState(key);
@@ -2203,11 +2575,46 @@
                     setCollapsed(!el.classList.contains('is-collapsed'));
                 });
 
-                hoverExpandBtn.addEventListener('click', (event) => {
+                notesToggleBtn.addEventListener('click', (event) => {
                     event.stopPropagation();
                     const s = getOrInitState(key);
-                    s.hoverExpand = !s.hoverExpand;
+                    s.gridCollapsed = !s.gridCollapsed;
                     renderTrackControls(track);
+                    scheduleSettingsPanelLayout();
+                });
+
+                seqModeSelect.addEventListener('change', () => {
+                    const s = getOrInitState(key);
+                    const nextMode = (seqModeSelect.value === 'roll') ? 'roll' : 'single';
+                    if (nextMode === s.seqMode) return;
+
+                    if (nextMode === 'single') {
+                        const normalized = normalizePattern(s.pattern);
+                        s.pattern = normalized.map((m) => (clampNumber(Math.round(numberOrFallback(m, 0)), 0, NOTE_MASK_ALL) ? 1 : 0));
+                    }
+
+                    s.seqMode = nextMode;
+                    buildGrid(track);
+                    renderTrack(track);
+                    syncGridScroll(null, sharedGridScrollLeft);
+                    scheduleSettingsPanelLayout();
+                });
+
+                rollRows.addEventListener('click', (event) => {
+                    const target = event && event.target instanceof Element ? event.target : null;
+                    if (!target) return;
+                    const btn = target.closest('button.step');
+                    if (!btn) return;
+                    const stepIndex = Number(btn.dataset.step);
+                    const rowIndex = Number(btn.dataset.row);
+                    if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
+
+                    const s = getOrInitState(key);
+                    s.pattern = normalizePattern(s.pattern);
+                    const prev = clampNumber(Math.round(numberOrFallback(s.pattern[stepIndex], 0)), 0, NOTE_MASK_ALL);
+                    const bit = (1 << rowIndex);
+                    s.pattern[stepIndex] = prev ^ bit;
+                    renderTrackGrid(track);
                 });
 
                 el.addEventListener('pointerenter', (event) => {
@@ -2215,7 +2622,6 @@
                     if (!autoExpandEnabled) return;
                     const s = getOrInitState(key);
                     if (!s.collapsed) return;
-                    if (!s.hoverExpand) return;
                     el.classList.add('is-hover-peek');
                 });
 
@@ -2240,7 +2646,7 @@
                     const s = getOrInitState(key);
                     const currentLen = Array.isArray(s.pattern) ? s.pattern.length : 0;
                     const nextLen = clampNumber(Math.max(stepsCount, currentLen), stepsCount, MAX_STEPS);
-                    s.pattern = new Array(nextLen).fill(false);
+                    s.pattern = new Array(nextLen).fill(0);
                     renderTrackGrid(track);
                 });
 
@@ -2687,7 +3093,8 @@
 
                 for (const track of tracks.values()) {
                     const state = getOrInitState(track.key);
-                    if (!state.pattern[stepIndex]) continue;
+                    const mask = clampNumber(Math.round(numberOrFallback(state.pattern[stepIndex], 0)), 0, NOTE_MASK_ALL);
+                    if (!mask) continue;
 
                     const eligibleBySolo = !soloed || state.solo;
                     const volume01 = clampNumber(state.volume / 127, 0, 1);
@@ -2705,9 +3112,6 @@
                     const duration = stepDuration;
                     const tuneCents = clampNumber(numberOrFallback(state.tuneCents, 0), -100, 100);
                     const basePitch = numberOrFallback(state.pitch, 60);
-                    const pitchWithTune = clampNumber(basePitch + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
-                    const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
-                    const frequency = midiToFrequency(effectiveMidi);
 
                     const env = {
                         attack: state.attack,
@@ -2718,14 +3122,36 @@
                     };
 
                     if (audible) {
-                        triggerSound(state.sound, noteTime, {
-                            duration,
-                            frequency,
-                            pitch: pitchWithTune,
-                            volume: volume01,
-                            pan: pan01,
-                            env,
-                        });
+                        if (state.seqMode !== 'roll') {
+                            const rowMidi = clampNumber(basePitch, PITCH_MIN, PITCH_MAX);
+                            const pitchWithTune = clampNumber(rowMidi + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                            const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
+                            const frequency = midiToFrequency(effectiveMidi);
+                            triggerSound(state.sound, noteTime, {
+                                duration,
+                                frequency,
+                                pitch: pitchWithTune,
+                                volume: volume01,
+                                pan: pan01,
+                                env,
+                            });
+                        } else {
+                            for (let row = 0; row < NOTE_ROWS; row += 1) {
+                                if ((mask & (1 << row)) === 0) continue;
+                                const rowMidi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
+                                const pitchWithTune = clampNumber(rowMidi + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                                const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
+                                const frequency = midiToFrequency(effectiveMidi);
+                                triggerSound(state.sound, noteTime, {
+                                    duration,
+                                    frequency,
+                                    pitch: pitchWithTune,
+                                    volume: volume01,
+                                    pan: pan01,
+                                    env,
+                                });
+                            }
+                        }
                     }
 
                     if (eligibleBySolo) {
@@ -2788,11 +3214,26 @@
             }
 
             function updateTransportControls() {
-                if (!transportBar) return;
-                transportBar.disabled = tracks.size === 0;
-                transportBar.dataset.playing = isPlaying ? '1' : '0';
-                transportBar.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
-                transportBar.title = isPlaying ? 'pause / seek' : 'play / seek';
+                if (transportBar) {
+                    transportBar.dataset.playing = isPlaying ? '1' : '0';
+                }
+
+                const hasTracks = tracks.size > 0;
+                if (transportSettingsBtn) {
+                    transportSettingsBtn.disabled = !hasTracks;
+                    transportSettingsBtn.setAttribute('aria-pressed', settingsOpen ? 'true' : 'false');
+                }
+                if (transportPlayBtn) {
+                    transportPlayBtn.disabled = !hasTracks;
+                    transportPlayBtn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+                    transportPlayBtn.title = isPlaying ? 'pause' : 'play';
+                }
+                if (transportRestartBtn) {
+                    transportRestartBtn.disabled = !hasTracks;
+                }
+                if (transportSeekBtn) {
+                    transportSeekBtn.disabled = !hasTracks;
+                }
             }
 
             function pause() {
@@ -2952,6 +3393,12 @@
                 });
             }
 
+            if (autoscrollToggleBtn) {
+                autoscrollToggleBtn.addEventListener('click', () => {
+                    setAutoscrollEnabled(!autoscrollEnabled);
+                });
+            }
+
             if (themeStarBtn) {
                 themeStarBtn.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -2996,25 +3443,47 @@
                 });
             }
 
-            if (transportBar) {
-                transportBar.addEventListener('pointerdown', (event) => {
+            if (autoExpandSpeedInput) {
+                autoExpandSpeedInput.addEventListener('input', () => {
+                    setAutoExpandSpeed(autoExpandSpeedInput.value);
+                });
+            }
+
+            if (autoExpandSpeedOut) {
+                autoExpandSpeedOut.addEventListener('input', () => {
+                    if (autoExpandSpeedOut.value === '') return;
+                    setAutoExpandSpeed(autoExpandSpeedOut.value);
+                });
+            }
+
+            if (transportPlayBtn) {
+                transportPlayBtn.addEventListener('click', () => {
+                    if (tracks.size === 0) return;
+                    if (isPlaying) pause();
+                    else play();
+                });
+            }
+
+            if (transportRestartBtn) {
+                transportRestartBtn.addEventListener('click', () => {
+                    if (tracks.size === 0) return;
+                    clampLoopRange();
+                    const target = loopEnabled ? loopStart : 0;
+                    seekToStep(target, { fromUser: true });
+                });
+            }
+
+            if (transportSeekBtn) {
+                transportSeekBtn.addEventListener('pointerdown', (event) => {
                     if (event.button != null && event.button !== 0) return;
                     if (tracks.size === 0) return;
 
-                    const rect = transportBar.getBoundingClientRect();
-                    const style = window.getComputedStyle ? window.getComputedStyle(transportBar) : null;
-                    const insetL = clampNumber(numberOrFallback(style ? parseFloat(style.getPropertyValue('--transportInsetL')) : 0, 0), 0, rect.width);
-                    const insetR = clampNumber(numberOrFallback(style ? parseFloat(style.getPropertyValue('--transportInsetR')) : 0, 0), 0, rect.width);
-                    const x = event.clientX - rect.left;
-
-                    if (x <= insetL) {
-                        if (isPlaying) pause();
-                        else play();
-                        return;
-                    }
-
-                    const seekWidth = rect.width - insetL - insetR;
-                    const ratio = seekWidth > 0 ? ((event.clientX - (rect.left + insetL)) / seekWidth) : 0;
+                    const rect = transportSeekBtn.getBoundingClientRect();
+                    const style = window.getComputedStyle ? window.getComputedStyle(transportSeekBtn) : null;
+                    const padL = clampNumber(numberOrFallback(style ? parseFloat(style.paddingLeft) : 0, 0), 0, rect.width);
+                    const padR = clampNumber(numberOrFallback(style ? parseFloat(style.paddingRight) : 0, 0), 0, rect.width);
+                    const seekWidth = Math.max(1, rect.width - padL - padR);
+                    const ratio = (event.clientX - rect.left - padL) / seekWidth;
                     const clamped = clampNumber(ratio, 0, 1);
                     const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
 
@@ -3023,23 +3492,28 @@
                 });
             }
 
-            function setGlobalHoverExpand(nextEnabled) {
-                globalHoverExpand = Boolean(nextEnabled);
-                if (globalHoverExpandBtn) {
-                    globalHoverExpandBtn.setAttribute('aria-pressed', globalHoverExpand ? 'true' : 'false');
-                    globalHoverExpandBtn.title = globalHoverExpand ? 'hover expand: on' : 'hover expand: off';
-                }
-
-                if (!globalSection) return;
-                if (!autoExpandEnabled || !globalHoverExpand) {
-                    globalSection.classList.remove('is-hover-peek');
-                    return;
-                }
-
-                if (globalSection.classList.contains('is-collapsed') && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && globalSection.matches(':hover')) {
-                    globalSection.classList.add('is-hover-peek');
-                }
+            if (transportSettingsBtn) {
+                transportSettingsBtn.addEventListener('click', () => {
+                    setSettingsOpen(!settingsOpen);
+                });
             }
+
+            if (settingsModal) {
+                settingsModal.addEventListener('pointerdown', (event) => {
+                    if (event.target !== settingsModal) return;
+                    setSettingsOpen(false);
+                });
+            }
+
+            window.addEventListener('keydown', (event) => {
+                if (!event || event.key !== 'Escape') return;
+                if (!settingsOpen) return;
+                setSettingsOpen(false);
+            });
+
+            window.addEventListener('resize', () => {
+                scheduleSettingsPanelLayout();
+            });
 
             function setThemeEnabled(nextEnabled) {
                 themeEnabled = Boolean(nextEnabled);
@@ -3059,10 +3533,50 @@
                     themeModeBtn.title = themeEnabled ? 'theme: on' : 'theme: off';
                 }
 
+                syncThemeControlsMount();
+
                 applyLetterHitAccentPalette();
 
                 updateTransportBar();
                 renderAllTrackGrids();
+            }
+
+            function setAutoscrollEnabled(nextEnabled) {
+                autoscrollEnabled = Boolean(nextEnabled);
+                if (autoscrollToggleBtn) {
+                    autoscrollToggleBtn.setAttribute('aria-pressed', autoscrollEnabled ? 'true' : 'false');
+                    autoscrollToggleBtn.title = autoscrollEnabled ? 'follow playhead: on' : 'follow playhead: off';
+                }
+                if (!autoscrollEnabled) {
+                    followCenterLock = false;
+                }
+            }
+
+            function formatSeconds(seconds) {
+                const s = Math.max(0, Number(seconds) || 0);
+                if (s === 0) return '0s';
+                return `${s.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}s`;
+            }
+
+            function applyAutoExpandSpeedVars(multiplier) {
+                const m = clampNumber(numberOrFallback(multiplier, 1), 0, 2);
+                const root = document.documentElement;
+                root.style.setProperty('--trackGridExpandHeightDur', formatSeconds(0.38 * m));
+                root.style.setProperty('--trackGridExpandFadeDur', formatSeconds(0.26 * m));
+                root.style.setProperty('--trackGridCollapseHeightDur', formatSeconds(0.38 * m));
+                root.style.setProperty('--trackGridCollapseFadeDur', formatSeconds(0.22 * m));
+                root.style.setProperty('--trackGridCollapseDelay', formatSeconds(0.38 * m));
+                root.style.setProperty('--trackGridPeekHeightDur', formatSeconds(0.58 * m));
+                root.style.setProperty('--trackGridPeekFadeDur', formatSeconds(0.34 * m));
+            }
+
+            function setAutoExpandSpeed(nextSpeed) {
+                autoExpandSpeed = clampNumber(Math.round(numberOrFallback(nextSpeed, autoExpandSpeed)), 0, 200);
+
+                if (autoExpandSpeedInput) autoExpandSpeedInput.value = String(autoExpandSpeed);
+                if (autoExpandSpeedOut) autoExpandSpeedOut.value = String(autoExpandSpeed);
+
+                applyAutoExpandSpeedVars(autoExpandSpeed / 100);
             }
 
             function setAutoExpandEnabled(nextEnabled) {
@@ -3074,78 +3588,27 @@
                     autoExpandToggleBtn.title = autoExpandEnabled ? 'auto expand: on' : 'auto expand: off';
                 }
 
+                if (autoExpandSpeedRow) {
+                    autoExpandSpeedRow.hidden = !autoExpandEnabled;
+                }
+
+                scheduleSettingsPanelLayout();
+
                 if (!autoExpandEnabled) {
-                    if (globalSection) globalSection.classList.remove('is-hover-peek');
                     for (const track of tracks.values()) {
                         if (track && track.el) track.el.classList.remove('is-hover-peek');
                     }
                 } else {
-                    setGlobalHoverExpand(globalHoverExpand);
                     for (const track of tracks.values()) {
                         renderTrackControls(track);
                     }
                 }
             }
 
-            function setGlobalCollapsed(collapsed) {
-                if (!globalSection || !globalCollapseBtn) return;
-                const nextCollapsed = Boolean(collapsed);
-                globalSection.classList.toggle('is-collapsed', nextCollapsed);
-                globalSection.classList.remove('is-hover-peek');
-                globalCollapseBtn.textContent = collapsed ? '▹' : '▿';
-                globalCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-
-                if (collapsed && songIo) {
-                    songIo.open = false;
-                }
-
-                if (nextCollapsed && autoExpandEnabled && globalHoverExpand && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && globalSection.matches(':hover')) {
-                    globalSection.classList.add('is-hover-peek');
-                }
-            }
-
-            if (globalCollapseBtn && globalSection) {
-                globalCollapseBtn.addEventListener('click', () => {
-                    setGlobalCollapsed(!globalSection.classList.contains('is-collapsed'));
-                });
-            }
-
-            if (globalHoverExpandBtn && globalSection) {
-                globalHoverExpandBtn.addEventListener('click', () => {
-                    setGlobalHoverExpand(!globalHoverExpand);
-                });
-            }
-
-            if (globalSection) {
-                globalSection.addEventListener('pointerenter', (event) => {
-                    if (!autoExpandEnabled) return;
-                    if (!globalHoverExpand) return;
-                    if (!globalSection.classList.contains('is-collapsed')) return;
-                    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-                    if (event.pointerType && event.pointerType !== 'mouse') return;
-                    globalSection.classList.add('is-hover-peek');
-                });
-                globalSection.addEventListener('pointerleave', (event) => {
-                    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-                    if (event.pointerType && event.pointerType !== 'mouse') return;
-                    globalSection.classList.remove('is-hover-peek');
-                });
-            }
-
-            if (globalSection) {
-                const globalBars = Array.from(globalSection.querySelectorAll('.globalTop .globalBar'));
-                for (const bar of globalBars) {
-                    bar.addEventListener('click', (event) => {
-                        const target = event.target instanceof Element ? event.target : null;
-                        if (!target) return;
-                        if (target.closest('button, input, select, textarea, label, summary')) return;
-                        setGlobalCollapsed(!globalSection.classList.contains('is-collapsed'));
-                    });
-                }
-            }
-
             setAutoExpandEnabled(autoExpandEnabled);
-            setGlobalHoverExpand(globalHoverExpand);
+            setAutoExpandSpeed(autoExpandSpeed);
+            setAutoscrollEnabled(autoscrollEnabled);
+            setSettingsOpen(false);
             setThemeEnabled(themeEnabled);
 
             tempoInput.addEventListener('input', () => {
@@ -3256,7 +3719,7 @@
                     for (let i = 0; i < len; i += 1) {
                         const targetIndex = insertAt + i;
                         if (targetIndex >= stepsCount) break;
-                        pattern[targetIndex] = Boolean(segment[i]);
+                        pattern[targetIndex] = clampNumber(Math.round(numberOrFallback(segment[i], 0)), 0, NOTE_MASK_ALL);
                     }
                     state.pattern = pattern;
                     renderTrackGrid(track);
@@ -3268,7 +3731,7 @@
                 const { start, end } = range;
                 const len = (end - start) + 1;
                 const oldSteps = stepsCount;
-                const nextSteps = clampNumber(oldSteps + len, 4, 64);
+                const nextSteps = clampNumber(oldSteps + len, 4, MAX_STEPS);
 
                 const snapshots = new Map();
                 for (const track of tracks.values()) {
@@ -3296,7 +3759,7 @@
                 for (const track of tracks.values()) {
                     const state = getOrInitState(track.key);
                     const pattern = normalizePattern(state.pattern).slice();
-                    for (let i = start; i <= end; i += 1) pattern[i] = false;
+                    for (let i = start; i <= end; i += 1) pattern[i] = 0;
                     state.pattern = pattern;
                     renderTrackGrid(track);
                 }

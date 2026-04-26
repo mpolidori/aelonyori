@@ -13,6 +13,14 @@
   --logo-y: 50vh;
   --logo-gap: 2rem;
   --page-bg: #ffffff;
+
+  --trackGridExpandHeightDur: 0.38s;
+  --trackGridExpandFadeDur: 0.26s;
+  --trackGridCollapseHeightDur: 0.38s;
+  --trackGridCollapseFadeDur: 0.22s;
+  --trackGridCollapseDelay: 0.38s;
+  --trackGridPeekHeightDur: 0.58s;
+  --trackGridPeekFadeDur: 0.34s;
 }
 
 html {
@@ -105,6 +113,10 @@ html.is-theme .songIo {
   border-bottom-color: var(--t-14, rgba(255, 255, 255, 0.14));
 }
 
+html.is-theme .global:not(.is-collapsed) .globalHeaderRow {
+  border-bottom-color: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
 html.is-theme .trackTopBar {
   background-color: var(--t-3, rgba(255, 255, 255, 0.03));
 }
@@ -172,6 +184,7 @@ html.is-theme .field input[type="number"],
 html.is-theme .field input[type="text"],
 html.is-theme .field select {
   border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background-color: var(--t-3, rgba(255, 255, 255, 0.03));
   color: var(--t-92, rgba(255, 255, 255, 0.92));
 }
 
@@ -234,15 +247,19 @@ html.is-theme .step {
 }
 
 html.is-theme .transportBar {
-  background: var(--t-14, rgba(255, 255, 255, 0.14));
+  background: var(--t-bg, #000000);
+  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
   --transportIcon: var(--t-96, rgba(255, 255, 255, 0.96));
+  --transportTickStep: var(--t-16, rgba(255, 255, 255, 0.16));
+  --transportTickBeat: var(--t-26, rgba(255, 255, 255, 0.26));
+  --transportBeatNum: var(--accent);
 }
 
-html.is-theme .transportBar[data-loop="0"]::before {
+html.is-theme .transportBar[data-loop="0"] .transportSeekBtn::before {
   background: var(--t-28, rgba(255, 255, 255, 0.26));
 }
 
-html.is-theme .transportBar[data-loop="1"]::before {
+html.is-theme .transportBar[data-loop="1"] .transportSeekBtn::before {
   background: linear-gradient(
     to right,
     var(--t-28, rgba(255, 255, 255, 0.26)) 0%,
@@ -254,7 +271,7 @@ html.is-theme .transportBar[data-loop="1"]::before {
   );
 }
 
-html.is-theme .transportBar::after {
+html.is-theme .transportBar .transportSeekBtn::after {
   background: linear-gradient(
     to right,
     transparent 0%,
@@ -266,7 +283,8 @@ html.is-theme .transportBar::after {
   );
 }
 
-html.is-theme .transportBar:focus-visible {
+html.is-theme .transportIconBtn:focus-visible,
+html.is-theme .transportSeekBtn:focus-visible {
   outline-color: var(--t-22, rgba(255, 255, 255, 0.22));
 }
 
@@ -356,6 +374,7 @@ html.is-theme .logoStar:focus-visible {
   padding: 0.65rem;
   background: #808080;
   max-width: calc(100vw - 2rem);
+  --accent: #000000;
 }
 
 .themePickerRow {
@@ -371,6 +390,7 @@ html.is-theme .logoStar:focus-visible {
 
 html.is-theme .themePickerBox {
   background: var(--t-50, #808080);
+  --accent: var(--t-fg, #ffffff);
 }
 
 .themeSwatch {
@@ -400,14 +420,13 @@ html.is-theme .themeSwatch {
 }
 
 .switchToggle {
-  --w: 2.35rem;
-  --h: 1.25rem;
-  --pad: 2px;
+  --w: 2.25rem;
+  --thumb: 11px;
 
   appearance: none;
-  border: 1.5px solid rgba(0, 0, 0, 0.32);
+  border: 0;
   width: var(--w);
-  height: var(--h);
+  height: 1.05rem;
   padding: 0;
   background: transparent;
   cursor: pointer;
@@ -419,21 +438,36 @@ html.is-theme .themeSwatch {
 .switchToggle::before {
   content: '';
   position: absolute;
-  left: var(--pad);
-  top: var(--pad);
-  width: calc(var(--h) - (var(--pad) * 2));
-  height: calc(var(--h) - (var(--pad) * 2));
-  background: rgba(0, 0, 0, 0.32);
-  transition: transform 0.16s ease, background-color 0.16s ease;
+  z-index: 1;
+  left: 0;
+  top: 50%;
+  width: var(--thumb);
+  height: var(--thumb);
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  transform: translate(0, -50%);
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.switchToggle::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .switchToggle[aria-pressed="true"] {
-  border-color: var(--accent);
+  border-color: transparent;
 }
 
 .switchToggle[aria-pressed="true"]::before {
   background: var(--accent);
-  transform: translateX(calc(var(--w) - var(--h)));
+  transform: translate(calc(var(--w) - var(--thumb)), -50%);
 }
 
 .switchToggle:focus-visible {
@@ -442,11 +476,16 @@ html.is-theme .themeSwatch {
 }
 
 html.is-theme .switchToggle {
-  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  border-color: transparent;
 }
 
 html.is-theme .switchToggle::before {
-  background: var(--t-34, rgba(255, 255, 255, 0.34));
+  background: var(--t-72, rgba(255, 255, 255, 0.72));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .switchToggle::after {
+  background: var(--t-22, rgba(255, 255, 255, 0.22));
 }
 
 html.is-theme .switchToggle:focus-visible {
@@ -683,9 +722,11 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   --le: 0%;
   --ps: 0%;
   --pe: 0%;
-  --transportInsetL: 52px;
-  --transportInsetR: 14px;
+  --transportSeekPad: 8px;
   --transportIcon: rgba(0, 0, 0, 0.92);
+  --transportTickStep: rgba(0, 0, 0, 0.10);
+  --transportTickBeat: rgba(0, 0, 0, 0.18);
+  --transportBeatNum: var(--accent);
 
   position: fixed;
   left: 50%;
@@ -693,22 +734,83 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   transform: translateX(-50%);
 
   width: calc(min(900px, calc(100vw - 2rem)) - 1.3rem);
-  height: 34px;
+  height: 38px;
   padding: 0;
-  border: 0;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 0;
-  background: rgba(0, 0, 0, 0.20);
-  cursor: pointer;
+  background: var(--page-bg);
+  display: flex;
+  align-items: stretch;
+  gap: 0;
   z-index: 50;
 }
 
+.transportBar,
+.transportBar * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.transportBar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.transportBar button {
+  cursor: pointer;
+}
+
+.transportBar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.transportIconBtn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  width: 46px;
+  color: var(--transportIcon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transportPlayBtn {
+  width: 50px;
+}
+
+.transportRestartBtn {
+  width: 38px;
+  font-weight: 900;
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.transportSettingsBtn {
+  width: 40px;
+  font-weight: 900;
+  font-size: 1.14rem;
+  line-height: 1;
+}
+
+.transportSeekBtn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  flex: 1 1 auto;
+  position: relative;
+}
+
 .transportPlayIcon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  width: 24px;
-  height: 24px;
-  transform: translateY(-50%);
+  position: relative;
+  width: 26px;
+  height: 26px;
   pointer-events: none;
 }
 
@@ -724,9 +826,9 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 .transportPlayIcon::before {
   width: 0;
   height: 0;
-  border-top: 7px solid transparent;
-  border-bottom: 7px solid transparent;
-  border-left: 11px solid var(--transportIcon);
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid var(--transportIcon);
   transform: translate(-38%, -50%);
 }
 
@@ -736,7 +838,7 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 
 .transportBar[data-playing="1"] .transportPlayIcon::before {
   width: 4px;
-  height: 14px;
+  height: 15px;
   border: 0;
   background: var(--transportIcon);
   transform: translate(-6px, -50%);
@@ -745,28 +847,28 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 .transportBar[data-playing="1"] .transportPlayIcon::after {
   display: block;
   width: 4px;
-  height: 14px;
+  height: 15px;
   background: var(--transportIcon);
   transform: translate(2px, -50%);
 }
 
-.transportBar::before,
-.transportBar::after {
+.transportSeekBtn::before,
+.transportSeekBtn::after {
   content: '';
   position: absolute;
-  left: var(--transportInsetL);
-  right: var(--transportInsetR);
+  left: var(--transportSeekPad);
+  right: var(--transportSeekPad);
   top: 50%;
-  height: 3px;
+  height: 4px;
   transform: translateY(-50%);
   pointer-events: none;
 }
 
-.transportBar[data-loop="0"]::before {
+.transportBar[data-loop="0"] .transportSeekBtn::before {
   background: rgba(0, 0, 0, 0.26);
 }
 
-.transportBar[data-loop="1"]::before {
+.transportBar[data-loop="1"] .transportSeekBtn::before {
   background: linear-gradient(
     to right,
     rgba(0, 0, 0, 0.26) 0%,
@@ -778,7 +880,7 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   );
 }
 
-.transportBar::after {
+.transportSeekBtn::after {
   background: linear-gradient(
     to right,
     transparent 0%,
@@ -790,9 +892,189 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   );
 }
 
-.transportBar:focus-visible {
+.transportTicks {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--transportSeekPad);
+  right: var(--transportSeekPad);
+  pointer-events: none;
+}
+
+.settingsModal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.settingsPanel {
+  --accent: #000000;
+
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(0.85rem + 34px + 0.85rem);
+
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 1rem - (0.85rem + 34px + 0.85rem));
+  overflow: auto;
+
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0;
+  padding: 0.55rem 0.65rem;
+
+  display: grid;
+  gap: 0.55rem;
+}
+
+html.is-theme .settingsPanel {
+  --accent: var(--t-fg, #ffffff);
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
+}
+
+.settingsSection {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.settingsThemeControlsMount {
+  padding-left: 0;
+  min-width: 0;
+}
+
+.settingsThemeControlsMount .themePickerRow {
+  flex-wrap: wrap;
+}
+
+.settingsDivider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+html.is-theme .settingsDivider {
+  background: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+.settingsRow {
+  margin: 0;
+}
+
+.settingsField {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.settingsField .switchToggle {
+  justify-self: end;
+}
+
+.settingsField .fieldLabel {
+  white-space: nowrap;
+}
+
+.settingsPanel #presetSelect,
+.settingsPanel #presetName {
+  width: 100%;
+  max-width: 100%;
+}
+
+.settingsSection[aria-label="presets"] #presetSelect,
+.settingsSection[aria-label="presets"] #presetName {
+  width: 27ch;
+  max-width: 27ch;
+  justify-self: end;
+}
+
+.settingsPanel #presetStatus {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: end;
+  align-self: start;
+  margin-top: 0.15rem;
+}
+
+.settingsSection[aria-label="presets"] #presetStatus {
+  grid-column: 2;
+}
+
+.settingsRangeField {
+  grid-template-columns: 7ch max-content max-content;
+}
+
+.settingsPanel #rangeFrom,
+.settingsPanel #rangeTo {
+  width: 9ch;
+}
+
+.settingsSection[aria-label="presets"] .settingsRow {
+  margin-top: 0.25rem;
+}
+
+.settingsSection[aria-label="presets"] .settingsSongIo {
+  margin-top: 0.25rem;
+}
+
+.settingsSection[aria-label="range"] .settingsRow {
+  margin-top: 0.25rem;
+}
+
+.settingsPanel .songIo {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.settingsPanel .songIoBody {
+  margin-top: 0.45rem;
+}
+
+.settingsPanel .globalSliders input[type="range"] {
+  min-width: 0;
+}
+
+.transportTick {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  transform: translateX(-0.5px);
+  background: var(--transportTickStep);
+  pointer-events: none;
+}
+
+.transportTickStep {
+  top: 12px;
+  bottom: 12px;
+}
+
+.transportTickBeat {
+  background: var(--transportTickBeat);
+}
+
+.transportBeatNum {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  transform: translateY(-42%);
+  color: var(--transportBeatNum);
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.transportIconBtn:focus-visible,
+.transportSeekBtn:focus-visible {
   outline: 2px solid rgba(0, 0, 0, 0.18);
-  outline-offset: 6px;
+  outline-offset: 4px;
 }
 
 .global {
@@ -803,7 +1085,43 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   padding: 0.55rem 0.65rem;
 }
 
-.global.is-collapsed .globalGrid {
+.globalHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.globalHeaderRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.global:not(.is-collapsed) .globalHeaderRow {
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.globalBody {
+  display: grid;
+  gap: 0.45rem;
+
+  max-height: 2000px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  transition: max-height 0.38s ease, opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0s;
+}
+
+.global.is-collapsed .globalHeaderRight .globalHoverExpandBtn {
+  display: none;
+}
+
+.global.is-collapsed .globalBody {
   max-height: 0;
   opacity: 0;
   transform: translateY(-6px);
@@ -812,13 +1130,28 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   transition: max-height 0.38s ease, opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.38s;
 }
 
-.global.is-collapsed.is-hover-peek .globalGrid {
-  max-height: 900px;
+.global.is-collapsed.is-hover-peek .globalBody {
+  max-height: 2000px;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
   transition: max-height 0.58s ease, opacity 0.34s ease, transform 0.34s ease, visibility 0s linear 0s;
+}
+
+.globalBody .globalRow {
+  width: 100%;
+}
+
+.globalBody .globalRow .field {
+  width: 100%;
+  min-width: 0;
+}
+
+.globalBody .globalRow .field select,
+.globalBody .globalRow .field input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 10ch;
 }
 
 .globalTop {
@@ -830,15 +1163,45 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 .controls.globalBar {
   margin-bottom: 0;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   white-space: nowrap;
-  scrollbar-width: none;
 }
 
-.controls.globalBar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+.controls.globalBar.is-stack {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.globalBarPrimary.is-stack .globalPrimaryLeft {
+  order: 1;
+}
+
+.globalBarPrimary.is-stack #globalHoverExpandBtn {
+  order: 2;
+}
+
+.globalBarPrimary.is-stack #globalCollapseBtn {
+  order: 3;
+}
+
+.globalBarPrimary.is-stack .globalPrimaryCenter {
+  order: 4;
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.globalBarSecondary.is-stack {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.globalBarSecondary.is-stack .globalSecondaryLeft {
+  flex: 1 1 100%;
+}
+
+.globalBarSecondary.is-stack .globalSecondaryRight {
+  flex: 1 1 auto;
 }
 
 .globalBarGroup {
@@ -867,43 +1230,53 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 }
 
 @media (max-width: 700px) {
-  .controls.globalBar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
+  .globalBarPrimary,
+  .globalBarSecondary {
+    flex-wrap: wrap;
+    white-space: normal;
   }
 
-  .globalBarGroup {
-    flex-wrap: nowrap;
-    flex: 0 0 auto;
-    min-width: max-content;
+  .globalBarPrimary .globalPrimaryLeft {
+    order: 1;
   }
 
-  .globalPrimaryCenter {
-    flex: 0 0 auto;
+  .globalBarPrimary #globalHoverExpandBtn {
+    order: 2;
+  }
+
+  .globalBarPrimary #globalCollapseBtn {
+    order: 3;
+  }
+
+  .globalBarPrimary .globalPrimaryCenter {
+    order: 4;
+    flex: 1 1 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .globalBarSecondary .globalSecondaryLeft {
+    flex: 1 1 100%;
+  }
+
+  .globalBarSecondary .globalSecondaryRight {
+    flex: 1 1 auto;
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 310px) {
   .trackSliderGrid .pitchControls {
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
   }
 
-  .trackSliderGrid .pitchControls::-webkit-scrollbar {
-    height: 0;
-  }
-
-  .trackSliderGrid .pitchControls .noteSelect,
-  .trackSliderGrid .pitchControls .octaveGroup,
-  .trackSliderGrid .pitchControls .octaveControls {
+  .trackSliderGrid .pitchControls .noteSelect {
     flex: 0 0 auto;
-    min-width: max-content;
+  }
+
+  .trackSliderGrid .pitchControls .octaveGroup {
+    margin-left: 0;
+    flex: 1 1 100%;
+    justify-content: flex-end;
   }
 }
 
@@ -911,16 +1284,17 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   gap: 0.25rem;
 }
 
-.globalBar #presetSelect {
+.globalBody #presetSelect {
   max-width: 18ch;
 }
 
-.globalBar #presetName {
-  width: 12ch;
-  min-width: 8ch;
+.globalBody #presetName {
+  flex: 1 1 22ch;
+  width: auto;
+  min-width: 12ch;
 }
 
-.globalBar #presetStatus {
+.globalBody #presetStatus {
   min-width: 0;
   margin-left: 0.2rem;
 }
@@ -1052,7 +1426,7 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   transform: translateY(-6px);
   pointer-events: none;
   visibility: hidden;
-  transition: max-height 0.38s ease, opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.38s;
+  transition: max-height var(--trackGridCollapseHeightDur, 0.38s) ease, opacity var(--trackGridCollapseFadeDur, 0.22s) ease, transform var(--trackGridCollapseFadeDur, 0.22s) ease, visibility 0s linear var(--trackGridCollapseDelay, 0.38s);
 }
 
 .track.is-collapsed.is-hover-peek {
@@ -1066,7 +1440,16 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
-  transition: max-height 0.58s ease, opacity 0.34s ease, transform 0.34s ease, visibility 0s linear 0s;
+  transition: max-height var(--trackGridPeekHeightDur, 0.58s) ease, opacity var(--trackGridPeekFadeDur, 0.34s) ease, transform var(--trackGridPeekFadeDur, 0.34s) ease, visibility 0s linear 0s;
+}
+
+.track.is-grid-collapsed {
+  gap: 0.35rem;
+  padding-bottom: 0.55rem;
+}
+
+.track.is-grid-collapsed .trackRoll {
+  display: none;
 }
 
 .track.is-muted {
@@ -1116,17 +1499,123 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   min-width: 0;
 }
 
+.caret.trackReorderHandle,
+.caret.trackCaret {
+  font-size: 1.5rem;
+  padding: 0.3rem 0.35rem;
+}
+
+.caret.trackReorderHandle {
+  padding-left: 0.15rem;
+}
+
 .trackCaret {
   margin-left: 0;
 }
 
-.trackHoverExpandBtn {
-  margin-left: auto;
+.caret.trackNotesToggleBtn {
+  font-size: 1.52rem;
+  font-weight: 500;
+  padding: 0.24rem 0.18rem;
+  padding-left: 0;
+}
+
+.trackInstrumentSelect {
+  appearance: auto;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  padding: 0.2rem 0.45rem;
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  max-width: 18ch;
+  margin-left: 0.35rem;
+}
+
+html.is-theme .trackInstrumentSelect {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background-color: var(--t-3, rgba(255, 255, 255, 0.03));
 }
 
 .trackMainControls {
+  display: grid;
+  gap: 0.35rem;
+  position: relative;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.trackMainControls::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.225rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+html.is-theme .trackMainControls::before {
+  border-top-color: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+.trackActionControls {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.track.is-collapsed.is-grid-collapsed .trackMainControls {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+
+.trackMainControls .volumeField input[type="range"],
+.trackMainControls .panField input[type="range"] {
+  width: 120px;
+}
+
+.trackMainControls .volumeField .fieldLabel,
+.trackMainControls .panField .fieldLabel {
+  min-width: 6ch;
+}
+
+.trackVolumeRow,
+.trackPanRow {
+  display: block;
+}
+
+.trackVolumeRow .field,
+.trackPanRow .field {
+  display: grid;
+  grid-template-columns: 6ch 120px 6ch;
+  gap: 0.4rem;
+  align-items: center;
+  width: max-content;
+}
+
+.trackNotesToggleBtn {
+  margin-left: 0;
+  font-size: 1.52rem;
+  padding: 0.24rem 0.18rem;
+}
+
+.trackNotesToggleBtn[aria-pressed="true"],
+.trackCaret[aria-expanded="true"],
+.transportSettingsBtn[aria-pressed="true"] {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: currentColor;
+}
+
+.trackActionRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
 }
 
 .trackTitle {
@@ -1139,14 +1628,12 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 
 .trackLetter {
   color: var(--accent);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
 }
 
 .trackSound {
   color: rgba(0, 0, 0, 0.6);
-}
-
-.trackMainControls .volumeField input[type="range"] {
-  width: 120px;
 }
 
 .trackSliderGrid {
@@ -1160,7 +1647,21 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
-  transition: max-height 0.38s ease, opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0s;
+  transition: max-height var(--trackGridExpandHeightDur, 0.38s) ease, opacity var(--trackGridExpandFadeDur, 0.26s) ease, transform var(--trackGridExpandFadeDur, 0.26s) ease, visibility 0s linear 0s;
+}
+
+.track:not(.is-collapsed) .trackSliderGrid {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.track.is-grid-collapsed:not(.is-collapsed) .trackSliderGrid {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+html.is-theme .track:not(.is-collapsed) .trackSliderGrid {
+  border-bottom-color: var(--t-14, rgba(255, 255, 255, 0.14));
 }
 
 .trackSliderGrid .field {
@@ -1169,6 +1670,20 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   grid-template-columns: 7ch minmax(0, 1fr) 6ch;
   align-items: center;
   gap: 0.4rem;
+}
+
+.trackSliderGrid .seqModeField {
+  grid-template-columns: 7ch minmax(0, 1fr);
+}
+
+.trackSliderGrid .seqModeSelect {
+  width: 16ch;
+  max-width: 100%;
+  justify-self: end;
+}
+
+.trackSliderGrid .seqModeField > [aria-hidden="true"] {
+  display: none;
 }
 
 .trackSliderGrid .fieldLabel {
@@ -1325,6 +1840,9 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   appearance: none;
   background: transparent;
   border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.25rem 0.4rem;
   border-radius: 0;
   font: inherit;
@@ -1512,6 +2030,7 @@ html.is-auto-expand .lockToggle {
   font: inherit;
   width: 6ch;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .field input[type="number"]::-webkit-outer-spin-button,
@@ -1601,6 +2120,30 @@ html.is-auto-expand .lockToggle {
   font: inherit;
 }
 
+.field input[type="number"]:focus,
+.field input[type="number"]:focus-visible,
+.field input[type="text"]:focus,
+.field input[type="text"]:focus-visible,
+.field select:focus,
+.field select:focus-visible,
+.trackInstrumentSelect:focus,
+.trackInstrumentSelect:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+html.is-theme .field input[type="number"]:focus,
+html.is-theme .field input[type="number"]:focus-visible,
+html.is-theme .field input[type="text"]:focus,
+html.is-theme .field input[type="text"]:focus-visible,
+html.is-theme .field select:focus,
+html.is-theme .field select:focus-visible,
+html.is-theme .trackInstrumentSelect:focus,
+html.is-theme .trackInstrumentSelect:focus-visible {
+  outline-color: var(--t-72, rgba(255, 255, 255, 0.72));
+}
+
 .field input[type="text"] {
   border: 1px solid rgba(0, 0, 0, 0.32);
   background: transparent;
@@ -1616,6 +2159,11 @@ html.is-auto-expand .lockToggle {
   margin-bottom: 0.55rem;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.globalBody .songIo {
+  margin: 0;
+  padding-bottom: 0.45rem;
 }
 
 .songIo > summary {
@@ -1729,11 +2277,60 @@ html.is-auto-expand .lockToggle {
   gap: var(--gap, 6px);
 }
 
-.trackGrid {
+.trackRoll {
+  display: grid;
+  grid-template-columns: 4ch minmax(0, 1fr);
+  gap: 0.25rem;
+  align-items: start;
+}
+
+.trackRollLabels {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: flex-start;
+  flex-direction: column;
   gap: var(--gap);
+}
+
+.trackRollLabel {
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 0.1rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.72);
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+html.is-theme .trackRollLabel {
+  color: var(--t-72, rgba(255, 255, 255, 0.72));
+  border-bottom-color: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+.trackRollLabel:hover,
+.trackRollLabel:focus-visible {
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.trackRollLabel:focus-visible {
+  outline: 1px solid rgba(0, 0, 0, 0.2);
+  outline-offset: 1px;
+}
+
+html.is-theme .trackRollLabel:hover,
+html.is-theme .trackRollLabel:focus-visible {
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .trackRollLabel:focus-visible {
+  outline-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+.trackGrid {
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1743,6 +2340,21 @@ html.is-auto-expand .lockToggle {
 
 .trackGrid::-webkit-scrollbar {
   height: 0;
+}
+
+.trackRollRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: max-content;
+  min-width: 100%;
+}
+
+.trackRollRow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--gap);
 }
 
 .beatSpacer {
