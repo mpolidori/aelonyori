@@ -18,21 +18,17 @@
             <button type="button" class="letter" data-key="6" data-letter="o" aria-pressed="false">o</button>
             <button type="button" class="letter" data-key="7" data-letter="r" aria-pressed="false">r</button>
             <button type="button" class="letter" data-key="8" data-letter="i" aria-pressed="false">i</button>
+            <button type="button" class="logoStar" id="themeStarBtn" aria-label="theme colors" hidden>*</button>
         </h1>
 
         <section id="daw" class="daw" hidden aria-label="daw">
-            <div class="global" id="globalSection" aria-label="global">
+            <div class="global is-collapsed" id="globalSection" aria-label="global">
                 <div class="globalTop" aria-label="global top bar">
                     <div class="controls globalBar globalBarPrimary">
                         <div class="globalBarGroup globalPrimaryLeft" aria-label="global actions">
-                            <button type="button" class="btn" id="playBtn">play</button>
-                            <button type="button" class="btn" id="stopBtn" disabled>stop</button>
-
                             <button type="button" class="btn" id="presetSaveBtn">save</button>
                             <button type="button" class="btn" id="presetLoadBtn">load</button>
                             <button type="button" class="btn" id="presetDefaultBtn">default</button>
-                            <button type="button" class="btn" id="presetExportBtn">export</button>
-                            <button type="button" class="btn" id="presetImportBtn">import</button>
                         </div>
 
                         <div class="globalBarGroup globalPrimaryCenter" aria-label="preset and name">
@@ -48,7 +44,8 @@
                             </label>
                         </div>
 
-                        <button type="button" class="caret" id="globalCollapseBtn" aria-label="collapse global options" aria-expanded="true">▿</button>
+                        <button type="button" class="caret lockToggle globalHoverExpandBtn" id="globalHoverExpandBtn" aria-label="toggle hover expand" aria-pressed="true"></button>
+                        <button type="button" class="caret" id="globalCollapseBtn" aria-label="collapse global options" aria-expanded="false">▹</button>
                     </div>
 
                     <div class="controls globalBar globalBarSecondary" aria-label="range tools">
@@ -66,11 +63,20 @@
                                 <select id="rangeTo" aria-label="range end"></select>
                             </label>
                         </div>
+
+                        <div class="globalBarGroup globalSecondaryTheme" aria-label="theme">
+                            <span class="fieldLabel">theme</span>
+                            <button type="button" class="switchToggle" id="themeModeBtn" aria-label="theme mode" aria-pressed="false"></button>
+                        </div>
                     </div>
                 </div>
 
                 <details class="songIo" id="songIo">
-                    <summary class="btn songIoSummary" aria-label="toggle song JSON">JSON</summary>
+                    <summary class="songIoSummary" aria-label="toggle song JSON">
+                        <button type="button" class="btn" id="presetExportBtn">export</button>
+                        <button type="button" class="btn" id="presetImportBtn">import</button>
+                        <span class="btn songIoToggle">JSON</span>
+                    </summary>
                     <div class="songIoBody">
                         <div class="songJsonWrap">
                             <pre id="songJsonHighlight" class="songJsonHighlight" aria-hidden="true"></pre>
@@ -84,8 +90,8 @@
                         <div class="globalSliders">
                             <label class="field">
                                 <span class="fieldLabel">tempo</span>
-                                <input id="tempo" type="range" min="20" max="999" step="1" value="120" />
-                                <input id="tempoOut" class="num" type="number" min="20" max="999" step="1" value="120" />
+                                <input id="tempo" type="range" min="20" max="360" step="1" value="120" />
+                                <input id="tempoOut" class="num" type="number" min="20" max="360" step="1" value="120" />
                             </label>
 
                             <label class="field">
@@ -122,14 +128,40 @@
         </section>
     </div>
 
+    <div id="themePicker" class="themePicker" hidden>
+        <div class="themePickerBox" role="dialog" aria-label="theme">
+            <div class="themePickerRow themePickerColors" aria-label="theme colors">
+                <input type="color" id="themeColorA" class="themeSwatch" aria-label="theme color 1" value="#000000" />
+                <button type="button" class="caret themeSwapBtn" id="themeSwapBtn" aria-label="swap theme colors">⇄</button>
+                <input type="color" id="themeColorB" class="themeSwatch" aria-label="theme color 2" value="#ffffff" />
+                <button type="button" class="caret themeResetBtn" id="themeResetBtn" aria-label="reset theme">↺</button>
+            </div>
+
+            <div class="themePickerRow themePickerToggles" aria-label="theme options">
+                <span class="fieldLabel">auto expand</span>
+                <button type="button" class="switchToggle" id="autoExpandToggleBtn" aria-label="auto expand" aria-pressed="false"></button>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" id="transportBar" class="transportBar" aria-label="transport" aria-pressed="false" data-playing="0" hidden>
+        <span class="transportPlayIcon" aria-hidden="true"></span>
+    </button>
+
     <script>
         (() => {
             const letters = Array.from(document.querySelectorAll('.logo .letter'));
             const daw = document.getElementById('daw');
             const tracksContainer = document.getElementById('tracks');
 
-            const playBtn = document.getElementById('playBtn');
-            const stopBtn = document.getElementById('stopBtn');
+            const themeStarBtn = document.getElementById('themeStarBtn');
+            const themePicker = document.getElementById('themePicker');
+            const themeColorAInput = document.getElementById('themeColorA');
+            const themeColorBInput = document.getElementById('themeColorB');
+            const themeSwapBtn = document.getElementById('themeSwapBtn');
+            const themeResetBtn = document.getElementById('themeResetBtn');
+            const autoExpandToggleBtn = document.getElementById('autoExpandToggleBtn');
+
             const tempoInput = document.getElementById('tempo');
             const tempoOut = document.getElementById('tempoOut');
             const globalSwingInput = document.getElementById('globalSwing');
@@ -140,9 +172,11 @@
             const stepsOut = document.getElementById('stepsOut');
             const beatStepsInput = document.getElementById('beatSteps');
             const beatStepsOut = document.getElementById('beatStepsOut');
+            const themeModeBtn = document.getElementById('themeModeBtn');
 
             const globalSection = document.getElementById('globalSection');
             const globalCollapseBtn = document.getElementById('globalCollapseBtn');
+            const globalHoverExpandBtn = document.getElementById('globalHoverExpandBtn');
 
             const rangeFromInput = document.getElementById('rangeFrom');
             const rangeToInput = document.getElementById('rangeTo');
@@ -163,6 +197,8 @@
             const songJson = document.getElementById('songJson');
             const songJsonHighlight = document.getElementById('songJsonHighlight');
 
+            const transportBar = document.getElementById('transportBar');
+
             const lookaheadMs = 25;
             const scheduleAheadTime = 0.12;
             const MAX_STEPS = 64;
@@ -180,6 +216,20 @@
             const PITCH_MAX = 84;
 
             const TONAL_SOUNDS = new Set(SOUND_OPTIONS.filter((o) => o.tonal).map((o) => o.value));
+
+            function getEnvDefaultsForSound(kind) {
+                const base = { attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 };
+                switch (kind) {
+                    case 'snare':
+                        return { ...base, sustain: 60 };
+                    case 'hat':
+                        return { ...base, sustain: 36, hold: 8, decay: 16, release: 20 };
+                    case 'blip':
+                        return { ...base, sustain: 60, hold: 16 };
+                    default:
+                        return base;
+                }
+            }
 
             let tempo = Number(tempoInput.value);
             let globalSwing = Number(globalSwingInput.value);
@@ -206,6 +256,22 @@
             let loopEnabled = false;
             let loopStart = 0;
             let loopEnd = Math.max(0, stepsCount - 1);
+
+            let globalHoverExpand = true;
+            let autoExpandEnabled = false;
+
+            let themeEnabled = false;
+
+            const DEFAULT_THEME_A = '#000000';
+            const DEFAULT_THEME_B = '#ffffff';
+            let themeA = DEFAULT_THEME_A;
+            let themeB = DEFAULT_THEME_B;
+
+            let pausedStep = null;
+
+            let uiStepStartedAt = null;
+            let transportRaf = null;
+            let hasManualSeek = false;
 
             let isSyncingGridScroll = false;
 
@@ -452,6 +518,7 @@
                 loopEnd = range.end;
                 clampLoopRange();
                 updateLoopButton();
+                updateTransportBar();
             }
 
             function setLoopEnabled(nextEnabled) {
@@ -468,6 +535,7 @@
                     loopEnabled = false;
                 }
                 updateLoopButton();
+                updateTransportBar();
             }
 
             function safeJsonParse(text) {
@@ -669,23 +737,26 @@
 
                 const trackStates = activeKeys.map((key) => {
                     const state = getOrInitState(key);
+                    const defaults = getEnvDefaultsForSound(state.sound);
                     return {
                         key: String(key),
                         sound: String(state.sound || 'kick'),
                         pattern: normalizePattern(state.pattern).map((v) => Boolean(v)),
                         pitch: numberOrFallback(state.pitch, 60),
-                        hold: numberOrFallback(state.hold, 0),
+                        tuneCents: numberOrFallback(state.tuneCents, 0),
+                        hold: numberOrFallback(state.hold, defaults.hold),
                         volume: numberOrFallback(state.volume, 100),
                         pan: numberOrFallback(state.pan, 0),
                         swing: numberOrFallback(state.swing, 0),
                         offsetMs: numberOrFallback(state.offsetMs, 0),
-                        attack: numberOrFallback(state.attack, 4),
-                        decay: numberOrFallback(state.decay, 20),
-                        sustain: numberOrFallback(state.sustain, 96),
-                        release: numberOrFallback(state.release, 25),
+                        attack: numberOrFallback(state.attack, defaults.attack),
+                        decay: numberOrFallback(state.decay, defaults.decay),
+                        sustain: numberOrFallback(state.sustain, defaults.sustain),
+                        release: numberOrFallback(state.release, defaults.release),
                         muted: Boolean(state.muted),
                         solo: Boolean(state.solo),
                         collapsed: Boolean(state.collapsed),
+                        hoverExpand: (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true,
                     };
                 });
 
@@ -694,6 +765,11 @@
                 const range = readGlobalRange();
                 const ui = {
                     globalCollapsed: Boolean(globalSection && globalSection.classList.contains('is-collapsed')),
+                    globalHoverExpand: Boolean(globalHoverExpand),
+                    autoExpandEnabled: Boolean(autoExpandEnabled),
+                    themeEnabled: Boolean(themeEnabled),
+                    themeA,
+                    themeB,
                     rangeFrom: range ? range.from : undefined,
                     rangeTo: range ? range.to : undefined,
                     loopEnabled: Boolean(loopEnabled),
@@ -719,7 +795,7 @@
                 if (!song || typeof song !== 'object') return false;
                 const globals = song.globals && typeof song.globals === 'object' ? song.globals : {};
                 const ui = song.ui && typeof song.ui === 'object' ? song.ui : {};
-                const nextTempo = clampNumber(numberOrFallback(globals.tempo, tempo), 20, 999);
+                const nextTempo = clampNumber(numberOrFallback(globals.tempo, tempo), 20, 360);
                 const nextGlobalSwing = clampNumber(numberOrFallback(globals.globalSwing, globalSwing), 0, 127);
                 const nextGlobalVolume = clampNumber(numberOrFallback(globals.globalVolume, globalVolume), 0, 127);
                 const nextSteps = clampNumber(numberOrFallback(globals.steps, stepsCount), 4, 64);
@@ -741,7 +817,23 @@
                     updateRangeButtons();
                 }
 
-                setGlobalCollapsed(Boolean(ui.globalCollapsed));
+                const nextGlobalCollapsed = (typeof ui.globalCollapsed === 'boolean') ? ui.globalCollapsed : true;
+                setGlobalCollapsed(nextGlobalCollapsed);
+
+                const nextGlobalHoverExpand = (typeof ui.globalHoverExpand === 'boolean') ? ui.globalHoverExpand : true;
+                setGlobalHoverExpand(nextGlobalHoverExpand);
+
+                const nextAutoExpandEnabled = (typeof ui.autoExpandEnabled === 'boolean') ? ui.autoExpandEnabled : false;
+                setAutoExpandEnabled(nextAutoExpandEnabled);
+
+                const nextThemeA = (typeof ui.themeA === 'string') ? ui.themeA : DEFAULT_THEME_A;
+                const nextThemeB = (typeof ui.themeB === 'string') ? ui.themeB : DEFAULT_THEME_B;
+                setThemeColors(nextThemeA, nextThemeB);
+
+                const nextThemeEnabled = (typeof ui.themeEnabled === 'boolean')
+                    ? ui.themeEnabled
+                    : ((typeof ui.darkMode === 'boolean') ? ui.darkMode : false);
+                setThemeEnabled(nextThemeEnabled);
 
                 tempo = nextTempo;
                 tempoInput.value = String(nextTempo);
@@ -764,22 +856,28 @@
                     const key = String(entry.key ?? '').trim();
                     if (!key) continue;
 
+                    const entryCollapsed = (typeof entry.collapsed === 'boolean') ? entry.collapsed : true;
+                    const sound = String(entry.sound || 'kick');
+                    const defaults = getEnvDefaultsForSound(sound);
+
                     states.set(key, {
-                        sound: String(entry.sound || 'kick'),
+                        sound,
                         pattern: Array.isArray(entry.pattern) ? entry.pattern.map((v) => Boolean(v)) : new Array(stepsCount).fill(false),
                         pitch: numberOrFallback(entry.pitch, 60),
-                        hold: numberOrFallback(entry.hold, 0),
+                        tuneCents: numberOrFallback(entry.tuneCents, 0),
+                        hold: numberOrFallback(entry.hold, defaults.hold),
                         volume: numberOrFallback(entry.volume, 100),
                         pan: numberOrFallback(entry.pan, 0),
                         swing: numberOrFallback(entry.swing, 0),
                         offsetMs: numberOrFallback(entry.offsetMs, 0),
-                        attack: numberOrFallback(entry.attack, 4),
-                        decay: numberOrFallback(entry.decay, 20),
-                        sustain: numberOrFallback(entry.sustain, 96),
-                        release: numberOrFallback(entry.release, 25),
+                        attack: numberOrFallback(entry.attack, defaults.attack),
+                        decay: numberOrFallback(entry.decay, defaults.decay),
+                        sustain: numberOrFallback(entry.sustain, defaults.sustain),
+                        release: numberOrFallback(entry.release, defaults.release),
                         muted: Boolean(entry.muted),
                         solo: Boolean(entry.solo),
-                        collapsed: Boolean(entry.collapsed),
+                        collapsed: entryCollapsed,
+                        hoverExpand: (typeof entry.hoverExpand === 'boolean') ? entry.hoverExpand : true,
                     });
                     getOrInitState(key);
                 }
@@ -829,40 +927,47 @@
             function getOrInitState(key) {
                 let state = states.get(key);
                 if (!state) {
+                    const defaults = getEnvDefaultsForSound('kick');
                     state = {
                         sound: 'kick',
                         pattern: new Array(stepsCount).fill(false),
                         pitch: 60,
-                        hold: 0,
+                        tuneCents: 0,
+                        hold: defaults.hold,
                         volume: 100,
                         pan: 0,
                         swing: 0,
                         offsetMs: 0,
-                        attack: 4,
-                        decay: 20,
-                        sustain: 96,
-                        release: 25,
+                        attack: defaults.attack,
+                        decay: defaults.decay,
+                        sustain: defaults.sustain,
+                        release: defaults.release,
                         muted: false,
                         solo: false,
-                        collapsed: false,
+                        collapsed: true,
+                        hoverExpand: true,
                     };
                     states.set(key, state);
                 }
 
+                state.sound = SOUND_OPTIONS.some((o) => o.value === state.sound) ? state.sound : 'kick';
+                const defaults = getEnvDefaultsForSound(state.sound);
                 state.pattern = normalizePattern(state.pattern);
                 state.pitch = clampNumber(Number(state.pitch) || 60, PITCH_MIN, PITCH_MAX);
-                state.hold = clampNumber(numberOrFallback(state.hold, 0), 0, 100);
+                state.tuneCents = clampNumber(numberOrFallback(state.tuneCents, 0), -100, 100);
+                state.hold = clampNumber(numberOrFallback(state.hold, defaults.hold), 0, 100);
                 state.volume = clampNumber(numberOrFallback(state.volume, 100), 0, 127);
                 state.pan = clampNumber(numberOrFallback(state.pan, 0), -100, 100);
                 state.swing = clampNumber(numberOrFallback(state.swing, 0), 0, 127);
                 state.offsetMs = clampNumber(numberOrFallback(state.offsetMs, 0), -100, 100);
-                state.attack = clampNumber(numberOrFallback(state.attack, 4), 0, 127);
-                state.decay = clampNumber(numberOrFallback(state.decay, 20), 0, 127);
-                state.sustain = clampNumber(numberOrFallback(state.sustain, 96), 0, 127);
-                state.release = clampNumber(numberOrFallback(state.release, 25), 0, 127);
+                state.attack = clampNumber(numberOrFallback(state.attack, defaults.attack), 0, 127);
+                state.decay = clampNumber(numberOrFallback(state.decay, defaults.decay), 0, 127);
+                state.sustain = clampNumber(numberOrFallback(state.sustain, defaults.sustain), 0, 127);
+                state.release = clampNumber(numberOrFallback(state.release, defaults.release), 0, 127);
                 state.muted = Boolean(state.muted);
                 state.solo = Boolean(state.solo);
                 state.collapsed = Boolean(state.collapsed);
+                state.hoverExpand = (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true;
                 return state;
             }
 
@@ -970,6 +1075,215 @@
                 return inline || '#000';
             }
 
+            function parseCssColorToRgb(value) {
+                const raw = String(value || '').trim();
+                if (!raw) return null;
+
+                if (raw.startsWith('#')) {
+                    const hex = raw.slice(1).trim();
+                    if (hex.length === 3) {
+                        const r = parseInt(hex[0] + hex[0], 16);
+                        const g = parseInt(hex[1] + hex[1], 16);
+                        const b = parseInt(hex[2] + hex[2], 16);
+                        if (![r, g, b].every(Number.isFinite)) return null;
+                        return { r, g, b };
+                    }
+                    if (hex.length === 6) {
+                        const r = parseInt(hex.slice(0, 2), 16);
+                        const g = parseInt(hex.slice(2, 4), 16);
+                        const b = parseInt(hex.slice(4, 6), 16);
+                        if (![r, g, b].every(Number.isFinite)) return null;
+                        return { r, g, b };
+                    }
+                    return null;
+                }
+
+                const rgbMatch = raw.match(/^rgba?\(([^)]+)\)$/i);
+                if (rgbMatch) {
+                    const parts = rgbMatch[1].split(',').map((p) => p.trim());
+                    if (parts.length < 3) return null;
+                    const r = Number(parts[0]);
+                    const g = Number(parts[1]);
+                    const b = Number(parts[2]);
+                    if (![r, g, b].every(Number.isFinite)) return null;
+                    return {
+                        r: clampNumber(Math.round(r), 0, 255),
+                        g: clampNumber(Math.round(g), 0, 255),
+                        b: clampNumber(Math.round(b), 0, 255),
+                    };
+                }
+
+                return null;
+            }
+
+            function softenAccentColor(value, { lighten = 0.18, desaturate = 0.1 } = {}) {
+                const rgb = parseCssColorToRgb(value);
+                if (!rgb) return value;
+
+                const avg = (rgb.r + rgb.g + rgb.b) / 3;
+                let r = rgb.r * (1 - desaturate) + avg * desaturate;
+                let g = rgb.g * (1 - desaturate) + avg * desaturate;
+                let b = rgb.b * (1 - desaturate) + avg * desaturate;
+
+                r = r + (255 - r) * lighten;
+                g = g + (255 - g) * lighten;
+                b = b + (255 - b) * lighten;
+
+                return `rgb(${Math.round(clampNumber(r, 0, 255))}, ${Math.round(clampNumber(g, 0, 255))}, ${Math.round(clampNumber(b, 0, 255))})`;
+            }
+
+            function normalizeHexColor(value, fallback) {
+                const raw = String(value || '').trim();
+                const hex6 = raw.match(/^#([0-9a-f]{6})$/i);
+                if (hex6) return `#${hex6[1].toLowerCase()}`;
+                const hex3 = raw.match(/^#([0-9a-f]{3})$/i);
+                if (hex3) {
+                    const h = hex3[1].toLowerCase();
+                    return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`;
+                }
+                return fallback;
+            }
+
+            function mixRgb(a, b, t) {
+                const clamped = clampNumber(numberOrFallback(t, 0), 0, 1);
+                return {
+                    r: clampNumber(Math.round(a.r + (b.r - a.r) * clamped), 0, 255),
+                    g: clampNumber(Math.round(a.g + (b.g - a.g) * clamped), 0, 255),
+                    b: clampNumber(Math.round(a.b + (b.b - a.b) * clamped), 0, 255),
+                };
+            }
+
+            function rgbToCss(rgb) {
+                return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            }
+
+            function isCustomThemeColors() {
+                return themeA !== DEFAULT_THEME_A || themeB !== DEFAULT_THEME_B;
+            }
+
+            function applyThemeVars() {
+                const root = document.documentElement;
+
+                themeA = normalizeHexColor(themeA, DEFAULT_THEME_A);
+                themeB = normalizeHexColor(themeB, DEFAULT_THEME_B);
+
+                const rgbA = parseCssColorToRgb(themeA) || { r: 0, g: 0, b: 0 };
+                const rgbB = parseCssColorToRgb(themeB) || { r: 255, g: 255, b: 255 };
+
+                root.style.setProperty('--t-bg', themeA);
+                root.style.setProperty('--t-fg', themeB);
+
+                const ratios = [
+                    0.96,
+                    0.92,
+                    0.86,
+                    0.82,
+                    0.72,
+                    0.6,
+                    0.5,
+                    0.45,
+                    0.4,
+                    0.34,
+                    0.32,
+                    0.28,
+                    0.22,
+                    0.18,
+                    0.14,
+                    0.08,
+                    0.03,
+                ];
+
+                for (const ratio of ratios) {
+                    const pct = String(Math.round(ratio * 100));
+                    root.style.setProperty(`--t-${pct}`, rgbToCss(mixRgb(rgbA, rgbB, ratio)));
+                }
+
+                root.classList.toggle('is-theme-custom', isCustomThemeColors());
+            }
+
+            function syncThemePickerInputs() {
+                if (themeColorAInput) themeColorAInput.value = themeA;
+                if (themeColorBInput) themeColorBInput.value = themeB;
+            }
+
+            function setThemeColors(nextA, nextB) {
+                themeA = normalizeHexColor(nextA, themeA);
+                themeB = normalizeHexColor(nextB, themeB);
+                applyThemeVars();
+                syncThemePickerInputs();
+                applyLetterHitAccentPalette();
+            }
+
+            function setThemePickerOpen(nextOpen) {
+                const open = Boolean(nextOpen);
+                if (themePicker) themePicker.hidden = !open;
+                if (themeStarBtn) themeStarBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+
+            function closeThemePicker() {
+                setThemePickerOpen(false);
+            }
+
+            function toggleThemePicker() {
+                if (!themePicker) return;
+                if (themePicker.hidden) {
+                    syncThemePickerInputs();
+                    setThemePickerOpen(true);
+                } else {
+                    setThemePickerOpen(false);
+                }
+            }
+
+            function applyLetterHitAccentPalette() {
+                if (!Array.isArray(letters) || letters.length < 2) return;
+
+                if (themeEnabled) {
+                    for (const btn of letters) {
+                        btn.style.setProperty('--hit', 'var(--t-50)');
+                    }
+                    return;
+                }
+
+                const palette = letters.map((btn) => getAccentFromLetter(btn));
+                const paletteRgb = palette.map((c) => parseCssColorToRgb(c));
+
+                for (let i = 0; i < letters.length; i += 1) {
+                    const base = paletteRgb[i];
+                    if (!base) {
+                        const fallback = palette[(i + 1) % palette.length];
+                        if (fallback) letters[i].style.setProperty('--hit', fallback);
+                        continue;
+                    }
+
+                    let bestIndex = -1;
+                    let bestScore = -1;
+                    for (let j = 0; j < palette.length; j += 1) {
+                        if (j === i) continue;
+                        const candidate = paletteRgb[j];
+                        if (!candidate) continue;
+
+                        const dr = base.r - candidate.r;
+                        const dg = base.g - candidate.g;
+                        const db = base.b - candidate.b;
+                        const score = (dr * dr) + (dg * dg) + (db * db);
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestIndex = j;
+                        }
+                    }
+
+                    if (bestIndex >= 0) {
+                        letters[i].style.setProperty('--hit', palette[bestIndex]);
+                    } else {
+                        const fallback = palette[(i + 1) % palette.length];
+                        if (fallback) letters[i].style.setProperty('--hit', fallback);
+                    }
+                }
+            }
+
+            applyLetterHitAccentPalette();
+
             function flashHit(button, durationMs = 90) {
                 button.classList.add('is-hit');
                 const existing = hitTimeouts.get(button);
@@ -990,8 +1304,115 @@
             function updateDawVisibility() {
                 const hasTracks = tracks.size > 0;
                 daw.hidden = !hasTracks;
+                if (transportBar) transportBar.hidden = !hasTracks;
                 document.body.classList.toggle('has-daw', hasTracks);
                 if (!hasTracks) stop();
+                if (hasTracks) updateTransportBar();
+                updateTransportControls();
+            }
+
+            function formatPercent01(value01) {
+                const clamped = clampNumber(numberOrFallback(value01, 0), 0, 1);
+                return `${(clamped * 100).toFixed(4)}%`;
+            }
+
+            function updateTransportBar() {
+                if (!transportBar) return null;
+                const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+
+                const loopOn = Boolean(loopEnabled);
+                let ls01 = 0;
+                let le01 = 0;
+                if (loopOn) {
+                    clampLoopRange();
+                    ls01 = clampNumber(loopStart / steps, 0, 1);
+                    le01 = clampNumber((loopEnd + 1) / steps, 0, 1);
+                }
+
+                let stepFloat = clampNumber(numberOrFallback(currentStep, 0), 0, stepsCount);
+                if (isPlaying && uiStep >= 0) {
+                    stepFloat = uiStep;
+                    if (audio && uiStepStartedAt != null) {
+                        const secondsPerBeat = 60 / tempo;
+                        const stepDuration = secondsPerBeat / 4;
+                        const elapsed = Math.max(0, audio.currentTime - uiStepStartedAt);
+                        const within = clampNumber(stepDuration > 0 ? (elapsed / stepDuration) : 0, 0, 0.999);
+                        stepFloat = uiStep + within;
+                    }
+                }
+
+                let pe01 = clampNumber(stepFloat / steps, 0, 1);
+                const ps01 = loopOn ? ls01 : 0;
+                if (loopOn) pe01 = clampNumber(pe01, ls01, le01);
+
+                transportBar.dataset.loop = loopOn ? '1' : '0';
+                transportBar.style.setProperty('--ls', formatPercent01(ls01));
+                transportBar.style.setProperty('--le', formatPercent01(le01));
+                transportBar.style.setProperty('--ps', formatPercent01(ps01));
+                transportBar.style.setProperty('--pe', formatPercent01(pe01));
+
+                return stepFloat;
+            }
+
+            function stopTransportRaf() {
+                if (transportRaf == null) return;
+                window.cancelAnimationFrame(transportRaf);
+                transportRaf = null;
+            }
+
+            function startTransportRaf() {
+                if (!transportBar) return;
+                if (transportRaf != null) return;
+
+                const tick = () => {
+                    if (!isPlaying || !audio) {
+                        stopTransportRaf();
+                        updateTransportBar();
+                        return;
+                    }
+                    const stepFloat = updateTransportBar();
+                    followPlaybackScroll(stepFloat);
+                    transportRaf = window.requestAnimationFrame(tick);
+                };
+
+                transportRaf = window.requestAnimationFrame(tick);
+            }
+
+            function seekToStep(nextStep, { fromUser = false, viewStep = null } = {}) {
+                if (stepsCount <= 0) return;
+
+                const requestedStep = clampNumber(Math.round(numberOrFallback(nextStep, 0)), 0, stepsCount - 1);
+
+                let step = requestedStep;
+                if (loopEnabled) {
+                    clampLoopRange();
+                    step = clampNumber(step, loopStart, loopEnd);
+                }
+
+                currentStep = step;
+                if (fromUser) hasManualSeek = true;
+
+                const viewTarget = (typeof viewStep === 'number')
+                    ? clampNumber(Math.round(numberOrFallback(viewStep, step)), 0, stepsCount - 1)
+                    : step;
+
+                if (fromUser) {
+                    followCenterLock = true;
+                    scrollGridsToStep(viewTarget, { center: true });
+                } else {
+                    scrollGridsToStep(viewTarget, { behavior: 'auto' });
+                }
+
+                if (isPlaying && audio) {
+                    uiStep = step;
+                    uiStepStartedAt = audio.currentTime;
+                    nextNoteTime = audio.currentTime + 0.05;
+                    renderAllTrackGrids();
+                    scheduler();
+                    startTransportRaf();
+                }
+
+                updateTransportBar();
             }
 
             function updateSoloSuppression() {
@@ -1006,6 +1427,8 @@
 
             let sharedGridScrollLeft = 0;
 
+            let followCenterLock = false;
+
             function syncGridScroll(sourceEl, scrollLeft) {
                 if (isSyncingGridScroll) return;
                 isSyncingGridScroll = true;
@@ -1018,6 +1441,105 @@
                     track.grid.scrollLeft = sharedGridScrollLeft;
                 }
                 isSyncingGridScroll = false;
+            }
+
+            function getStepCenterPxFromFloat(stepFloat, stepButtons) {
+                if (!Array.isArray(stepButtons) || stepButtons.length === 0) return null;
+                const maxIndex = Math.max(0, stepButtons.length - 1);
+                const clamped = clampNumber(numberOrFallback(stepFloat, 0), 0, maxIndex);
+                const baseIndex = clampNumber(Math.floor(clamped), 0, maxIndex);
+                const frac = clampNumber(clamped - baseIndex, 0, 1);
+                const baseBtn = stepButtons[baseIndex];
+                const nextBtn = stepButtons[clampNumber(baseIndex + 1, 0, maxIndex)];
+                if (!baseBtn || !nextBtn) return null;
+                const baseCenter = baseBtn.offsetLeft + (baseBtn.offsetWidth * 0.5);
+                const nextCenter = nextBtn.offsetLeft + (nextBtn.offsetWidth * 0.5);
+                return baseCenter + ((nextCenter - baseCenter) * frac);
+            }
+
+            function followPlaybackScroll(stepFloat) {
+                if (!isPlaying) {
+                    followCenterLock = false;
+                    return;
+                }
+
+                const first = tracks.values().next().value;
+                if (!first || !first.grid || !Array.isArray(first.stepButtons)) return;
+
+                const grid = first.grid;
+                const viewLeft = grid.scrollLeft;
+                const viewRight = viewLeft + grid.clientWidth;
+                const viewCenter = viewLeft + (grid.clientWidth * 0.5);
+                const maxLeft = Math.max(0, grid.scrollWidth - grid.clientWidth);
+
+                const centerPx = getStepCenterPxFromFloat(
+                    Number.isFinite(stepFloat) ? stepFloat : clampNumber(numberOrFallback(uiStep, currentStep), 0, stepsCount - 1),
+                    first.stepButtons,
+                );
+                if (centerPx == null) return;
+
+                const targetLeft = clampNumber(centerPx - (grid.clientWidth * 0.5), 0, maxLeft);
+
+                if (!followCenterLock) {
+                    const outOfView = centerPx < viewLeft || centerPx > viewRight;
+                    if (outOfView || centerPx >= viewCenter) {
+                        followCenterLock = true;
+                    } else {
+                        return;
+                    }
+                }
+
+                if (Math.abs(targetLeft - viewLeft) < 0.25) return;
+                syncGridScroll(null, targetLeft);
+            }
+
+            function scrollGridsToStep(stepIndex, { behavior = 'auto', follow = false, center = false } = {}) {
+                const first = tracks.values().next().value;
+                if (!first || !first.grid || !Array.isArray(first.stepButtons)) return;
+                const grid = first.grid;
+                const btn = first.stepButtons[stepIndex];
+                if (!btn) return;
+
+                const viewLeft = grid.scrollLeft;
+                const viewRight = viewLeft + grid.clientWidth;
+                const stepLeft = btn.offsetLeft;
+                const stepRight = stepLeft + btn.offsetWidth;
+                const maxLeft = Math.max(0, grid.scrollWidth - grid.clientWidth);
+
+                let targetLeft = null;
+
+                if (center) {
+                    const stepCenter = stepLeft + (btn.offsetWidth * 0.5);
+                    targetLeft = clampNumber(stepCenter - (grid.clientWidth * 0.5), 0, maxLeft);
+                } else {
+                const isOutOfView = stepRight < viewLeft || stepLeft > viewRight;
+                if (isOutOfView) {
+                    targetLeft = clampNumber(stepLeft - (grid.clientWidth * 0.35), 0, maxLeft);
+                } else if (follow) {
+                    const stepCenter = stepLeft + (btn.offsetWidth * 0.5);
+                    const viewCenter = viewLeft + (grid.clientWidth * 0.5);
+                    if (stepCenter < viewCenter) return;
+                    targetLeft = clampNumber(stepCenter - (grid.clientWidth * 0.5), 0, maxLeft);
+                } else {
+                    const margin = btn.offsetWidth * 3;
+                    if (stepLeft >= (viewLeft + margin) && stepRight <= (viewRight - margin)) return;
+                    targetLeft = clampNumber(stepLeft - (grid.clientWidth * 0.35), 0, maxLeft);
+                }
+                }
+
+                if (targetLeft == null) return;
+                if (Math.abs(targetLeft - viewLeft) < 0.5) return;
+
+                if (center) {
+                    syncGridScroll(null, targetLeft);
+                    return;
+                }
+
+                if (behavior === 'smooth' && typeof grid.scrollTo === 'function') {
+                    grid.scrollTo({ left: targetLeft, behavior: 'smooth' });
+                } else {
+                    syncGridScroll(null, targetLeft);
+                }
             }
 
             function renderTrackGrid(track) {
@@ -1067,6 +1589,8 @@
 
                 if (currentStep >= stepsCount) currentStep = 0;
                 if (uiStep >= stepsCount) uiStep = -1;
+
+                updateTransportBar();
             }
 
             function updateBeatStepsMax() {
@@ -1109,10 +1633,24 @@
                 track.pitchNoteSelect.value = String(pitchParts.noteIndex);
                 track.pitchOctaveOut.value = String(pitchParts.octave);
 
+                const tuneCents = clampNumber(numberOrFallback(state.tuneCents, 0), -100, 100);
                 const effectivePitch = effectiveMidiForSound(state.sound, state.pitch);
                 const effectiveName = midiToNoteName(effectivePitch);
-                track.pitchNoteSelect.title = effectiveName;
-                track.pitchOctaveOut.title = effectiveName;
+                const tuneSuffix = tuneCents ? ` (${tuneCents > 0 ? '+' : ''}${tuneCents}c)` : '';
+                track.pitchNoteSelect.title = effectiveName + tuneSuffix;
+                track.pitchOctaveOut.title = effectiveName + tuneSuffix;
+
+                track.tuneInput.value = String(tuneCents);
+                track.tuneOut.value = String(tuneCents);
+
+                const hoverEnabled = (typeof state.hoverExpand === 'boolean') ? state.hoverExpand : true;
+                track.hoverExpandBtn.setAttribute('aria-pressed', hoverEnabled ? 'true' : 'false');
+                track.hoverExpandBtn.title = hoverEnabled ? 'hover expand: on' : 'hover expand: off';
+                if (!autoExpandEnabled || !hoverEnabled) {
+                    track.el.classList.remove('is-hover-peek');
+                } else if (state.collapsed && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && track.el.matches(':hover')) {
+                    track.el.classList.add('is-hover-peek');
+                }
 
                 track.holdInput.value = String(state.hold);
                 track.holdOut.value = String(state.hold);
@@ -1158,6 +1696,9 @@
                     btn.type = 'button';
                     btn.className = 'step';
                     btn.dataset.step = String(i);
+                    if ((i % groupLen) === 0) {
+                        btn.dataset.beat = String(Math.floor(i / groupLen) + 1);
+                    }
                     btn.setAttribute('aria-pressed', 'false');
                     btn.addEventListener('click', () => {
                         const state = getOrInitState(track.key);
@@ -1172,6 +1713,7 @@
                     if (isBeatBreak) {
                         const spacer = document.createElement('div');
                         spacer.className = 'beatSpacer';
+                        spacer.dataset.beat = String(Math.floor((i + 1) / groupLen) + 1);
                         spacer.setAttribute('aria-hidden', 'true');
                         track.grid.appendChild(spacer);
                     }
@@ -1184,7 +1726,8 @@
                 if (!key) return null;
 
                 const state = getOrInitState(key);
-                const accent = getAccentFromLetter(button);
+                const accentRaw = getAccentFromLetter(button);
+                const accent = softenAccentColor(accentRaw);
 
                 const el = document.createElement('section');
                 el.className = 'track';
@@ -1238,11 +1781,23 @@
                 collapseBtn.setAttribute('aria-label', 'collapse sequence');
                 collapseBtn.setAttribute('aria-expanded', 'true');
 
+                const hoverExpandBtn = document.createElement('button');
+                hoverExpandBtn.type = 'button';
+                hoverExpandBtn.className = 'caret lockToggle trackHoverExpandBtn';
+                hoverExpandBtn.setAttribute('aria-label', 'toggle hover expand');
+                hoverExpandBtn.setAttribute('aria-pressed', 'true');
+
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'btn';
                 deleteBtn.textContent = 'delete';
                 deleteBtn.setAttribute('aria-label', 'delete track');
+
+                const clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'btn';
+                clearBtn.textContent = 'clear';
+                clearBtn.setAttribute('aria-label', 'clear notes');
 
                 const soundField = document.createElement('label');
                 soundField.className = 'field soundField';
@@ -1263,18 +1818,25 @@
                 pitchField.className = 'field pitchField';
                 const pitchLabel = document.createElement('span');
                 pitchLabel.className = 'fieldLabel';
-                pitchLabel.textContent = 'pitch';
+                pitchLabel.textContent = 'note';
 
                 const pitchControls = document.createElement('div');
                 pitchControls.className = 'pitchControls';
 
                 const pitchNoteSelect = document.createElement('select');
+                pitchNoteSelect.className = 'noteSelect';
+                pitchNoteSelect.setAttribute('aria-label', 'note');
                 for (let i = 0; i < NOTE_NAMES.length; i += 1) {
                     const optionEl = document.createElement('option');
                     optionEl.value = String(i);
                     optionEl.textContent = NOTE_NAMES[i];
                     pitchNoteSelect.appendChild(optionEl);
                 }
+
+                const pitchOctTag = document.createElement('span');
+                pitchOctTag.className = 'fieldLabel pitchInlineLabel';
+                pitchOctTag.textContent = 'octave';
+                pitchOctTag.setAttribute('aria-hidden', 'true');
 
                 const pitchOctaveDownBtn = document.createElement('button');
                 pitchOctaveDownBtn.type = 'button';
@@ -1288,6 +1850,7 @@
                 pitchOctaveOut.step = '1';
                 pitchOctaveOut.min = String(midiToNoteParts(PITCH_MIN).octave);
                 pitchOctaveOut.max = String(midiToNoteParts(PITCH_MAX).octave);
+                pitchOctaveOut.setAttribute('aria-label', 'octave');
 
                 const pitchOctaveUpBtn = document.createElement('button');
                 pitchOctaveUpBtn.type = 'button';
@@ -1295,13 +1858,42 @@
                 pitchOctaveUpBtn.textContent = '+';
                 pitchOctaveUpBtn.setAttribute('aria-label', 'octave up');
 
+                const octaveControls = document.createElement('div');
+                octaveControls.className = 'octaveControls';
+                octaveControls.appendChild(pitchOctaveDownBtn);
+                octaveControls.appendChild(pitchOctaveOut);
+                octaveControls.appendChild(pitchOctaveUpBtn);
+
+                const octaveGroup = document.createElement('div');
+                octaveGroup.className = 'octaveGroup';
+                octaveGroup.appendChild(pitchOctTag);
+                octaveGroup.appendChild(octaveControls);
+
                 pitchControls.appendChild(pitchNoteSelect);
-                pitchControls.appendChild(pitchOctaveDownBtn);
-                pitchControls.appendChild(pitchOctaveOut);
-                pitchControls.appendChild(pitchOctaveUpBtn);
+                pitchControls.appendChild(octaveGroup);
 
                 pitchField.appendChild(pitchLabel);
                 pitchField.appendChild(pitchControls);
+
+                const tuneField = document.createElement('label');
+                tuneField.className = 'field tuneField';
+                const tuneLabel = document.createElement('span');
+                tuneLabel.className = 'fieldLabel';
+                tuneLabel.textContent = 'tune';
+                const tuneInput = document.createElement('input');
+                tuneInput.type = 'range';
+                tuneInput.min = '-100';
+                tuneInput.max = '100';
+                tuneInput.step = '1';
+                const tuneOut = document.createElement('input');
+                tuneOut.className = 'num';
+                tuneOut.type = 'number';
+                tuneOut.min = '-100';
+                tuneOut.max = '100';
+                tuneOut.step = '1';
+                tuneField.appendChild(tuneLabel);
+                tuneField.appendChild(tuneInput);
+                tuneField.appendChild(tuneOut);
 
                 const holdField = document.createElement('label');
                 holdField.className = 'field holdField';
@@ -1486,6 +2078,7 @@
                 mainControls.appendChild(muteBtn);
                 mainControls.appendChild(soloBtn);
                 mainControls.appendChild(volumeField);
+                mainControls.appendChild(clearBtn);
                 mainControls.appendChild(deleteBtn);
                 mainControls.appendChild(soundField);
 
@@ -1493,10 +2086,11 @@
                 sliderGrid.className = 'grid trackSliderGrid';
                 sliderGrid.appendChild(panField);
                 sliderGrid.appendChild(swingField);
-                sliderGrid.appendChild(offsetField);
                 sliderGrid.appendChild(pitchField);
-                sliderGrid.appendChild(holdField);
+                sliderGrid.appendChild(offsetField);
+                sliderGrid.appendChild(tuneField);
                 sliderGrid.appendChild(attackField);
+                sliderGrid.appendChild(holdField);
                 sliderGrid.appendChild(decayField);
                 sliderGrid.appendChild(sustainField);
                 sliderGrid.appendChild(releaseField);
@@ -1505,11 +2099,18 @@
                     el.classList.toggle('is-collapsed', Boolean(collapsed));
                     collapseBtn.textContent = collapsed ? '▹' : '▿';
                     collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-                    getOrInitState(key).collapsed = Boolean(collapsed);
+                    const s = getOrInitState(key);
+                    s.collapsed = Boolean(collapsed);
+                    if (!s.collapsed) {
+                        el.classList.remove('is-hover-peek');
+                    } else if (autoExpandEnabled && s.hoverExpand && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && el.matches(':hover')) {
+                        el.classList.add('is-hover-peek');
+                    }
                 }
 
                 topBar.appendChild(reorderHandle);
                 topBar.appendChild(title);
+                topBar.appendChild(hoverExpandBtn);
                 topBar.appendChild(collapseBtn);
 
                 header.appendChild(topBar);
@@ -1540,6 +2141,8 @@
                     muteBtn,
                     soloBtn,
                     collapseBtn,
+                    hoverExpandBtn,
+                    clearBtn,
                     deleteBtn,
                     soundSelect,
                     volumeField,
@@ -1559,6 +2162,9 @@
                     pitchOctaveDownBtn,
                     pitchOctaveOut,
                     pitchOctaveUpBtn,
+                    tuneField,
+                    tuneInput,
+                    tuneOut,
                     holdField,
                     holdInput,
                     holdOut,
@@ -1597,6 +2203,27 @@
                     setCollapsed(!el.classList.contains('is-collapsed'));
                 });
 
+                hoverExpandBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const s = getOrInitState(key);
+                    s.hoverExpand = !s.hoverExpand;
+                    renderTrackControls(track);
+                });
+
+                el.addEventListener('pointerenter', (event) => {
+                    if (!event || String(event.pointerType || 'mouse') !== 'mouse') return;
+                    if (!autoExpandEnabled) return;
+                    const s = getOrInitState(key);
+                    if (!s.collapsed) return;
+                    if (!s.hoverExpand) return;
+                    el.classList.add('is-hover-peek');
+                });
+
+                el.addEventListener('pointerleave', (event) => {
+                    if (!event || String(event.pointerType || 'mouse') !== 'mouse') return;
+                    el.classList.remove('is-hover-peek');
+                });
+
                 topBar.addEventListener('click', (event) => {
                     if (suppressNextTrackTopBarToggle) return;
                     const target = event.target instanceof Element ? event.target : null;
@@ -1609,9 +2236,36 @@
                     removeTrack(button, { purgeState: true });
                 });
 
+                clearBtn.addEventListener('click', () => {
+                    const s = getOrInitState(key);
+                    const currentLen = Array.isArray(s.pattern) ? s.pattern.length : 0;
+                    const nextLen = clampNumber(Math.max(stepsCount, currentLen), stepsCount, MAX_STEPS);
+                    s.pattern = new Array(nextLen).fill(false);
+                    renderTrackGrid(track);
+                });
+
                 soundSelect.addEventListener('change', () => {
                     const s = getOrInitState(key);
-                    s.sound = soundSelect.value;
+                    const prevSound = s.sound;
+                    const nextSound = soundSelect.value;
+
+                    const prevDefaults = getEnvDefaultsForSound(prevSound);
+                    const nextDefaults = getEnvDefaultsForSound(nextSound);
+                    const envLooksDefault =
+                        s.attack === prevDefaults.attack &&
+                        s.hold === prevDefaults.hold &&
+                        s.decay === prevDefaults.decay &&
+                        s.sustain === prevDefaults.sustain &&
+                        s.release === prevDefaults.release;
+
+                    s.sound = nextSound;
+                    if (envLooksDefault) {
+                        s.attack = nextDefaults.attack;
+                        s.hold = nextDefaults.hold;
+                        s.decay = nextDefaults.decay;
+                        s.sustain = nextDefaults.sustain;
+                        s.release = nextDefaults.release;
+                    }
                     renderTrackControls(track);
                     renderTrackGrid(track);
                 });
@@ -1702,6 +2356,20 @@
                     const s = getOrInitState(key);
                     const { noteIndex } = midiToNoteParts(s.pitch);
                     setPitchFromParts(noteIndex, numberOrFallback(pitchOctaveOut.value, 4));
+                });
+
+                tuneInput.addEventListener('input', () => {
+                    const s = getOrInitState(key);
+                    s.tuneCents = clampNumber(numberOrFallback(tuneInput.value, 0), -100, 100);
+                    renderTrackControls(track);
+                });
+
+                tuneOut.addEventListener('input', () => {
+                    if (tuneOut.value === '') return;
+                    const s = getOrInitState(key);
+                    s.tuneCents = clampNumber(numberOrFallback(tuneOut.value, s.tuneCents), -100, 100);
+                    tuneInput.value = String(s.tuneCents);
+                    renderTrackControls(track);
                 });
 
                 holdInput.addEventListener('input', () => {
@@ -2035,7 +2703,10 @@
                     const msUntilNote = (noteTime - audio.currentTime) * 1000;
 
                     const duration = stepDuration;
-                    const effectiveMidi = effectiveMidiForSound(state.sound, state.pitch);
+                    const tuneCents = clampNumber(numberOrFallback(state.tuneCents, 0), -100, 100);
+                    const basePitch = numberOrFallback(state.pitch, 60);
+                    const pitchWithTune = clampNumber(basePitch + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                    const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
                     const frequency = midiToFrequency(effectiveMidi);
 
                     const env = {
@@ -2050,7 +2721,7 @@
                         triggerSound(state.sound, noteTime, {
                             duration,
                             frequency,
-                            pitch: state.pitch,
+                            pitch: pitchWithTune,
                             volume: volume01,
                             pan: pan01,
                             env,
@@ -2071,6 +2742,9 @@
                 window.setTimeout(() => {
                     if (!isPlaying) return;
                     uiStep = stepIndex;
+                    if (audio) uiStepStartedAt = audio.currentTime;
+                    updateTransportBar();
+                    startTransportRaf();
                     renderAllTrackGrids();
                 }, Math.max(0, msUntil));
             }
@@ -2113,6 +2787,44 @@
                 }
             }
 
+            function updateTransportControls() {
+                if (!transportBar) return;
+                transportBar.disabled = tracks.size === 0;
+                transportBar.dataset.playing = isPlaying ? '1' : '0';
+                transportBar.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+                transportBar.title = isPlaying ? 'pause / seek' : 'play / seek';
+            }
+
+            function pause() {
+                if (!isPlaying) return;
+
+                pausedStep = (uiStep >= 0) ? uiStep : currentStep;
+                if (loopEnabled) {
+                    clampLoopRange();
+                    pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                } else {
+                    pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                }
+
+                currentStep = pausedStep;
+                isPlaying = false;
+                followCenterLock = false;
+
+                if (scheduleTimer) {
+                    window.clearInterval(scheduleTimer);
+                    scheduleTimer = null;
+                }
+
+                uiStepStartedAt = null;
+                uiStep = -1;
+                renderAllTrackGrids();
+
+                stopTransportRaf();
+                updateTransportBar();
+
+                updateTransportControls();
+            }
+
             async function play() {
                 ensureAudio();
                 if (!audio) return;
@@ -2120,34 +2832,67 @@
                 if (isPlaying) return;
                 if (tracks.size === 0) return;
 
+                followCenterLock = false;
+
                 isPlaying = true;
                 clampLoopRange();
-                currentStep = loopEnabled ? loopStart : 0;
-                uiStep = -1;
+
+                if (pausedStep != null) {
+                    if (loopEnabled) {
+                        currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                    } else {
+                        currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                    }
+                    pausedStep = null;
+                } else if (loopEnabled) {
+                    if (!hasManualSeek || currentStep < loopStart || currentStep > loopEnd) {
+                        currentStep = loopStart;
+                    } else {
+                        currentStep = clampNumber(Math.round(numberOrFallback(currentStep, loopStart)), loopStart, loopEnd);
+                    }
+                } else {
+                    currentStep = hasManualSeek
+                        ? clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1)
+                        : 0;
+                }
+
+                hasManualSeek = false;
+
+                uiStep = clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1);
+                uiStepStartedAt = audio.currentTime;
                 nextNoteTime = audio.currentTime + 0.05;
                 scheduleTimer = window.setInterval(scheduler, lookaheadMs);
 
-                playBtn.disabled = true;
-                stopBtn.disabled = false;
+                updateTransportBar();
+                startTransportRaf();
+
+                scrollGridsToStep(uiStep, { behavior: 'auto' });
+
+                renderAllTrackGrids();
+                updateTransportControls();
             }
 
             function stop() {
-                if (!isPlaying) {
-                    uiStep = -1;
-                    renderAllTrackGrids();
-                    return;
-                }
-
                 isPlaying = false;
+                followCenterLock = false;
                 if (scheduleTimer) {
                     window.clearInterval(scheduleTimer);
                     scheduleTimer = null;
                 }
+
+                clampLoopRange();
+                currentStep = loopEnabled ? loopStart : 0;
+                hasManualSeek = false;
+                pausedStep = null;
+                uiStepStartedAt = null;
+
                 uiStep = -1;
                 renderAllTrackGrids();
 
-                playBtn.disabled = false;
-                stopBtn.disabled = true;
+                stopTransportRaf();
+                updateTransportBar();
+
+                updateTransportControls();
             }
 
             function isShortcutTarget(target) {
@@ -2197,23 +2942,193 @@
                 });
             }
 
-            playBtn.addEventListener('click', play);
-            stopBtn.addEventListener('click', stop);
+            if (themeStarBtn) {
+                themeStarBtn.setAttribute('aria-expanded', 'false');
+            }
+
+            if (themeModeBtn) {
+                themeModeBtn.addEventListener('click', () => {
+                    setThemeEnabled(!themeEnabled);
+                });
+            }
+
+            if (themeStarBtn) {
+                themeStarBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    toggleThemePicker();
+                });
+            }
+
+            if (themePicker) {
+                themePicker.addEventListener('pointerdown', (event) => {
+                    if (event.target !== themePicker) return;
+                    closeThemePicker();
+                });
+            }
+
+            if (themeColorAInput) {
+                themeColorAInput.addEventListener('input', () => {
+                    setThemeColors(themeColorAInput.value, themeB);
+                });
+            }
+
+            if (themeColorBInput) {
+                themeColorBInput.addEventListener('input', () => {
+                    setThemeColors(themeA, themeColorBInput.value);
+                });
+            }
+
+            if (themeResetBtn) {
+                themeResetBtn.addEventListener('click', () => {
+                    setThemeColors(DEFAULT_THEME_A, DEFAULT_THEME_B);
+                });
+            }
+
+            if (themeSwapBtn) {
+                themeSwapBtn.addEventListener('click', () => {
+                    setThemeColors(themeB, themeA);
+                });
+            }
+
+            if (autoExpandToggleBtn) {
+                autoExpandToggleBtn.addEventListener('click', () => {
+                    setAutoExpandEnabled(!autoExpandEnabled);
+                });
+            }
+
+            if (transportBar) {
+                transportBar.addEventListener('pointerdown', (event) => {
+                    if (event.button != null && event.button !== 0) return;
+                    if (tracks.size === 0) return;
+
+                    const rect = transportBar.getBoundingClientRect();
+                    const style = window.getComputedStyle ? window.getComputedStyle(transportBar) : null;
+                    const insetL = clampNumber(numberOrFallback(style ? parseFloat(style.getPropertyValue('--transportInsetL')) : 0, 0), 0, rect.width);
+                    const insetR = clampNumber(numberOrFallback(style ? parseFloat(style.getPropertyValue('--transportInsetR')) : 0, 0), 0, rect.width);
+                    const x = event.clientX - rect.left;
+
+                    if (x <= insetL) {
+                        if (isPlaying) pause();
+                        else play();
+                        return;
+                    }
+
+                    const seekWidth = rect.width - insetL - insetR;
+                    const ratio = seekWidth > 0 ? ((event.clientX - (rect.left + insetL)) / seekWidth) : 0;
+                    const clamped = clampNumber(ratio, 0, 1);
+                    const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+
+                    const requested = clampNumber(Math.floor(clamped * steps), 0, stepsCount - 1);
+                    seekToStep(requested, { fromUser: true, viewStep: requested });
+                });
+            }
+
+            function setGlobalHoverExpand(nextEnabled) {
+                globalHoverExpand = Boolean(nextEnabled);
+                if (globalHoverExpandBtn) {
+                    globalHoverExpandBtn.setAttribute('aria-pressed', globalHoverExpand ? 'true' : 'false');
+                    globalHoverExpandBtn.title = globalHoverExpand ? 'hover expand: on' : 'hover expand: off';
+                }
+
+                if (!globalSection) return;
+                if (!autoExpandEnabled || !globalHoverExpand) {
+                    globalSection.classList.remove('is-hover-peek');
+                    return;
+                }
+
+                if (globalSection.classList.contains('is-collapsed') && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && globalSection.matches(':hover')) {
+                    globalSection.classList.add('is-hover-peek');
+                }
+            }
+
+            function setThemeEnabled(nextEnabled) {
+                themeEnabled = Boolean(nextEnabled);
+                applyThemeVars();
+                document.documentElement.classList.toggle('is-theme', themeEnabled);
+
+                if (themeStarBtn) {
+                    themeStarBtn.hidden = !themeEnabled;
+                }
+
+                if (!themeEnabled) {
+                    closeThemePicker();
+                }
+
+                if (themeModeBtn) {
+                    themeModeBtn.setAttribute('aria-pressed', themeEnabled ? 'true' : 'false');
+                    themeModeBtn.title = themeEnabled ? 'theme: on' : 'theme: off';
+                }
+
+                applyLetterHitAccentPalette();
+
+                updateTransportBar();
+                renderAllTrackGrids();
+            }
+
+            function setAutoExpandEnabled(nextEnabled) {
+                autoExpandEnabled = Boolean(nextEnabled);
+                document.documentElement.classList.toggle('is-auto-expand', autoExpandEnabled);
+
+                if (autoExpandToggleBtn) {
+                    autoExpandToggleBtn.setAttribute('aria-pressed', autoExpandEnabled ? 'true' : 'false');
+                    autoExpandToggleBtn.title = autoExpandEnabled ? 'auto expand: on' : 'auto expand: off';
+                }
+
+                if (!autoExpandEnabled) {
+                    if (globalSection) globalSection.classList.remove('is-hover-peek');
+                    for (const track of tracks.values()) {
+                        if (track && track.el) track.el.classList.remove('is-hover-peek');
+                    }
+                } else {
+                    setGlobalHoverExpand(globalHoverExpand);
+                    for (const track of tracks.values()) {
+                        renderTrackControls(track);
+                    }
+                }
+            }
 
             function setGlobalCollapsed(collapsed) {
                 if (!globalSection || !globalCollapseBtn) return;
-                globalSection.classList.toggle('is-collapsed', Boolean(collapsed));
+                const nextCollapsed = Boolean(collapsed);
+                globalSection.classList.toggle('is-collapsed', nextCollapsed);
+                globalSection.classList.remove('is-hover-peek');
                 globalCollapseBtn.textContent = collapsed ? '▹' : '▿';
                 globalCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 
                 if (collapsed && songIo) {
                     songIo.open = false;
                 }
+
+                if (nextCollapsed && autoExpandEnabled && globalHoverExpand && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches && globalSection.matches(':hover')) {
+                    globalSection.classList.add('is-hover-peek');
+                }
             }
 
             if (globalCollapseBtn && globalSection) {
                 globalCollapseBtn.addEventListener('click', () => {
                     setGlobalCollapsed(!globalSection.classList.contains('is-collapsed'));
+                });
+            }
+
+            if (globalHoverExpandBtn && globalSection) {
+                globalHoverExpandBtn.addEventListener('click', () => {
+                    setGlobalHoverExpand(!globalHoverExpand);
+                });
+            }
+
+            if (globalSection) {
+                globalSection.addEventListener('pointerenter', (event) => {
+                    if (!autoExpandEnabled) return;
+                    if (!globalHoverExpand) return;
+                    if (!globalSection.classList.contains('is-collapsed')) return;
+                    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+                    if (event.pointerType && event.pointerType !== 'mouse') return;
+                    globalSection.classList.add('is-hover-peek');
+                });
+                globalSection.addEventListener('pointerleave', (event) => {
+                    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+                    if (event.pointerType && event.pointerType !== 'mouse') return;
+                    globalSection.classList.remove('is-hover-peek');
                 });
             }
 
@@ -2229,6 +3144,10 @@
                 }
             }
 
+            setAutoExpandEnabled(autoExpandEnabled);
+            setGlobalHoverExpand(globalHoverExpand);
+            setThemeEnabled(themeEnabled);
+
             tempoInput.addEventListener('input', () => {
                 tempo = Number(tempoInput.value);
                 tempoOut.value = String(tempo);
@@ -2236,7 +3155,7 @@
 
             tempoOut.addEventListener('input', () => {
                 if (tempoOut.value === '') return;
-                const next = clampNumber(numberOrFallback(tempoOut.value, tempo), 20, 999);
+                const next = clampNumber(numberOrFallback(tempoOut.value, tempo), 20, 360);
                 tempo = next;
                 tempoInput.value = String(next);
                 tempoOut.value = String(next);
@@ -2432,7 +3351,11 @@
                 songJson.addEventListener('scroll', syncSongJsonScroll);
             }
 
-            presetExportBtn.addEventListener('click', async () => {
+            presetExportBtn.addEventListener('click', async (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 setPresetStatus('', { busy: true });
                 const song = getSongObject();
                 const text = JSON.stringify(song, null, 2);
@@ -2452,7 +3375,11 @@
                 setPresetStatus('exported');
             });
 
-            presetImportBtn.addEventListener('click', () => {
+            presetImportBtn.addEventListener('click', (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 showSongIo();
                 setPresetStatus('', { busy: true });
                 updateSongJsonHighlight();
