@@ -346,7 +346,8 @@ html.is-theme .logoStar:focus-visible {
   align-items: center;
   justify-content: center;
   z-index: 120;
-  background: transparent;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .themePickerBox {
@@ -354,6 +355,7 @@ html.is-theme .logoStar:focus-visible {
   gap: 0.55rem;
   padding: 0.65rem;
   background: #808080;
+  max-width: calc(100vw - 2rem);
 }
 
 .themePickerRow {
@@ -410,6 +412,8 @@ html.is-theme .themeSwatch {
   background: transparent;
   cursor: pointer;
   position: relative;
+  flex: 0 0 auto;
+  touch-action: manipulation;
 }
 
 .switchToggle::before {
@@ -864,26 +868,42 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 
 @media (max-width: 700px) {
   .controls.globalBar {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    overflow-y: visible;
-    white-space: normal;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .globalBarGroup {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    min-width: max-content;
   }
 
   .globalPrimaryCenter {
+    flex: 0 0 auto;
     justify-content: flex-start;
   }
+}
 
-  .globalSecondaryRight {
-    margin-left: 0;
+@media (max-width: 700px) {
+  .trackSliderGrid .pitchControls {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .globalSecondaryTheme {
-    margin-left: 0;
+  .trackSliderGrid .pitchControls::-webkit-scrollbar {
+    height: 0;
+  }
+
+  .trackSliderGrid .pitchControls .noteSelect,
+  .trackSliderGrid .pitchControls .octaveGroup,
+  .trackSliderGrid .pitchControls .octaveControls {
+    flex: 0 0 auto;
+    min-width: max-content;
   }
 }
 
