@@ -916,6 +916,7 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   bottom: calc(0.85rem + 34px + 0.85rem);
 
   width: 320px;
+  min-width: 250px;
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 1rem - (0.85rem + 34px + 0.85rem));
   overflow: auto;
