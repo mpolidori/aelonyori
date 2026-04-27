@@ -8,6 +8,10 @@
 </head>
 <body>
     <div class="container">
+        <section id="samplePadWrap" class="samplePadWrap" hidden aria-label="sample pad">
+            <div id="samplePadGrid" class="samplePadGrid" role="group" aria-label="sample pads"></div>
+        </section>
+
         <h1 class="logo" aria-label="aelonyori">
             <button type="button" class="letter" data-key="0" data-letter="a" aria-pressed="false">a</button>
             <button type="button" class="letter" data-key="1" data-letter="e" aria-pressed="false">e</button>
@@ -24,6 +28,28 @@
         <section id="daw" class="daw" hidden aria-label="daw">
             <div id="tracks" class="tracks" aria-label="tracks"></div>
         </section>
+    </div>
+
+    <div id="samplePadToolbar" class="samplePadToolbar" aria-label="sample pad tools" hidden>
+        <button type="button" id="samplePadEditBtn" class="samplePadEditBtn" aria-label="edit sample pads" aria-pressed="false" title="edit sample pads">✎</button>
+        <div id="samplePadEditor" class="samplePadEditor" hidden aria-label="sample pad editor">
+            <span id="samplePadEditorLabel" class="samplePadEditorLabel">pad 1</span>
+            <button type="button" id="samplePadPreviewBtn" class="samplePadPreviewBtn" aria-label="preview selected sample pad" title="preview selected sample pad">▶</button>
+            <label class="field samplePadEditorField">
+                <span class="fieldLabel">repeat</span>
+                <select id="samplePadRatchetSelect" aria-label="sample pad repeat">
+                    <option value="0.25">1/4</option>
+                    <option value="0.5">1/2</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="4">4</option>
+                </select>
+            </label>
+            <label class="field samplePadEditorField">
+                <span class="fieldLabel">trigger</span>
+                <input id="samplePadTriggerInput" type="text" inputmode="latin" autocomplete="off" spellcheck="false" maxlength="2" placeholder="az" aria-label="sample pad trigger" />
+            </label>
+        </div>
     </div>
 
     <div id="themePicker" class="themePicker" hidden>
@@ -44,7 +70,13 @@
         <button type="button" id="transportRestartBtn" class="transportIconBtn transportRestartBtn" aria-label="restart" title="restart">↺</button>
         <button type="button" id="transportSeekBtn" class="transportSeekBtn" aria-label="seek">
             <span class="transportTicks" id="transportTicks" aria-hidden="true"></span>
+            <span class="transportWordPlay" id="transportWordPlay" aria-hidden="true" hidden></span>
         </button>
+    </div>
+
+    <div id="wordPlaySubtitleStack" class="wordPlaySubtitleStack" aria-hidden="true" hidden>
+        <div id="wordPlaySubtitleLower" class="wordPlaySubtitleLine wordPlaySubtitleLineLower" hidden></div>
+        <div id="wordPlaySubtitleUpper" class="wordPlaySubtitleLine wordPlaySubtitleLineUpper" hidden></div>
     </div>
 
     <div id="settingsModal" class="settingsModal" hidden>
@@ -166,6 +198,34 @@
                     <input id="autoExpandSpeedOut" class="num" type="number" min="0" max="200" step="1" value="100" />
                 </label>
             </div>
+
+            <div class="settingsDivider" aria-hidden="true"></div>
+
+            <div class="settingsSection" aria-label="sample pad">
+                <label class="field settingsField">
+                    <span class="fieldLabel">sample pad</span>
+                    <button type="button" class="switchToggle" id="samplePadToggleBtn" aria-label="sample pad" aria-pressed="false"></button>
+                </label>
+
+                <label class="field settingsField">
+                    <span class="fieldLabel">subtitles</span>
+                    <button type="button" class="switchToggle" id="wordPlayToggleBtn" aria-label="subtitles" aria-pressed="false"></button>
+                    <button type="button" class="caret wordPlayTextBtn" id="wordPlayTextBtn" aria-label="edit subtitles" title="edit subtitles" hidden>🗎</button>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="wordPlayTextModal" class="wordPlayTextModal" hidden>
+        <div class="wordPlayTextPanel" role="dialog" aria-modal="true" aria-label="subtitles editor">
+            <div class="wordPlayTextPanelBar">
+                <span class="wordPlayTextPanelTitle">subtitles</span>
+                <button type="button" class="caret wordPlayTextCloseBtn" id="wordPlayTextCloseBtn" aria-label="close subtitles">×</button>
+            </div>
+            <div class="wordPlayTextEditorWrap">
+                <div id="wordPlayTextOverlay" class="wordPlayTextOverlay" aria-hidden="true" data-placeholder="type any text"></div>
+                <textarea id="wordPlayTextInput" class="wordPlayTextInput" rows="5" spellcheck="false" autocomplete="off" placeholder="type any text"></textarea>
+            </div>
         </div>
     </div>
 
@@ -176,6 +236,15 @@
             const tracksContainer = document.getElementById('tracks');
 
             const themeStarBtn = document.getElementById('themeStarBtn');
+            const samplePadWrap = document.getElementById('samplePadWrap');
+            const samplePadGrid = document.getElementById('samplePadGrid');
+            const samplePadToolbar = document.getElementById('samplePadToolbar');
+            const samplePadEditBtn = document.getElementById('samplePadEditBtn');
+            const samplePadEditor = document.getElementById('samplePadEditor');
+            const samplePadEditorLabel = document.getElementById('samplePadEditorLabel');
+            const samplePadPreviewBtn = document.getElementById('samplePadPreviewBtn');
+            const samplePadRatchetSelect = document.getElementById('samplePadRatchetSelect');
+            const samplePadTriggerInput = document.getElementById('samplePadTriggerInput');
             const themePicker = document.getElementById('themePicker');
             const themePickerBox = document.getElementById('themePickerBox');
             const themeControls = document.getElementById('themeControls');
@@ -187,6 +256,16 @@
             const autoExpandSpeedRow = document.getElementById('autoExpandSpeedRow');
             const autoExpandSpeedInput = document.getElementById('autoExpandSpeed');
             const autoExpandSpeedOut = document.getElementById('autoExpandSpeedOut');
+            const samplePadToggleBtn = document.getElementById('samplePadToggleBtn');
+            const wordPlayToggleBtn = document.getElementById('wordPlayToggleBtn');
+            const wordPlayTextBtn = document.getElementById('wordPlayTextBtn');
+            const wordPlayTextInput = document.getElementById('wordPlayTextInput');
+            const wordPlayTextOverlay = document.getElementById('wordPlayTextOverlay');
+            const wordPlayTextCloseBtn = document.getElementById('wordPlayTextCloseBtn');
+            const wordPlaySubtitleStack = document.getElementById('wordPlaySubtitleStack');
+            const wordPlaySubtitleLower = document.getElementById('wordPlaySubtitleLower');
+            const wordPlaySubtitleUpper = document.getElementById('wordPlaySubtitleUpper');
+            const wordPlayTextModal = document.getElementById('wordPlayTextModal');
             const autoscrollToggleBtn = document.getElementById('autoscrollToggleBtn');
 
             const tempoInput = document.getElementById('tempo');
@@ -230,6 +309,7 @@
             const transportRestartBtn = document.getElementById('transportRestartBtn');
             const transportSeekBtn = document.getElementById('transportSeekBtn');
             const transportTicks = document.getElementById('transportTicks');
+            const transportWordPlay = document.getElementById('transportWordPlay');
 
             const lookaheadMs = 25;
             const scheduleAheadTime = 0.12;
@@ -294,9 +374,19 @@
 
             let autoExpandEnabled = false;
             let autoExpandSpeed = 100;
+            let samplePadEnabled = false;
+            let samplePadEditEnabled = false;
+            let samplePadSelectedStep = null;
+            let samplePadConfigs = Object.create(null);
+            let samplePadLayoutRaf = null;
+            let wordPlayEnabled = false;
+            let wordPlayText = '';
 
             let settingsOpen = false;
+            let wordPlayEditModalOpen = false;
+            let suppressSettingsToggleClickUntil = 0;
             let settingsLayoutRaf = null;
+            let wordPlayTextLayoutRaf = null;
 
             let autoscrollEnabled = true;
 
@@ -312,6 +402,13 @@
             let uiStepStartedAt = null;
             let transportRaf = null;
             let hasManualSeek = false;
+            let transportWordPlayKey = '';
+            let transportWordPlayActiveIndex = -1;
+            let transportWordPlayChunkCount = 0;
+            let wordPlaySubtitleTimerId = null;
+            let wordPlaySubtitleCycleActive = false;
+            let wordPlayHitCursor = 0;
+            let pausedWordPlayHitCursor = null;
 
             let isSyncingGridScroll = false;
 
@@ -814,6 +911,10 @@
                 const ui = {
                     autoExpandEnabled: Boolean(autoExpandEnabled),
                     autoExpandSpeed: clampNumber(Math.round(numberOrFallback(autoExpandSpeed, 100)), 0, 200),
+                    samplePadEnabled: Boolean(samplePadEnabled),
+                    samplePadConfigs,
+                    wordPlayEnabled: Boolean(samplePadEnabled && wordPlayEnabled),
+                    wordPlayText,
                     autoscrollEnabled: Boolean(autoscrollEnabled),
                     themeEnabled: Boolean(themeEnabled),
                     themeA,
@@ -870,6 +971,17 @@
 
                 const nextAutoExpandSpeed = clampNumber(Math.round(numberOrFallback(ui.autoExpandSpeed, 100)), 0, 200);
                 setAutoExpandSpeed(nextAutoExpandSpeed);
+
+                samplePadConfigs = normalizeSamplePadConfigs(ui.samplePadConfigs);
+
+                const nextSamplePadEnabled = (typeof ui.samplePadEnabled === 'boolean') ? ui.samplePadEnabled : false;
+                setSamplePadEnabled(nextSamplePadEnabled);
+
+                const nextWordPlayText = (typeof ui.wordPlayText === 'string') ? ui.wordPlayText : '';
+                setWordPlayText(nextWordPlayText);
+
+                const nextWordPlayEnabled = Boolean(nextSamplePadEnabled && ui.wordPlayEnabled);
+                setWordPlayEnabled(nextWordPlayEnabled);
 
                 const nextAutoscrollEnabled = (typeof ui.autoscrollEnabled === 'boolean') ? ui.autoscrollEnabled : true;
                 setAutoscrollEnabled(nextAutoscrollEnabled);
@@ -1372,6 +1484,28 @@
                 settingsPanel.style.maxHeight = `${available}px`;
             }
 
+            function positionWordPlayTextPanel() {
+                if (!transportBar) return;
+                const barRect = transportBar.getBoundingClientRect();
+                const gap = Math.max(0, window.innerHeight - barRect.bottom);
+                const width = Math.max(0, Math.floor(barRect.width * 0.5));
+
+                const panelMaxHeight = Math.max(0, Math.round(barRect.top - gap - 16 - 12));
+
+                if (wordPlayTextModal) {
+                    const bottom = Math.round(barRect.height + gap + 12);
+                    wordPlayTextModal.style.setProperty('--wordPlayEditBottom', `${bottom}px`);
+                    wordPlayTextModal.style.setProperty('--wordPlayEditMaxHeight', `${panelMaxHeight}px`);
+                    wordPlayTextModal.style.setProperty('--wordPlayEditWidth', `${width}px`);
+                }
+
+                if (wordPlaySubtitleStack) {
+                    wordPlaySubtitleStack.style.left = `${barRect.left.toFixed(3)}px`;
+                    wordPlaySubtitleStack.style.width = `${barRect.width.toFixed(3)}px`;
+                    wordPlaySubtitleStack.style.bottom = `${Math.round(window.innerHeight - barRect.top + 10)}px`;
+                }
+            }
+
             function scheduleSettingsPanelLayout() {
                 if (settingsLayoutRaf != null) return;
                 settingsLayoutRaf = window.requestAnimationFrame(() => {
@@ -1381,10 +1515,112 @@
                 });
             }
 
+            function scheduleWordPlayTextPanelLayout() {
+                if (wordPlayTextLayoutRaf != null) return;
+                wordPlayTextLayoutRaf = window.requestAnimationFrame(() => {
+                    wordPlayTextLayoutRaf = null;
+                    if (!wordPlayEditModalOpen && (!wordPlaySubtitleStack || wordPlaySubtitleStack.hidden)) return;
+                    positionWordPlayTextPanel();
+                });
+            }
+
+            function syncFloatingBarGeometry() {
+                if (!transportBar || !isElementVisible(transportBar)) return;
+                const rect = transportBar.getBoundingClientRect();
+                if (rect.width <= 0) return;
+
+                if (samplePadToolbar) {
+                    samplePadToolbar.style.setProperty('--samplePadBarFullWidthPx', `${rect.width.toFixed(3)}px`);
+                    samplePadToolbar.style.left = `${rect.left.toFixed(3)}px`;
+                    if (samplePadEditEnabled) {
+                        samplePadToolbar.style.width = `${rect.width.toFixed(3)}px`;
+                    } else {
+                        samplePadToolbar.style.width = '40px';
+                    }
+                }
+
+                if (wordPlaySubtitleStack) {
+                    wordPlaySubtitleStack.style.left = `${rect.left.toFixed(3)}px`;
+                    wordPlaySubtitleStack.style.width = `${rect.width.toFixed(3)}px`;
+                    wordPlaySubtitleStack.style.bottom = `${Math.round(window.innerHeight - rect.top + 10)}px`;
+                }
+            }
+
+            function syncFloatingScrollClearance() {
+                const root = document.documentElement;
+                if (!root) return;
+
+                const topClearances = [];
+                const bottomClearances = [];
+
+                if (samplePadToolbar && !samplePadToolbar.hidden && isElementVisible(samplePadToolbar)) {
+                    const rect = samplePadToolbar.getBoundingClientRect();
+                    topClearances.push(Math.max(0, Math.ceil(rect.bottom + 10)));
+                }
+
+                if (transportBar && !transportBar.hidden && isElementVisible(transportBar)) {
+                    const rect = transportBar.getBoundingClientRect();
+                    bottomClearances.push(Math.max(0, Math.ceil((window.innerHeight - rect.top) + 10)));
+                }
+
+                const topClearance = topClearances.length ? Math.max(...topClearances) : 0;
+                const bottomClearance = bottomClearances.length ? Math.max(...bottomClearances) : 0;
+
+                root.style.setProperty('--floatingClearanceTop', `${topClearance}px`);
+                root.style.setProperty('--floatingClearanceBottom', `${bottomClearance}px`);
+            }
+
+            function syncWordPlayUiVisibility() {
+                const canShowFloating = samplePadEnabled && tracks.size > 0;
+                if (wordPlayTextBtn) {
+                    wordPlayTextBtn.hidden = !canShowFloating;
+                    wordPlayTextBtn.disabled = !canShowFloating;
+                    wordPlayTextBtn.setAttribute('aria-pressed', canShowFloating && wordPlayEditModalOpen ? 'true' : 'false');
+                }
+
+                const showSubtitles = shouldRunWordPlaySubtitleCycle();
+                if (wordPlaySubtitleStack) {
+                    wordPlaySubtitleStack.hidden = !showSubtitles;
+                    if (showSubtitles) {
+                        positionWordPlayTextPanel();
+                    }
+                }
+
+                if (showSubtitles) {
+                    ensureWordPlaySubtitleCycle();
+                } else {
+                    stopWordPlaySubtitleCycle();
+                }
+
+                syncFloatingScrollClearance();
+            }
+
+            function setWordPlayEditModalOpen(nextOpen) {
+                const open = Boolean(nextOpen) && samplePadEnabled && tracks.size > 0;
+                wordPlayEditModalOpen = open;
+                if (wordPlayTextModal) wordPlayTextModal.hidden = !open;
+                if (open) {
+                    positionWordPlayTextPanel();
+                    if (wordPlayTextInput && typeof wordPlayTextInput.focus === 'function') {
+                        wordPlayTextInput.focus({ preventScroll: true });
+                    }
+                }
+                renderWordPlayTextOverlay();
+                syncWordPlayUiVisibility();
+            }
+
             function setSettingsOpen(nextOpen) {
                 const hasTracks = tracks.size > 0;
                 const open = Boolean(nextOpen) && hasTracks;
                 settingsOpen = open;
+
+                if (open) {
+                    stopSamplePadKeyHolds();
+                    pressedAlphaKeys.clear();
+                }
+                if (!open) {
+                    setWordPlayEditModalOpen(false);
+                }
 
                 if (settingsModal) {
                     settingsModal.hidden = !open;
@@ -1416,7 +1652,43 @@
                     updateTransportBar();
                     rebuildTransportTicks();
                 }
+                syncFloatingBarGeometry();
+                syncWordPlayUiVisibility();
+                syncSamplePadToolbarVisibility();
+                renderSamplePadGrid();
                 updateTransportControls();
+            }
+
+            function renderWordPlayTextOverlay() {
+                if (!wordPlayTextOverlay) return;
+
+                const raw = String(wordPlayText || '');
+                wordPlayTextOverlay.innerHTML = '';
+                wordPlayTextOverlay.classList.toggle('is-empty', raw.length === 0);
+                if (raw.length === 0) return;
+
+                const model = getWordPlayModel();
+                const frag = document.createDocumentFragment();
+                for (let i = 0; i < raw.length; i += 1) {
+                    const ch = raw[i];
+                    const span = document.createElement('span');
+                    span.className = 'wordPlayOverlayChar';
+                    span.textContent = ch;
+
+                    const chunkIndex = model.charChunkMap.get(i);
+                    if (typeof chunkIndex === 'number') {
+                        const chunk = model.chunks[chunkIndex];
+                        if (chunk && !chunk.valid) span.classList.add('is-invalid');
+                    }
+
+                    frag.appendChild(span);
+                }
+
+                wordPlayTextOverlay.appendChild(frag);
+                if (wordPlayTextInput) {
+                    wordPlayTextOverlay.scrollTop = wordPlayTextInput.scrollTop;
+                    wordPlayTextOverlay.scrollLeft = wordPlayTextInput.scrollLeft;
+                }
             }
 
             function formatPercent01(value01) {
@@ -1447,6 +1719,10 @@
                         const within = clampNumber(stepDuration > 0 ? (elapsed / stepDuration) : 0, 0, 0.999);
                         stepFloat = uiStep + within;
                     }
+                }
+
+                if (samplePadEnabled && wordPlayEnabled) {
+                    stepFloat = ((stepFloat % steps) + steps) % steps;
                 }
 
                 let pe01 = clampNumber(stepFloat / steps, 0, 1);
@@ -1493,6 +1769,302 @@
                 }
 
                 transportTicks.appendChild(frag);
+            }
+
+            function scheduleSamplePadLayout() {
+                if (samplePadLayoutRaf != null) return;
+                samplePadLayoutRaf = window.requestAnimationFrame(() => {
+                    samplePadLayoutRaf = null;
+                    if (!samplePadWrap) return;
+                    const body = document.body;
+                    if (!body) return;
+
+                    if (samplePadWrap.hidden) {
+                        if (body.style.paddingTop) body.style.paddingTop = '';
+                        return;
+                    }
+
+                    const currentPad = Math.max(0, numberOrFallback(parseFloat(body.style.paddingTop || '0'), 0));
+                    const rect = samplePadWrap.getBoundingClientRect();
+                    const pageTopWithoutPad = (rect.top + window.scrollY) - currentPad;
+                    const extraTop = Math.max(0, -pageTopWithoutPad + 8);
+
+                    if (Math.abs(extraTop - currentPad) < 0.5) return;
+                    const prevScrollY = window.scrollY;
+                    const delta = extraTop - currentPad;
+                    body.style.paddingTop = `${extraTop}px`;
+                    window.scrollTo({ top: Math.max(0, prevScrollY + delta), behavior: 'auto' });
+                });
+            }
+
+            function sanitizeSamplePadTrigger(value) {
+                const letters = String(value || '').toLowerCase().replace(/[^a-z]/g, '');
+                let out = '';
+                for (const ch of letters) {
+                    if (out.includes(ch)) continue;
+                    out += ch;
+                    if (out.length >= 2) break;
+                }
+                return out;
+            }
+
+            function sanitizeSamplePadRatchet(value) {
+                const allowed = [0.25, 0.5, 1, 2, 4];
+                const next = numberOrFallback(value, 1);
+                return allowed.includes(next) ? next : 1;
+            }
+
+            function formatRatchetLabel(value) {
+                const ratchet = sanitizeSamplePadRatchet(value);
+                if (ratchet === 0.25) return '1/4x';
+                if (ratchet === 0.5) return '1/2x';
+                if (ratchet === 1) return '1x';
+                if (ratchet === 2) return '2x';
+                if (ratchet === 4) return '4x';
+                return '1x';
+            }
+
+            function getSamplePadConfig(stepIndex) {
+                const step = clampNumber(Math.round(numberOrFallback(stepIndex, 0)), 0, Math.max(0, stepsCount - 1));
+                const raw = samplePadConfigs[String(step)] || {};
+                return {
+                    ratchet: sanitizeSamplePadRatchet(raw.ratchet),
+                    trigger: sanitizeSamplePadTrigger(raw.trigger),
+                };
+            }
+
+            function setSamplePadConfig(stepIndex, patch) {
+                const step = clampNumber(Math.round(numberOrFallback(stepIndex, 0)), 0, Math.max(0, stepsCount - 1));
+                const next = {
+                    ...getSamplePadConfig(step),
+                    ...(patch && typeof patch === 'object' ? patch : {}),
+                };
+
+                next.ratchet = sanitizeSamplePadRatchet(next.ratchet);
+                next.trigger = sanitizeSamplePadTrigger(next.trigger);
+
+                if (next.ratchet === 1 && !next.trigger) {
+                    delete samplePadConfigs[String(step)];
+                } else {
+                    samplePadConfigs[String(step)] = next;
+                }
+
+                renderSamplePadGrid();
+                rebuildTransportWordPlay();
+                updateSamplePadKeyHolds();
+            }
+
+            function normalizeSamplePadConfigs(value) {
+                const next = Object.create(null);
+                if (!value || typeof value !== 'object') return next;
+
+                for (const [key, raw] of Object.entries(value)) {
+                    const step = clampNumber(Math.round(numberOrFallback(key, -1)), -1, MAX_STEPS - 1);
+                    if (step < 0) continue;
+                    const ratchet = sanitizeSamplePadRatchet(raw && raw.ratchet);
+                    const trigger = sanitizeSamplePadTrigger(raw && raw.trigger);
+                    if (ratchet === 1 && !trigger) continue;
+                    next[String(step)] = { ratchet, trigger };
+                }
+
+                return next;
+            }
+
+            function getWordPlayModel() {
+                const raw = String(wordPlayText || '');
+                const letterPairs = [];
+                for (let i = 0; i < raw.length; i += 1) {
+                    const ch = raw[i];
+                    if (!/[a-z]/i.test(ch)) continue;
+                    letterPairs.push({ rawIndex: i, ch: ch.toLowerCase() });
+                }
+
+                const triggerToStep = new Map();
+                for (let step = 0; step < stepsCount; step += 1) {
+                    const trigger = getSamplePadConfig(step).trigger;
+                    if (!trigger || trigger.length !== 2) continue;
+                    if (!triggerToStep.has(trigger)) triggerToStep.set(trigger, step);
+                }
+
+                const usableLen = Math.floor(letterPairs.length / 2) * 2;
+                const chunks = [];
+                const charChunkMap = new Map();
+
+                for (let i = 0; i < usableLen; i += 2) {
+                    const a = letterPairs[i];
+                    const b = letterPairs[i + 1];
+                    const combo = `${a.ch}${b.ch}`;
+                    const mappedStep = triggerToStep.has(combo) ? triggerToStep.get(combo) : null;
+                    const chunkIndex = chunks.length;
+                    chunks.push({
+                        combo,
+                        valid: mappedStep != null,
+                        step: mappedStep,
+                        rawIndexes: [a.rawIndex, b.rawIndex],
+                    });
+                    charChunkMap.set(a.rawIndex, chunkIndex);
+                    charChunkMap.set(b.rawIndex, chunkIndex);
+                }
+
+                return { raw, chunks, charChunkMap };
+            }
+
+            function updateTransportWordPlayActive(stepIndex) {
+                const itemCount = Math.max(1, transportWordPlayChunkCount);
+                const raw = Math.round(numberOrFallback(stepIndex, 0));
+                const next = ((raw % itemCount) + itemCount) % itemCount;
+                transportWordPlayActiveIndex = next;
+            }
+
+            function randomBetween(min, max) {
+                const a = numberOrFallback(min, 0);
+                const b = numberOrFallback(max, a);
+                return a + (Math.random() * Math.max(0, b - a));
+            }
+
+            function clearWordPlaySubtitleTimer() {
+                if (wordPlaySubtitleTimerId == null) return;
+                window.clearTimeout(wordPlaySubtitleTimerId);
+                wordPlaySubtitleTimerId = null;
+            }
+
+            function shouldRunWordPlaySubtitleCycle() {
+                if (!(samplePadEnabled && wordPlayEnabled && isPlaying && tracks.size > 0)) return false;
+                const model = getWordPlayModel();
+                return model.chunks.length > 0 && model.raw.length > 0;
+            }
+
+            function setSubtitleLines(lowerText, upperText) {
+                if (!wordPlaySubtitleLower || !wordPlaySubtitleUpper) return;
+
+                const lower = String(lowerText || '');
+                const upper = String(upperText || '');
+
+                if (lower) {
+                    wordPlaySubtitleLower.textContent = lower;
+                    wordPlaySubtitleLower.hidden = false;
+                } else {
+                    wordPlaySubtitleLower.hidden = true;
+                }
+
+                if (upper) {
+                    wordPlaySubtitleUpper.textContent = upper;
+                    wordPlaySubtitleUpper.hidden = false;
+                } else {
+                    wordPlaySubtitleUpper.hidden = true;
+                }
+            }
+
+            function sampleWordPlaySubtitleText(advanceChunks = 0) {
+                const model = getWordPlayModel();
+                const chunks = model.chunks;
+                const raw = model.raw;
+                if (!chunks.length || !raw.length) return '';
+
+                const chunkCount = chunks.length;
+                const cursor = Math.max(0, Math.round(numberOrFallback(wordPlayHitCursor, 0)));
+                const startIndex = ((cursor + Math.round(numberOrFallback(advanceChunks, 0))) % chunkCount + chunkCount) % chunkCount;
+                const takeChoices = [5, 6, 7, 8, 9, 10, 11, 12];
+                const desiredTake = takeChoices[Math.floor(Math.random() * takeChoices.length)];
+                const take = Math.max(1, Math.min(desiredTake, chunkCount - startIndex));
+
+                const firstChunk = chunks[startIndex];
+                const lastChunk = chunks[Math.max(startIndex, startIndex + take - 1)];
+                const firstRaw = firstChunk && Array.isArray(firstChunk.rawIndexes)
+                    ? Math.min(...firstChunk.rawIndexes)
+                    : 0;
+                const lastRaw = lastChunk && Array.isArray(lastChunk.rawIndexes)
+                    ? Math.max(...lastChunk.rawIndexes)
+                    : firstRaw;
+
+                const start = clampNumber(firstRaw, 0, Math.max(0, raw.length - 1));
+                const end = clampNumber(lastRaw + 1, start, raw.length);
+                const text = raw.slice(start, end);
+
+                const musicRoll = ((cursor + startIndex + chunkCount) % 5) === 0;
+                if (musicRoll) return '(music)';
+                return text || raw.slice(start, Math.min(raw.length, start + 2));
+            }
+
+            function runWordPlaySubtitleCycle() {
+                if (!shouldRunWordPlaySubtitleCycle()) {
+                    stopWordPlaySubtitleCycle();
+                    return;
+                }
+
+                const first = sampleWordPlaySubtitleText(0);
+                if (!first) {
+                    stopWordPlaySubtitleCycle();
+                    return;
+                }
+
+                setSubtitleLines('', first);
+
+                const leadDelayMs = randomBetween(500, 1500);
+                wordPlaySubtitleTimerId = window.setTimeout(() => {
+                    wordPlaySubtitleTimerId = null;
+                    if (!shouldRunWordPlaySubtitleCycle()) {
+                        stopWordPlaySubtitleCycle();
+                        return;
+                    }
+
+                    const secondAdvance = Math.round(randomBetween(2, 6));
+                    const second = sampleWordPlaySubtitleText(secondAdvance);
+                    setSubtitleLines(first, second || first);
+
+                    const holdDelayMs = randomBetween(1500, 2500);
+                    wordPlaySubtitleTimerId = window.setTimeout(() => {
+                        wordPlaySubtitleTimerId = null;
+                        setSubtitleLines('', '');
+
+                        const gapDelayMs = randomBetween(200, 500);
+                        wordPlaySubtitleTimerId = window.setTimeout(() => {
+                            wordPlaySubtitleTimerId = null;
+                            runWordPlaySubtitleCycle();
+                        }, gapDelayMs);
+                    }, holdDelayMs);
+                }, leadDelayMs);
+            }
+
+            function ensureWordPlaySubtitleCycle() {
+                if (!shouldRunWordPlaySubtitleCycle()) {
+                    stopWordPlaySubtitleCycle();
+                    return;
+                }
+                if (wordPlaySubtitleCycleActive) return;
+                wordPlaySubtitleCycleActive = true;
+                runWordPlaySubtitleCycle();
+            }
+
+            function stopWordPlaySubtitleCycle() {
+                wordPlaySubtitleCycleActive = false;
+                clearWordPlaySubtitleTimer();
+                setSubtitleLines('', '');
+            }
+
+            function rebuildTransportWordPlay() {
+                if (!transportTicks || !transportBar) return;
+                transportBar.classList.remove('is-word-play');
+                transportTicks.hidden = false;
+                if (transportWordPlay) {
+                    transportWordPlay.hidden = true;
+                    transportWordPlay.innerHTML = '';
+                }
+
+                if (!(samplePadEnabled && wordPlayEnabled)) {
+                    transportWordPlayKey = '';
+                    transportWordPlayActiveIndex = -1;
+                    transportWordPlayChunkCount = 0;
+                    stopWordPlaySubtitleCycle();
+                    return;
+                }
+
+                const model = getWordPlayModel();
+                transportWordPlayKey = `${model.raw}|${model.chunks.map((c) => `${c.combo}:${c.valid ? 1 : 0}`).join(',')}`;
+                transportWordPlayChunkCount = Math.max(1, model.chunks.length);
+                updateTransportWordPlayActive(isPlaying ? uiStep : wordPlayHitCursor);
+                wordPlaySubtitleCycleActive = false;
+                syncWordPlayUiVisibility();
             }
 
             function stopTransportRaf() {
@@ -1557,6 +2129,317 @@
                 }
 
                 updateTransportBar();
+            }
+
+            let samplePadHoldState = null;
+            const samplePadFlashTimeouts = new Map();
+            const pressedAlphaKeys = new Set();
+            const samplePadKeyHoldStates = new Map();
+
+            function triggerSamplePadStep(stepIndex) {
+                if (tracks.size === 0) return;
+                const step = clampNumber(Math.round(numberOrFallback(stepIndex, 0)), 0, Math.max(0, stepsCount - 1));
+                seekToStep(step, { fromUser: true, viewStep: step });
+                previewStepAtTransport(step);
+                flashSamplePadStep(step);
+                if (samplePadEnabled && wordPlayEnabled) {
+                    updateTransportWordPlayActive(step);
+                }
+            }
+
+            function stopSamplePadHold() {
+                if (!samplePadHoldState) return;
+                if (samplePadHoldState.timerId) {
+                    window.clearInterval(samplePadHoldState.timerId);
+                }
+                samplePadHoldState = null;
+            }
+
+            function startSamplePadPreviewHold(pointerId, step) {
+                stopSamplePadHold();
+                const repeatMs = clampNumber(((60 / tempo / 4) / getSamplePadConfig(step).ratchet) * 1000, 35, 1400);
+                samplePadHoldState = {
+                    pointerId,
+                    step,
+                    timerId: window.setInterval(() => {
+                        if (!samplePadHoldState) return;
+                        triggerSamplePadStep(samplePadHoldState.step);
+                    }, repeatMs),
+                };
+            }
+
+            function stopSamplePadKeyHolds() {
+                for (const hold of samplePadKeyHoldStates.values()) {
+                    if (hold && hold.timerId) window.clearInterval(hold.timerId);
+                }
+                samplePadKeyHoldStates.clear();
+            }
+
+            function updateSamplePadKeyHolds() {
+                if (!samplePadEnabled || settingsOpen) {
+                    stopSamplePadKeyHolds();
+                    return;
+                }
+
+                for (let step = 0; step < stepsCount; step += 1) {
+                    const config = getSamplePadConfig(step);
+                    const trigger = config.trigger;
+                    if (trigger.length !== 2) {
+                        const existing = samplePadKeyHoldStates.get(step);
+                        if (existing && existing.timerId) window.clearInterval(existing.timerId);
+                        samplePadKeyHoldStates.delete(step);
+                        continue;
+                    }
+
+                    const activeNow = pressedAlphaKeys.has(trigger[0]) && pressedAlphaKeys.has(trigger[1]);
+                    const existing = samplePadKeyHoldStates.get(step);
+
+                    if (activeNow && !existing) {
+                        triggerSamplePadStep(step);
+                        const repeatMs = clampNumber(((60 / tempo / 4) / config.ratchet) * 1000, 35, 1400);
+                        samplePadKeyHoldStates.set(step, {
+                            timerId: window.setInterval(() => {
+                                triggerSamplePadStep(step);
+                            }, repeatMs),
+                        });
+                    } else if (!activeNow && existing) {
+                        if (existing.timerId) window.clearInterval(existing.timerId);
+                        samplePadKeyHoldStates.delete(step);
+                    }
+                }
+            }
+
+            function flashSamplePadStep(stepIndex, durationMs = 120) {
+                if (!samplePadGrid || samplePadWrap.hidden) return;
+                const step = clampNumber(Math.round(numberOrFallback(stepIndex, 0)), 0, Math.max(0, stepsCount - 1));
+                const pad = samplePadGrid.querySelector(`.samplePadBtn[data-step="${step}"]`);
+                if (!pad) return;
+
+                pad.classList.add('is-hit');
+                const prev = samplePadFlashTimeouts.get(step);
+                if (prev) window.clearTimeout(prev);
+                const id = window.setTimeout(() => {
+                    pad.classList.remove('is-hit');
+                    samplePadFlashTimeouts.delete(step);
+                }, Math.max(40, durationMs));
+                samplePadFlashTimeouts.set(step, id);
+            }
+
+            function syncSamplePadToolbarVisibility() {
+                if (!samplePadToolbar) return;
+                samplePadToolbar.hidden = !(samplePadEnabled && tracks.size > 0);
+                samplePadToolbar.classList.toggle('is-expanded', samplePadEditEnabled);
+                syncFloatingBarGeometry();
+                syncFloatingScrollClearance();
+            }
+
+            function syncSamplePadEditor() {
+                if (!samplePadEditor || !samplePadEditorLabel || !samplePadRatchetSelect || !samplePadTriggerInput) return;
+                const showEditor = samplePadEnabled && samplePadEditEnabled && samplePadSelectedStep != null;
+                samplePadEditor.hidden = !showEditor;
+
+                if (!showEditor) return;
+
+                const step = clampNumber(samplePadSelectedStep, 0, Math.max(0, stepsCount - 1));
+                const config = getSamplePadConfig(step);
+                samplePadEditorLabel.textContent = `pad ${step + 1}`;
+                samplePadRatchetSelect.value = String(config.ratchet);
+                samplePadTriggerInput.value = config.trigger;
+            }
+
+            function setSamplePadSelectedStep(nextStep) {
+                if (!samplePadEditEnabled) {
+                    samplePadSelectedStep = null;
+                } else if (typeof nextStep === 'number') {
+                    samplePadSelectedStep = clampNumber(Math.round(numberOrFallback(nextStep, 0)), 0, Math.max(0, stepsCount - 1));
+                } else {
+                    samplePadSelectedStep = null;
+                }
+
+                syncSamplePadEditor();
+                renderSamplePadGrid();
+            }
+
+            function setSamplePadEditEnabled(nextEnabled) {
+                samplePadEditEnabled = Boolean(samplePadEnabled && nextEnabled);
+                if (!samplePadEditEnabled) {
+                    samplePadSelectedStep = null;
+                } else if (samplePadSelectedStep == null) {
+                    samplePadSelectedStep = 0;
+                }
+
+                if (samplePadToolbar) {
+                    samplePadToolbar.classList.toggle('is-expanded', samplePadEditEnabled);
+                }
+
+                if (samplePadEditBtn) {
+                    samplePadEditBtn.setAttribute('aria-pressed', samplePadEditEnabled ? 'true' : 'false');
+                    samplePadEditBtn.title = samplePadEditEnabled ? 'editing sample pads' : 'edit sample pads';
+                }
+
+                if (samplePadWrap) {
+                    samplePadWrap.classList.toggle('is-editing', samplePadEditEnabled);
+                }
+
+                syncFloatingBarGeometry();
+                syncSamplePadEditor();
+                renderSamplePadGrid();
+            }
+
+            function renderSamplePadGrid() {
+                if (!samplePadGrid || !samplePadWrap) return;
+
+                const shouldShow = samplePadEnabled && tracks.size > 0;
+                samplePadWrap.hidden = !shouldShow;
+                syncSamplePadToolbarVisibility();
+
+                if (!shouldShow) {
+                    samplePadGrid.innerHTML = '';
+                    stopSamplePadHold();
+                    syncSamplePadEditor();
+                    scheduleSamplePadLayout();
+                    return;
+                }
+
+                samplePadWrap.classList.toggle('is-editing', samplePadEditEnabled);
+                const frag = document.createDocumentFragment();
+                const groupLen = clampNumber(Math.round(numberOrFallback(beatSteps, 4)), 1, Math.max(1, stepsCount));
+
+                for (let i = 0; i < stepsCount; i += 1) {
+                    const config = getSamplePadConfig(i);
+                    const padBtn = document.createElement('button');
+                    padBtn.type = 'button';
+                    padBtn.className = 'samplePadBtn';
+                    padBtn.dataset.step = String(i);
+                    padBtn.setAttribute('aria-label', `sample pad ${i + 1}`);
+                    padBtn.classList.toggle('is-selected', samplePadSelectedStep === i);
+
+                    if ((i % groupLen) === 0) {
+                        const beatNum = document.createElement('span');
+                        beatNum.className = 'samplePadBeatNum';
+                        beatNum.textContent = String(Math.floor(i / groupLen) + 1);
+                        padBtn.appendChild(beatNum);
+                    }
+
+                    if (config.trigger) {
+                        const trigger = document.createElement('span');
+                        trigger.className = 'samplePadTriggerText';
+                        trigger.textContent = config.trigger.toLowerCase();
+                        padBtn.appendChild(trigger);
+                    }
+
+                    const repeat = document.createElement('span');
+                    repeat.className = 'samplePadRepeatText';
+                    repeat.textContent = formatRatchetLabel(config.ratchet);
+                    padBtn.appendChild(repeat);
+
+                    frag.appendChild(padBtn);
+                }
+
+                samplePadGrid.innerHTML = '';
+                samplePadGrid.appendChild(frag);
+                syncSamplePadEditor();
+                scheduleSamplePadLayout();
+            }
+
+            let transportScrubState = null;
+
+            function getSeekStepFromClientX(clientX) {
+                if (!transportSeekBtn) return 0;
+                const rect = transportSeekBtn.getBoundingClientRect();
+                const style = window.getComputedStyle ? window.getComputedStyle(transportSeekBtn) : null;
+                const padL = clampNumber(numberOrFallback(style ? parseFloat(style.paddingLeft) : 0, 0), 0, rect.width);
+                const padR = clampNumber(numberOrFallback(style ? parseFloat(style.paddingRight) : 0, 0), 0, rect.width);
+                const seekWidth = Math.max(1, rect.width - padL - padR);
+                const ratio = (clientX - rect.left - padL) / seekWidth;
+                const clamped = clampNumber(ratio, 0, 1);
+                const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+                return clampNumber(Math.floor(clamped * steps), 0, stepsCount - 1);
+            }
+
+            function previewStepAtTransport(stepIndex) {
+                ensureAudio();
+                if (!audio || !master) return;
+                if (audio.state === 'suspended') {
+                    audio.resume();
+                }
+
+                const step = clampNumber(Math.round(numberOrFallback(stepIndex, 0)), 0, Math.max(0, stepsCount - 1));
+                const secondsPerBeat = 60 / tempo;
+                const stepDuration = secondsPerBeat / 4;
+                const noteTime = audio.currentTime + 0.001;
+
+                const soloed = Array.from(tracks.values()).some((t) => getOrInitState(t.key).solo);
+
+                for (const track of tracks.values()) {
+                    const state = getOrInitState(track.key);
+                    const mask = clampNumber(Math.round(numberOrFallback(state.pattern[step], 0)), 0, NOTE_MASK_ALL);
+                    if (!mask) continue;
+
+                    const eligibleBySolo = !soloed || state.solo;
+                    const volume01 = clampNumber(state.volume / 127, 0, 1);
+                    const pan01 = clampNumber(state.pan / 100, -1, 1);
+                    const audible = eligibleBySolo && !state.muted && volume01 > 0;
+
+                    const tuneCents = clampNumber(numberOrFallback(state.tuneCents, 0), -100, 100);
+                    const basePitch = numberOrFallback(state.pitch, 60);
+                    const env = {
+                        attack: state.attack,
+                        hold: state.hold,
+                        decay: state.decay,
+                        sustain: state.sustain,
+                        release: state.release,
+                    };
+
+                    if (audible) {
+                        if (state.seqMode !== 'roll') {
+                            const rowMidi = clampNumber(basePitch, PITCH_MIN, PITCH_MAX);
+                            const pitchWithTune = clampNumber(rowMidi + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                            const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
+                            const frequency = midiToFrequency(effectiveMidi);
+                            triggerSound(state.sound, noteTime, {
+                                duration: stepDuration,
+                                frequency,
+                                pitch: pitchWithTune,
+                                volume: volume01,
+                                pan: pan01,
+                                env,
+                            });
+                        } else {
+                            for (let row = 0; row < NOTE_ROWS; row += 1) {
+                                if ((mask & (1 << row)) === 0) continue;
+                                const rowMidi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
+                                const pitchWithTune = clampNumber(rowMidi + (tuneCents / 100), PITCH_MIN, PITCH_MAX);
+                                const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
+                                const frequency = midiToFrequency(effectiveMidi);
+                                triggerSound(state.sound, noteTime, {
+                                    duration: stepDuration,
+                                    frequency,
+                                    pitch: pitchWithTune,
+                                    volume: volume01,
+                                    pan: pan01,
+                                    env,
+                                });
+                            }
+                        }
+                    }
+
+                    if (eligibleBySolo && (audible || state.muted)) {
+                        flashHit(track.button);
+                        flashTrack(track.el);
+                    }
+                }
+            }
+
+            function endTransportScrub() {
+                if (!transportScrubState) return;
+                if (transportScrubState.holdRepeatTimer) {
+                    window.clearInterval(transportScrubState.holdRepeatTimer);
+                }
+                window.removeEventListener('pointermove', transportScrubState.onMove);
+                window.removeEventListener('pointerup', transportScrubState.onUp);
+                window.removeEventListener('pointercancel', transportScrubState.onCancel);
+                transportScrubState = null;
             }
 
             function updateSoloSuppression() {
@@ -1775,6 +2658,8 @@
 
                 updateTransportBar();
                 rebuildTransportTicks();
+                rebuildTransportWordPlay();
+                renderSamplePadGrid();
             }
 
             function updateBeatStepsMax() {
@@ -1801,6 +2686,8 @@
 
                 updateTransportBar();
                 rebuildTransportTicks();
+                rebuildTransportWordPlay();
+                renderSamplePadGrid();
             }
 
             function renderTrackControls(track) {
@@ -3175,6 +4062,35 @@
                 }, Math.max(0, msUntil));
             }
 
+            function getWordPlayIntervalSeconds(chunk, baseStepDuration) {
+                if (!chunk || chunk.step == null) return baseStepDuration;
+                const cfg = getSamplePadConfig(chunk.step);
+                const ratchet = sanitizeSamplePadRatchet(cfg.ratchet);
+                return clampNumber(baseStepDuration / ratchet, baseStepDuration * 0.25, baseStepDuration * 4);
+            }
+
+            function scheduleWordPlayHit(hitIndex, chunk, time, baseStepDuration) {
+                const msUntil = (time - audio.currentTime) * 1000;
+
+                window.setTimeout(() => {
+                    if (!isPlaying) return;
+                    if (chunk && chunk.step != null) {
+                        previewStepAtTransport(chunk.step);
+                        flashSamplePadStep(chunk.step, Math.max(70, Math.min(baseStepDuration * 1000, 180)));
+                    }
+                    updateTransportWordPlayActive(hitIndex);
+                }, Math.max(0, msUntil));
+
+                window.setTimeout(() => {
+                    if (!isPlaying) return;
+                    uiStep = hitIndex;
+                    if (audio) uiStepStartedAt = audio.currentTime;
+                    updateTransportBar();
+                    startTransportRaf();
+                    renderAllTrackGrids();
+                }, Math.max(0, msUntil));
+            }
+
             function getMaxEarlyOffsetSeconds() {
                 let maxEarly = 0;
                 for (const track of tracks.values()) {
@@ -3207,6 +4123,33 @@
 
             function scheduler() {
                 const maxEarly = getMaxEarlyOffsetSeconds();
+
+                if (samplePadEnabled && wordPlayEnabled) {
+                    const secondsPerBeat = 60 / tempo;
+                    const baseStepDuration = secondsPerBeat / 4;
+                    const model = getWordPlayModel();
+
+                    const hasPlayableChunk = model.chunks.some((chunk) => chunk && chunk.step != null);
+                    if (!hasPlayableChunk) {
+                        while (nextNoteTime < audio.currentTime + scheduleAheadTime + maxEarly) {
+                            scheduleStep(currentStep, nextNoteTime);
+                            nextStep();
+                        }
+                        return;
+                    }
+
+                    const chunkCount = Math.max(1, model.chunks.length);
+
+                    while (nextNoteTime < audio.currentTime + scheduleAheadTime + maxEarly) {
+                        const chunkIndex = ((wordPlayHitCursor % chunkCount) + chunkCount) % chunkCount;
+                        const chunk = model.chunks[chunkIndex] || null;
+                        scheduleWordPlayHit(wordPlayHitCursor, chunk, nextNoteTime, baseStepDuration);
+                        nextNoteTime += getWordPlayIntervalSeconds(chunk, baseStepDuration);
+                        wordPlayHitCursor += 1;
+                    }
+                    return;
+                }
+
                 while (nextNoteTime < audio.currentTime + scheduleAheadTime + maxEarly) {
                     scheduleStep(currentStep, nextNoteTime);
                     nextStep();
@@ -3217,6 +4160,7 @@
                 if (transportBar) {
                     transportBar.dataset.playing = isPlaying ? '1' : '0';
                 }
+                syncWordPlayUiVisibility();
 
                 const hasTracks = tracks.size > 0;
                 if (transportSettingsBtn) {
@@ -3239,15 +4183,21 @@
             function pause() {
                 if (!isPlaying) return;
 
-                pausedStep = (uiStep >= 0) ? uiStep : currentStep;
-                if (loopEnabled) {
-                    clampLoopRange();
-                    pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                if (samplePadEnabled && wordPlayEnabled) {
+                    pausedWordPlayHitCursor = (uiStep >= 0) ? uiStep : wordPlayHitCursor;
                 } else {
-                    pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                    pausedStep = (uiStep >= 0) ? uiStep : currentStep;
+                    if (loopEnabled) {
+                        clampLoopRange();
+                        pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                    } else {
+                        pausedStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                    }
                 }
 
-                currentStep = pausedStep;
+                if (!(samplePadEnabled && wordPlayEnabled)) {
+                    currentStep = pausedStep;
+                }
                 isPlaying = false;
                 followCenterLock = false;
 
@@ -3278,28 +4228,43 @@
                 isPlaying = true;
                 clampLoopRange();
 
-                if (pausedStep != null) {
-                    if (loopEnabled) {
-                        currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                if (samplePadEnabled && wordPlayEnabled) {
+                    if (pausedWordPlayHitCursor != null) {
+                        wordPlayHitCursor = Math.max(0, Math.round(numberOrFallback(pausedWordPlayHitCursor, 0)));
+                        pausedWordPlayHitCursor = null;
                     } else {
-                        currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                        wordPlayHitCursor = hasManualSeek
+                            ? Math.max(0, Math.round(numberOrFallback(currentStep, 0)))
+                            : 0;
                     }
+                    currentStep = clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, Math.max(0, stepsCount - 1));
                     pausedStep = null;
-                } else if (loopEnabled) {
-                    if (!hasManualSeek || currentStep < loopStart || currentStep > loopEnd) {
-                        currentStep = loopStart;
-                    } else {
-                        currentStep = clampNumber(Math.round(numberOrFallback(currentStep, loopStart)), loopStart, loopEnd);
-                    }
                 } else {
-                    currentStep = hasManualSeek
-                        ? clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1)
-                        : 0;
+                    if (pausedStep != null) {
+                        if (loopEnabled) {
+                            currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, loopStart)), loopStart, loopEnd);
+                        } else {
+                            currentStep = clampNumber(Math.round(numberOrFallback(pausedStep, 0)), 0, stepsCount - 1);
+                        }
+                        pausedStep = null;
+                    } else if (loopEnabled) {
+                        if (!hasManualSeek || currentStep < loopStart || currentStep > loopEnd) {
+                            currentStep = loopStart;
+                        } else {
+                            currentStep = clampNumber(Math.round(numberOrFallback(currentStep, loopStart)), loopStart, loopEnd);
+                        }
+                    } else {
+                        currentStep = hasManualSeek
+                            ? clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1)
+                            : 0;
+                    }
                 }
 
                 hasManualSeek = false;
 
-                uiStep = clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1);
+                uiStep = (samplePadEnabled && wordPlayEnabled)
+                    ? Math.max(0, Math.round(numberOrFallback(wordPlayHitCursor, 0)))
+                    : clampNumber(Math.round(numberOrFallback(currentStep, 0)), 0, stepsCount - 1);
                 uiStepStartedAt = audio.currentTime;
                 nextNoteTime = audio.currentTime + 0.05;
                 scheduleTimer = window.setInterval(scheduler, lookaheadMs);
@@ -3323,6 +4288,8 @@
 
                 clampLoopRange();
                 currentStep = loopEnabled ? loopStart : 0;
+                wordPlayHitCursor = 0;
+                pausedWordPlayHitCursor = null;
                 hasManualSeek = false;
                 pausedStep = null;
                 uiStepStartedAt = null;
@@ -3340,6 +4307,11 @@
                 if (!target) return true;
                 if (target.closest && target.closest('.daw')) return false;
                 return true;
+            }
+
+            function isTypingTarget(target) {
+                if (!(target instanceof Element)) return false;
+                return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
             }
 
             let hasLazyLoadedDefault = false;
@@ -3478,22 +4450,225 @@
                     if (event.button != null && event.button !== 0) return;
                     if (tracks.size === 0) return;
 
-                    const rect = transportSeekBtn.getBoundingClientRect();
-                    const style = window.getComputedStyle ? window.getComputedStyle(transportSeekBtn) : null;
-                    const padL = clampNumber(numberOrFallback(style ? parseFloat(style.paddingLeft) : 0, 0), 0, rect.width);
-                    const padR = clampNumber(numberOrFallback(style ? parseFloat(style.paddingRight) : 0, 0), 0, rect.width);
-                    const seekWidth = Math.max(1, rect.width - padL - padR);
-                    const ratio = (event.clientX - rect.left - padL) / seekWidth;
-                    const clamped = clampNumber(ratio, 0, 1);
-                    const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+                    endTransportScrub();
 
-                    const requested = clampNumber(Math.floor(clamped * steps), 0, stepsCount - 1);
+                    const requested = getSeekStepFromClientX(event.clientX);
                     seekToStep(requested, { fromUser: true, viewStep: requested });
+                    if (!isPlaying) {
+                        previewStepAtTransport(requested);
+                    }
+
+                    const scrubStepMs = clampNumber((60 / tempo / 4) * 1000, 30, 320);
+
+                    const state = {
+                        pointerId: event.pointerId,
+                        lastStep: requested,
+                        holdRepeatTimer: null,
+                        onMove: null,
+                        onUp: null,
+                        onCancel: null,
+                    };
+
+                    state.onMove = (moveEvent) => {
+                        if (!transportScrubState) return;
+                        if (moveEvent.pointerId !== state.pointerId) return;
+                        const nextStep = getSeekStepFromClientX(moveEvent.clientX);
+                        if (nextStep === state.lastStep) return;
+
+                        const delta = nextStep - state.lastStep;
+                        const dir = delta > 0 ? 1 : -1;
+                        const span = Math.abs(delta);
+
+                        if (span <= 24) {
+                            for (let step = state.lastStep + dir; step !== nextStep + dir; step += dir) {
+                                seekToStep(step, { fromUser: true, viewStep: step });
+                                if (!isPlaying) {
+                                    previewStepAtTransport(step);
+                                }
+                            }
+                        } else {
+                            seekToStep(nextStep, { fromUser: true, viewStep: nextStep });
+                            if (!isPlaying) {
+                                previewStepAtTransport(nextStep);
+                            }
+                        }
+
+                        state.lastStep = nextStep;
+                    };
+
+                    state.onUp = (upEvent) => {
+                        if (!transportScrubState) return;
+                        if (upEvent.pointerId !== state.pointerId) return;
+                        endTransportScrub();
+                    };
+
+                    state.onCancel = (cancelEvent) => {
+                        if (!transportScrubState) return;
+                        if (cancelEvent.pointerId !== state.pointerId) return;
+                        endTransportScrub();
+                    };
+
+                    state.holdRepeatTimer = window.setInterval(() => {
+                        if (!transportScrubState) return;
+                        if (isPlaying) return;
+                        previewStepAtTransport(state.lastStep);
+                    }, scrubStepMs);
+
+                    transportScrubState = state;
+
+                    window.addEventListener('pointermove', state.onMove);
+                    window.addEventListener('pointerup', state.onUp);
+                    window.addEventListener('pointercancel', state.onCancel);
+                });
+            }
+
+            if (samplePadGrid) {
+                samplePadGrid.addEventListener('pointerdown', (event) => {
+                    if (event.button != null && event.button !== 0) return;
+                    const target = event.target instanceof Element ? event.target : null;
+                    if (!target) return;
+                    const padBtn = target.closest('button.samplePadBtn');
+                    if (!padBtn) return;
+
+                    event.preventDefault();
+                    const step = clampNumber(numberOrFallback(padBtn.dataset.step, 0), 0, Math.max(0, stepsCount - 1));
+
+                    if (samplePadEditEnabled) {
+                        stopSamplePadHold();
+                        setSamplePadSelectedStep(step);
+                        return;
+                    }
+
+                    triggerSamplePadStep(step);
+
+                    startSamplePadPreviewHold(event.pointerId, step);
+
+                    try {
+                        padBtn.setPointerCapture(event.pointerId);
+                    } catch {
+                        // ignore
+                    }
+                });
+
+                samplePadGrid.addEventListener('pointerup', (event) => {
+                    if (!samplePadHoldState) return;
+                    if (event.pointerId !== samplePadHoldState.pointerId) return;
+                    stopSamplePadHold();
+                });
+
+                samplePadGrid.addEventListener('pointercancel', (event) => {
+                    if (!samplePadHoldState) return;
+                    if (event.pointerId !== samplePadHoldState.pointerId) return;
+                    stopSamplePadHold();
+                });
+            }
+
+            window.addEventListener('pointerup', () => {
+                stopSamplePadHold();
+            });
+
+            window.addEventListener('pointercancel', () => {
+                stopSamplePadHold();
+            });
+
+            if (samplePadToggleBtn) {
+                samplePadToggleBtn.addEventListener('click', () => {
+                    setSamplePadEnabled(!samplePadEnabled);
+                });
+            }
+
+            if (samplePadEditBtn) {
+                samplePadEditBtn.addEventListener('click', () => {
+                    if (!samplePadEnabled) return;
+                    setSamplePadEditEnabled(!samplePadEditEnabled);
+                });
+            }
+
+            if (samplePadRatchetSelect) {
+                samplePadRatchetSelect.addEventListener('input', () => {
+                    if (samplePadSelectedStep == null) return;
+                    setSamplePadConfig(samplePadSelectedStep, { ratchet: samplePadRatchetSelect.value });
+                    syncSamplePadEditor();
+                });
+            }
+
+            if (samplePadTriggerInput) {
+                samplePadTriggerInput.addEventListener('input', () => {
+                    if (samplePadSelectedStep == null) return;
+                    const trigger = sanitizeSamplePadTrigger(samplePadTriggerInput.value);
+                    samplePadTriggerInput.value = trigger;
+                    setSamplePadConfig(samplePadSelectedStep, { trigger });
+                });
+            }
+
+            if (samplePadPreviewBtn) {
+                samplePadPreviewBtn.addEventListener('pointerdown', (event) => {
+                    if (event.button != null && event.button !== 0) return;
+                    if (samplePadSelectedStep == null) return;
+                    event.preventDefault();
+                    triggerSamplePadStep(samplePadSelectedStep);
+                    startSamplePadPreviewHold(event.pointerId, samplePadSelectedStep);
+                    try {
+                        samplePadPreviewBtn.setPointerCapture(event.pointerId);
+                    } catch {
+                        // ignore
+                    }
+                });
+
+                samplePadPreviewBtn.addEventListener('pointerup', (event) => {
+                    if (!samplePadHoldState) return;
+                    if (event.pointerId !== samplePadHoldState.pointerId) return;
+                    stopSamplePadHold();
+                });
+
+                samplePadPreviewBtn.addEventListener('pointercancel', (event) => {
+                    if (!samplePadHoldState) return;
+                    if (event.pointerId !== samplePadHoldState.pointerId) return;
+                    stopSamplePadHold();
+                });
+            }
+
+            if (wordPlayToggleBtn) {
+                wordPlayToggleBtn.addEventListener('click', () => {
+                    if (!samplePadEnabled) return;
+                    setWordPlayEnabled(!wordPlayEnabled);
+                });
+            }
+
+            if (wordPlayTextInput) {
+                wordPlayTextInput.addEventListener('input', () => {
+                    setWordPlayText(wordPlayTextInput.value);
+                });
+
+                wordPlayTextInput.addEventListener('scroll', () => {
+                    if (!wordPlayTextOverlay) return;
+                    wordPlayTextOverlay.scrollTop = wordPlayTextInput.scrollTop;
+                    wordPlayTextOverlay.scrollLeft = wordPlayTextInput.scrollLeft;
+                });
+            }
+
+            if (wordPlayTextBtn) {
+                wordPlayTextBtn.addEventListener('click', () => {
+                    setWordPlayEditModalOpen(!wordPlayEditModalOpen);
+                });
+            }
+
+            if (wordPlayTextModal) {
+                wordPlayTextModal.addEventListener('pointerdown', (event) => {
+                    if (event.target !== wordPlayTextModal) return;
+                    setWordPlayEditModalOpen(false);
+                });
+            }
+
+            if (wordPlayTextCloseBtn) {
+                wordPlayTextCloseBtn.addEventListener('click', () => {
+                    setWordPlayEditModalOpen(false);
                 });
             }
 
             if (transportSettingsBtn) {
                 transportSettingsBtn.addEventListener('click', () => {
+                    if (Date.now() < suppressSettingsToggleClickUntil) return;
                     setSettingsOpen(!settingsOpen);
                 });
             }
@@ -3501,18 +4676,29 @@
             if (settingsModal) {
                 settingsModal.addEventListener('pointerdown', (event) => {
                     if (event.target !== settingsModal) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    suppressSettingsToggleClickUntil = Date.now() + 420;
                     setSettingsOpen(false);
                 });
             }
 
             window.addEventListener('keydown', (event) => {
                 if (!event || event.key !== 'Escape') return;
+                if (wordPlayEditModalOpen) {
+                    setWordPlayEditModalOpen(false);
+                    return;
+                }
                 if (!settingsOpen) return;
                 setSettingsOpen(false);
             });
 
             window.addEventListener('resize', () => {
                 scheduleSettingsPanelLayout();
+                scheduleWordPlayTextPanelLayout();
+                scheduleSamplePadLayout();
+                syncFloatingBarGeometry();
+                syncFloatingScrollClearance();
             });
 
             function setThemeEnabled(nextEnabled) {
@@ -3579,6 +4765,55 @@
                 applyAutoExpandSpeedVars(autoExpandSpeed / 100);
             }
 
+            function setSamplePadEnabled(nextEnabled) {
+                samplePadEnabled = Boolean(nextEnabled);
+                if (!samplePadEnabled) {
+                    stopSamplePadHold();
+                    stopSamplePadKeyHolds();
+                    pressedAlphaKeys.clear();
+                    setSamplePadEditEnabled(false);
+                    setWordPlayEnabled(false);
+                    setWordPlayEditModalOpen(false);
+                }
+                if (samplePadToggleBtn) {
+                    samplePadToggleBtn.setAttribute('aria-pressed', samplePadEnabled ? 'true' : 'false');
+                    samplePadToggleBtn.title = samplePadEnabled ? 'sample pad: on' : 'sample pad: off';
+                }
+                if (wordPlayToggleBtn) {
+                    wordPlayToggleBtn.disabled = !samplePadEnabled;
+                }
+                syncWordPlayUiVisibility();
+                syncSamplePadToolbarVisibility();
+                syncSamplePadEditor();
+                rebuildTransportWordPlay();
+                renderSamplePadGrid();
+            }
+
+            function setWordPlayEnabled(nextEnabled) {
+                wordPlayEnabled = Boolean(samplePadEnabled && nextEnabled);
+                if (!wordPlayEnabled) {
+                    wordPlayHitCursor = 0;
+                    pausedWordPlayHitCursor = null;
+                    setWordPlayEditModalOpen(false);
+                }
+                if (wordPlayToggleBtn) {
+                    wordPlayToggleBtn.setAttribute('aria-pressed', wordPlayEnabled ? 'true' : 'false');
+                    wordPlayToggleBtn.title = wordPlayEnabled ? 'subtitles: on' : 'subtitles: off';
+                }
+                syncWordPlayUiVisibility();
+                rebuildTransportWordPlay();
+                renderWordPlayTextOverlay();
+            }
+
+            function setWordPlayText(nextText) {
+                wordPlayText = String(nextText || '');
+                if (wordPlayTextInput && wordPlayTextInput.value !== wordPlayText) {
+                    wordPlayTextInput.value = wordPlayText;
+                }
+                rebuildTransportWordPlay();
+                renderWordPlayTextOverlay();
+            }
+
             function setAutoExpandEnabled(nextEnabled) {
                 autoExpandEnabled = Boolean(nextEnabled);
                 document.documentElement.classList.toggle('is-auto-expand', autoExpandEnabled);
@@ -3607,9 +4842,15 @@
 
             setAutoExpandEnabled(autoExpandEnabled);
             setAutoExpandSpeed(autoExpandSpeed);
+            setSamplePadEnabled(samplePadEnabled);
+            setWordPlayText(wordPlayText);
+            setWordPlayEnabled(wordPlayEnabled);
             setAutoscrollEnabled(autoscrollEnabled);
             setSettingsOpen(false);
             setThemeEnabled(themeEnabled);
+            syncWordPlayUiVisibility();
+            syncFloatingBarGeometry();
+            syncFloatingScrollClearance();
 
             tempoInput.addEventListener('input', () => {
                 tempo = Number(tempoInput.value);
@@ -3618,11 +4859,25 @@
 
             tempoOut.addEventListener('input', () => {
                 if (tempoOut.value === '') return;
+                const draft = Number(tempoOut.value);
+                if (!Number.isFinite(draft)) return;
+                tempo = clampNumber(draft, 20, 360);
+                tempoInput.value = String(tempo);
+            });
+
+            function normalizeTempoOut() {
+                if (tempoOut.value === '') {
+                    tempoOut.value = String(tempo);
+                    return;
+                }
                 const next = clampNumber(numberOrFallback(tempoOut.value, tempo), 20, 360);
                 tempo = next;
                 tempoInput.value = String(next);
                 tempoOut.value = String(next);
-            });
+            }
+
+            tempoOut.addEventListener('change', normalizeTempoOut);
+            tempoOut.addEventListener('blur', normalizeTempoOut);
 
             globalSwingInput.addEventListener('input', () => {
                 globalSwing = clampNumber(numberOrFallback(globalSwingInput.value, 0), 0, 127);
@@ -3929,6 +5184,33 @@
             window.addEventListener('keydown', (event) => {
                 if (event.defaultPrevented) return;
                 if (event.metaKey || event.ctrlKey || event.altKey) return;
+                if (!samplePadEnabled || settingsOpen || isTypingTarget(event.target)) return;
+
+                const key = String(event.key || '');
+                if (!/^[a-z]$/i.test(key)) return;
+
+                pressedAlphaKeys.add(key.toLowerCase());
+                updateSamplePadKeyHolds();
+                if (samplePadKeyHoldStates.size > 0) event.preventDefault();
+            });
+
+            window.addEventListener('keyup', (event) => {
+                const key = String(event.key || '');
+                if (!/^[a-z]$/i.test(key)) return;
+                pressedAlphaKeys.delete(key.toLowerCase());
+                updateSamplePadKeyHolds();
+            });
+
+            window.addEventListener('blur', () => {
+                pressedAlphaKeys.clear();
+                stopSamplePadKeyHolds();
+            });
+
+            window.addEventListener('keydown', (event) => {
+                if (event.defaultPrevented) return;
+                if (event.metaKey || event.ctrlKey || event.altKey) return;
+                if (settingsOpen) return;
+                if (isTypingTarget(event.target)) return;
                 if (!isShortcutTarget(event.target)) return;
 
                 const { key } = event;
