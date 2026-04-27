@@ -11,7 +11,8 @@
 :root {
   --logo-size: clamp(3rem, 15vw, 8rem);
   --logo-y: 50vh;
-  --logo-gap: 2rem;
+  --logo-gap-above: 1.4rem;
+  --logo-gap-below: 1.4rem;
   --page-bg: #ffffff;
   --floatingClearanceTop: 0px;
   --floatingClearanceBottom: 0px;
@@ -299,7 +300,7 @@ html.is-theme .transportSeekBtn:focus-visible {
   position: relative;
   width: min(900px, calc(100% - 2rem));
   margin: 0 auto;
-  padding-top: calc(var(--logo-y) + (var(--logo-size) * 0.5) + var(--logo-gap) + var(--floatingClearanceTop));
+  padding-top: calc(var(--logo-y) + (var(--logo-size) * 0.5) + var(--logo-gap-below));
   padding-bottom: calc(1.5rem + var(--floatingClearanceBottom));
 }
 
@@ -312,7 +313,7 @@ html.is-theme .transportSeekBtn:focus-visible {
   --samplePadTopSpace: 4.35rem;
   position: absolute;
   left: 0;
-  top: calc(var(--logo-y) - (var(--logo-size) * 0.5) - 0.55rem);
+  top: calc(var(--logo-y) - (var(--logo-size) * 0.5) - var(--logo-gap-above));
   width: 100%;
   transform: translateY(-100%);
   padding-top: var(--samplePadTopSpace);
@@ -812,7 +813,7 @@ html.is-theme .switchToggle:focus-visible {
 
 .logo .letter:hover:not(.is-selected),
 .logo .letter:focus-visible:not(.is-selected) {
-  color: #000000;
+  color: var(--accent);
   text-shadow:
     -2px -2px 0 var(--accent),
     0 -2px 0 var(--accent),
@@ -1247,8 +1248,15 @@ html.is-theme .wordPlayTextPanel {
 }
 
 .wordPlayTextEditorWrap {
+  --wordPlayTextColor: #000000;
   position: relative;
   min-height: 7.25rem;
+  background: #ffffff;
+}
+
+html.is-theme .wordPlayTextEditorWrap {
+  --wordPlayTextColor: var(--accent, var(--t-fg, #ffffff));
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
 }
 
 .wordPlayTextInput {
@@ -1259,9 +1267,9 @@ html.is-theme .wordPlayTextPanel {
   resize: vertical;
   overflow: auto;
   background: transparent;
-  color: #000000;
+  color: var(--wordPlayTextColor);
   -webkit-text-fill-color: transparent;
-  caret-color: rgba(0, 0, 0, 0.92);
+  caret-color: var(--wordPlayTextColor);
   border: 1px solid rgba(0, 0, 0, 0.32);
   padding: 0.48rem 0.5rem;
   font: inherit;
@@ -1284,10 +1292,10 @@ html.is-theme .wordPlayTextPanel {
 
 html.is-theme .wordPlayTextInput {
   border-color: var(--t-18, rgba(255, 255, 255, 0.18));
-  background: var(--t-3, rgba(255, 255, 255, 0.03));
-  color: var(--t-fg, #ffffff);
+  background: transparent;
+  color: var(--wordPlayTextColor);
   -webkit-text-fill-color: transparent;
-  caret-color: var(--t-fg, #ffffff);
+  caret-color: var(--wordPlayTextColor);
 }
 
 html.is-theme .wordPlayTextInput:focus,
@@ -1309,19 +1317,11 @@ html.is-theme .wordPlayTextInput:focus-visible {
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
-  color: #000000;
-}
-
-html.is-theme .wordPlayTextOverlay {
-  color: var(--t-fg, #ffffff);
+  color: var(--wordPlayTextColor);
 }
 
 .wordPlayTextOverlay .wordPlayOverlayChar {
-  color: #000000 !important;
-}
-
-html.is-theme .wordPlayTextOverlay .wordPlayOverlayChar {
-  color: var(--t-fg, #ffffff) !important;
+  color: var(--wordPlayTextColor) !important;
 }
 
 .wordPlayTextPanel,
