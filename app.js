@@ -46,6 +46,7 @@
   const themeSwapBtn = document.getElementById("themeSwapBtn");
   const themeResetBtn = document.getElementById("themeResetBtn");
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
+  const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
   const bumpIntensityRow = document.getElementById("bumpIntensityRow");
   const bumpIntensityInput = document.getElementById("bumpIntensity");
   const bumpIntensityOut = document.getElementById("bumpIntensityOut");
@@ -221,6 +222,7 @@
 
   let settingsOpen = false;
   let suppressSettingsToggleClickUntil = 0;
+  let suppressThemeStarClickUntil = 0;
   let settingsLayoutRaf = null;
   let wordPlayLayoutRaf = null;
 
@@ -228,6 +230,7 @@
 
   let themeEnabled = false;
   let bumpEnabled = false;
+  let starBounceEnabled = false;
   let bumpIntensity = 50;
   let bumpBounce = 50;
 
@@ -917,6 +920,7 @@
         60,
       ),
       autoscrollEnabled: Boolean(autoscrollEnabled),
+      starBounceEnabled: Boolean(starBounceEnabled),
       themeEnabled: Boolean(themeEnabled),
       bumpEnabled: Boolean(bumpEnabled),
       bumpIntensity: clampNumber(
@@ -1071,6 +1075,10 @@
     const nextAutoscrollEnabled =
       typeof ui.autoscrollEnabled === "boolean" ? ui.autoscrollEnabled : true;
     setAutoscrollEnabled(nextAutoscrollEnabled);
+
+    const nextStarBounceEnabled =
+      typeof ui.starBounceEnabled === "boolean" ? ui.starBounceEnabled : false;
+    setStarBounceEnabled(nextStarBounceEnabled);
 
     const nextThemeA =
       typeof ui.themeA === "string" ? ui.themeA : DEFAULT_THEME_A;
@@ -1555,9 +1563,7 @@
   }
 
   function syncBumpModeClass() {
-    const customThemeActive =
-      themeEnabled && document.documentElement.classList.contains("is-theme-custom");
-    const letterBumpActive = customThemeActive && bumpEnabled;
+    const letterBumpActive = themeEnabled && bumpEnabled;
     const anyBumpEnabled = bumpEnabled;
 
     document.body.classList.toggle("is-bump", letterBumpActive);
@@ -1567,11 +1573,9 @@
       bumpToggleBtn.disabled = !themeEnabled;
       bumpToggleBtn.title = !themeEnabled
         ? "bump: requires theme"
-        : customThemeActive
-          ? bumpEnabled
-            ? "bump: on"
-            : "bump: off"
-          : "bump: requires custom theme colors";
+        : bumpEnabled
+          ? "bump: on"
+          : "bump: off";
     }
 
     if (bumpIntensityRow) {
@@ -4812,6 +4816,7 @@
   function toggleTrack(button) {
     const key = button.dataset.key;
     if (!key) return;
+    flashHit(button);
     if (tracks.has(key)) removeTrack(button);
     else addTrack(button);
   }
@@ -5286,6 +5291,7 @@
     updateTransportBar();
 
     updateTransportControls();
+    syncStarBounceClass();
   }
 
   async function play() {
@@ -5385,6 +5391,7 @@
 
     renderAllTrackGrids();
     updateTransportControls();
+    syncStarBounceClass();
   }
 
   function stop() {
@@ -5412,6 +5419,7 @@
     updateTransportBar();
 
     updateTransportControls();
+    syncStarBounceClass();
   }
 
   function isShortcutTarget(target) {
@@ -5462,7 +5470,19 @@
   }
 
   for (const button of letters) {
+    button.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse") return;
+      event.preventDefault();
+      button.dataset.skipClickOnce = "1";
+      if (maybeLazyLoadDefaultSong()) return;
+      toggleTrack(button);
+    });
+
     button.addEventListener("click", () => {
+      if (button.dataset.skipClickOnce === "1") {
+        button.dataset.skipClickOnce = "0";
+        return;
+      }
       if (maybeLazyLoadDefaultSong()) return;
       toggleTrack(button);
     });
@@ -5475,6 +5495,12 @@
   if (themeModeBtn) {
     themeModeBtn.addEventListener("click", () => {
       setThemeEnabled(!themeEnabled);
+    });
+  }
+
+  if (starBounceToggleBtn) {
+    starBounceToggleBtn.addEventListener("click", () => {
+      setStarBounceEnabled(!starBounceEnabled);
     });
   }
 
@@ -5519,6 +5545,7 @@
   if (themeStarBtn) {
     themeStarBtn.addEventListener("click", (event) => {
       event.preventDefault();
+      if (Date.now() < suppressThemeStarClickUntil) return;
       toggleThemePicker();
     });
   }
@@ -5526,6 +5553,7 @@
   if (themePicker) {
     themePicker.addEventListener("pointerdown", (event) => {
       if (event.target !== themePicker) return;
+      suppressThemeStarClickUntil = Date.now() + 360;
       closeThemePicker();
     });
   }
@@ -6077,6 +6105,33 @@
     renderAllTrackGrids();
   }
 
+  function syncStarBounceDuration() {
+    const dur = (120 / tempo).toFixed(3);
+    document.documentElement.style.setProperty("--star-bounce-dur", dur + "s");
+  }
+
+  function syncStarBounceClass() {
+    document.documentElement.classList.toggle(
+      "is-star-bouncing",
+      starBounceEnabled && isPlaying,
+    );
+  }
+
+  function setStarBounceEnabled(nextEnabled) {
+    starBounceEnabled = Boolean(nextEnabled);
+    if (starBounceToggleBtn) {
+      starBounceToggleBtn.setAttribute(
+        "aria-pressed",
+        starBounceEnabled ? "true" : "false",
+      );
+      starBounceToggleBtn.title = starBounceEnabled
+        ? "star bounce: on"
+        : "star bounce: off";
+    }
+    if (starBounceEnabled) syncStarBounceDuration();
+    syncStarBounceClass();
+  }
+
   function setBumpEnabled(nextEnabled) {
     bumpEnabled = Boolean(nextEnabled);
     if (bumpToggleBtn) {
@@ -6307,6 +6362,7 @@
   tempoInput.addEventListener("input", () => {
     tempo = Number(tempoInput.value);
     tempoOut.value = String(tempo);
+    if (starBounceEnabled) syncStarBounceDuration();
   });
 
   tempoOut.addEventListener("input", () => {
@@ -6326,6 +6382,7 @@
     tempo = next;
     tempoInput.value = String(next);
     tempoOut.value = String(next);
+    if (starBounceEnabled) syncStarBounceDuration();
   }
 
   tempoOut.addEventListener("change", normalizeTempoOut);
@@ -6730,4 +6787,13 @@
   updateRangeButtons();
 
   refreshPresetSelect();
+
+  if (themeStarBtn && starBounceEnabled === false) {
+    themeStarBtn.classList.add("is-star-bounce-intro");
+    themeStarBtn.addEventListener(
+      "animationend",
+      () => themeStarBtn.classList.remove("is-star-bounce-intro"),
+      { once: true },
+    );
+  }
 })();

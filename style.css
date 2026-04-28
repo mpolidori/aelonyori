@@ -14,6 +14,7 @@
   --logo-gap-above: 1.4rem;
   --logo-gap-below: 1.4rem;
   --page-bg: #ffffff;
+  --floatingBarBottom: 0.78rem;
   --floatingClearanceTop: 0px;
   --floatingClearanceBottom: 0px;
 
@@ -880,7 +881,7 @@ html.is-theme .samplePadModeToolbar {
   padding: 0;
   margin: 0;
   font: inherit;
-  font-size: 0.5em;
+  font-size: 0.35em;
   line-height: 1;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -888,8 +889,35 @@ html.is-theme .samplePadModeToolbar {
   cursor: pointer;
   position: absolute;
   left: 100%;
-  top: 50%;
+  top: 25%;
   transform: translate(0.25ch, -50%);
+  isolation: isolate;
+}
+
+@keyframes starBounce {
+  0%   { transform: translate(0.25ch, -50%); animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
+  50%  { transform: translate(0.25ch, calc(-50% + 1.5em)); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
+  100% { transform: translate(0.25ch, -50%); }
+}
+
+html.is-star-bouncing .logoStar {
+  animation: starBounce var(--star-bounce-dur, 1s) linear infinite;
+}
+
+.logoStar.is-star-bounce-intro {
+  animation: starBounce 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) 0.4s 1 forwards;
+}
+
+.logoStar::after {
+  content: '✶';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(90deg);
+  pointer-events: none;
+  z-index: 1;
 }
 
 html.is-theme .logoStar {
@@ -1359,7 +1387,7 @@ html.is-theme.is-theme-custom body.has-daw.is-bump-letters .logo .letter.is-hit:
   position: fixed;
   color: rgba(0, 0, 0, 0.86);
   left: 50%;
-  bottom: 0.85rem;
+  bottom: var(--floatingBarBottom);
   transform: translateX(-50%);
 
   width: calc(min(900px, calc(100vw - 2rem)) - 1.3rem);
@@ -1661,12 +1689,12 @@ html.is-theme .padPlaybackChip {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(0.85rem + 34px + 0.85rem);
+  bottom: calc(var(--floatingBarBottom) + 38px + 0.2rem);
 
   width: 320px;
   min-width: 250px;
   max-width: calc(100vw - 2rem);
-  max-height: calc(100vh - 1rem - (0.85rem + 34px + 0.85rem));
+  max-height: calc(100vh - 1rem - (var(--floatingBarBottom) + 38px + 0.2rem));
   overflow: auto;
 
   background: #ffffff;
@@ -2023,6 +2051,11 @@ html.is-theme .settingsDivider {
 
   .globalBarSecondary .globalSecondaryRight {
     flex: 1 1 auto;
+  }
+
+  .settingsPanel {
+    width: calc(min(900px, calc(100vw - 2rem)) - 1.3rem);
+    max-width: calc(min(900px, calc(100vw - 2rem)) - 1.3rem);
   }
 }
 
@@ -2738,8 +2771,8 @@ html.is-auto-expand .lockToggle {
 
 .autosaveStatus {
   position: fixed;
-  right: 1rem;
-  top: 0.9rem;
+  right: calc(0.7rem + env(safe-area-inset-right, 0px));
+  top: calc(0.5rem + env(safe-area-inset-top, 0px));
   z-index: 70;
   pointer-events: none;
   gap: 0.42rem;
