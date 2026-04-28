@@ -45,6 +45,7 @@
   const themeColorBInput = document.getElementById("themeColorB");
   const themeSwapBtn = document.getElementById("themeSwapBtn");
   const themeResetBtn = document.getElementById("themeResetBtn");
+  const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const autoExpandToggleBtn = document.getElementById("autoExpandToggleBtn");
   const autoExpandSpeedRow = document.getElementById("autoExpandSpeedRow");
   const autoExpandSpeedInput = document.getElementById("autoExpandSpeed");
@@ -218,6 +219,7 @@
   let autoscrollEnabled = true;
 
   let themeEnabled = false;
+  let bumpEnabled = false;
 
   const DEFAULT_THEME_A = "#000000";
   const DEFAULT_THEME_B = "#ffffff";
@@ -792,6 +794,7 @@
       wordPlayText,
       autoscrollEnabled: Boolean(autoscrollEnabled),
       themeEnabled: Boolean(themeEnabled),
+      bumpEnabled: Boolean(bumpEnabled),
       themeA,
       themeB,
       rangeFrom: range ? range.from : undefined,
@@ -936,6 +939,10 @@
           ? ui.darkMode
           : false;
     setThemeEnabled(nextThemeEnabled);
+
+    const nextBumpEnabled =
+      typeof ui.bumpEnabled === "boolean" ? ui.bumpEnabled : false;
+    setBumpEnabled(nextBumpEnabled);
 
     tempo = nextTempo;
     tempoInput.value = String(nextTempo);
@@ -1386,6 +1393,24 @@
     applyThemeVars();
     syncThemePickerInputs();
     applyLetterHitAccentPalette();
+    syncBumpModeClass();
+  }
+
+  function syncBumpModeClass() {
+    const customThemeActive =
+      themeEnabled && document.documentElement.classList.contains("is-theme-custom");
+    document.body.classList.toggle("is-bump", customThemeActive && bumpEnabled);
+
+    if (bumpToggleBtn) {
+      bumpToggleBtn.disabled = !themeEnabled;
+      bumpToggleBtn.title = !themeEnabled
+        ? "bump: requires theme"
+        : customThemeActive
+          ? bumpEnabled
+            ? "bump: on"
+            : "bump: off"
+          : "bump: requires custom theme colors";
+    }
   }
 
   function queueThemeColors(nextA, nextB, { immediate = false } = {}) {
@@ -5462,6 +5487,12 @@
     });
   }
 
+  if (bumpToggleBtn) {
+    bumpToggleBtn.addEventListener("click", () => {
+      setBumpEnabled(!bumpEnabled);
+    });
+  }
+
   if (autoscrollToggleBtn) {
     autoscrollToggleBtn.addEventListener("click", () => {
       setAutoscrollEnabled(!autoscrollEnabled);
@@ -6046,9 +6077,18 @@
     syncThemeControlsMount();
 
     applyLetterHitAccentPalette();
+    syncBumpModeClass();
 
     updateTransportBar();
     renderAllTrackGrids();
+  }
+
+  function setBumpEnabled(nextEnabled) {
+    bumpEnabled = Boolean(nextEnabled);
+    if (bumpToggleBtn) {
+      bumpToggleBtn.setAttribute("aria-pressed", bumpEnabled ? "true" : "false");
+    }
+    syncBumpModeClass();
   }
 
   function setAutoscrollEnabled(nextEnabled) {
@@ -6217,6 +6257,7 @@
   setWordPlayText(wordPlayText);
   setWordPlayEnabled(wordPlayEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
+  setBumpEnabled(bumpEnabled);
   setSettingsOpen(false);
   setThemeEnabled(themeEnabled);
   syncWordPlayUiVisibility();

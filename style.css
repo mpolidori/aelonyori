@@ -1074,7 +1074,7 @@ html.is-theme .switchToggle:focus-visible {
   background-position: 0 100%;
   background-size: 0% 2px;
 
-  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease;
+  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease, transform 0.16s ease;
 }
 
 .logo .letter::before {
@@ -1247,8 +1247,8 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
     2px 2px 0 var(--t-fg, #ffffff);
 }
 
-html.is-theme.is-theme-custom body.has-daw .logo .letter:hover,
-html.is-theme.is-theme-custom body.has-daw .logo .letter:focus-visible {
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:hover,
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:focus-visible {
   text-shadow:
     -1px -1px 0 var(--hit),
     0 -1px 0 var(--hit),
@@ -1260,11 +1260,15 @@ html.is-theme.is-theme-custom body.has-daw .logo .letter:focus-visible {
     1px 1px 0 var(--hit);
 }
 
-html.is-theme.is-theme-custom body.has-daw .logo .letter:hover::before,
-html.is-theme.is-theme-custom body.has-daw .logo .letter:focus-visible::before {
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:hover::before,
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:focus-visible::before {
   color: var(--hit);
   opacity: 1;
   transform: translate(3px, 3px);
+}
+
+html.is-theme.is-theme-custom body.has-daw.is-bump .logo .letter.is-hit {
+  transform: translate(-3px, -3px);
 }
 
 .logo .letter.is-muted {
@@ -2252,7 +2256,7 @@ html.is-theme .settingsDivider {
   flex-direction: column;
   gap: 0.55rem;
 
-  transition: border-color 0.14s ease, gap 0.18s ease, padding-bottom 0.18s ease;
+  transition: border-color 0.14s ease, gap 0.18s ease, padding-bottom 0.18s ease, transform 0.16s ease;
 }
 
 .track::before {
@@ -2272,6 +2276,10 @@ html.is-theme .settingsDivider {
 
 .track.is-hit {
   border-color: var(--accent);
+}
+
+html.is-theme.is-theme-custom body.has-daw.is-bump .track.is-hit {
+  transform: translate(-4px, -4px);
 }
 
 .track.is-dragging {
