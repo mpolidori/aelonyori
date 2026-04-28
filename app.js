@@ -1,4 +1,16 @@
 (() => {
+  const userAgent = String(navigator.userAgent || "");
+  const isAndroidChrome =
+    /Android/i.test(userAgent) &&
+    /Chrome\//i.test(userAgent) &&
+    !/EdgA\//i.test(userAgent) &&
+    !/OPR\//i.test(userAgent) &&
+    !/SamsungBrowser\//i.test(userAgent);
+  document.documentElement.classList.toggle(
+    "is-android-chrome",
+    isAndroidChrome,
+  );
+
   const letters = Array.from(document.querySelectorAll(".logo .letter"));
   const daw = document.getElementById("daw");
   const tracksContainer = document.getElementById("tracks");
@@ -775,7 +787,10 @@
     }, 3000);
   }
 
-  function saveCurrentSongPreset({ statusLabel = "saved", showPresetStatus = true } = {}) {
+  function saveCurrentSongPreset({
+    statusLabel = "saved",
+    showPresetStatus = true,
+  } = {}) {
     if (showPresetStatus) {
       setPresetStatus("", { busy: true });
     }
@@ -1051,9 +1066,7 @@
     );
     setSamplePadTransportMode(nextSamplePadTransportMode);
 
-    const nextWordPlayEnabled = Boolean(
-      ui.wordPlayEnabled,
-    );
+    const nextWordPlayEnabled = Boolean(ui.wordPlayEnabled);
     const nextWordPlaySpeed = clampNumber(
       Math.round(numberOrFallback(ui.wordPlaySpeed, wordPlaySpeed)),
       20,
@@ -1745,7 +1758,7 @@
     const barRect = transportBar.getBoundingClientRect();
     const gap = Math.max(0, window.innerHeight - barRect.bottom);
 
-    const width = Math.max(0, Math.floor(barRect.width * 0.5));
+    const width = Math.max(0, Math.floor(barRect.width));
     settingsPanel.style.width = `${width}px`;
 
     const bottom = Math.round(barRect.height + gap * 2);
@@ -2557,10 +2570,9 @@
 
       for (let col = 0; col < cols; col += 1) {
         for (let row = 0; row < rows; row += 1) {
-          const cell =
-            Array.isArray(samplePadRollPattern[row])
-              ? samplePadRollPattern[row][col]
-              : null;
+          const cell = Array.isArray(samplePadRollPattern[row])
+            ? samplePadRollPattern[row][col]
+            : null;
           if (!cell || !cell.on) continue;
           chunks.push({
             label: `pad ${row + 1}`,
@@ -2614,8 +2626,7 @@
   }
 
   function shouldRunWordPlaySubtitleCycle() {
-    if (!(wordPlayEnabled && isPlaying && tracks.size > 0))
-      return false;
+    if (!(wordPlayEnabled && isPlaying && tracks.size > 0)) return false;
     const model = getWordPlayModel();
     return model.chunks.length > 0;
   }
@@ -2654,7 +2665,8 @@
 
     const usedLongLastTime = Number(wordPlaySubtitleLastTake) >= 10;
     const allowLong =
-      longChoices.length > 0 && Math.random() < (usedLongLastTime ? 0.12 : 0.28);
+      longChoices.length > 0 &&
+      Math.random() < (usedLongLastTime ? 0.12 : 0.28);
 
     let pool = allowLong ? longChoices : shortChoices;
     if (!pool.length) {
@@ -2685,22 +2697,28 @@
     const speedFactor = clampNumber(100 / speed, 0.5, 5);
 
     return {
-      leadDelayMs: randomBetween(
-        clampNumber(beatMs * 0.6, 240, 700),
-        clampNumber(beatMs * 1.2, 420, 1100),
-      ) * speedFactor,
-      holdDelayMs: randomBetween(
-        clampNumber(beatMs * 2.8, 1400, 2800),
-        clampNumber(beatMs * 4.6, 2000, 3800),
-      ) * speedFactor,
-      gapDelayMs: randomBetween(
-        clampNumber(beatMs * 0.35, 150, 300),
-        clampNumber(beatMs * 0.8, 260, 600),
-      ) * speedFactor,
+      leadDelayMs:
+        randomBetween(
+          clampNumber(beatMs * 0.6, 240, 700),
+          clampNumber(beatMs * 1.2, 420, 1100),
+        ) * speedFactor,
+      holdDelayMs:
+        randomBetween(
+          clampNumber(beatMs * 2.8, 1400, 2800),
+          clampNumber(beatMs * 4.6, 2000, 3800),
+        ) * speedFactor,
+      gapDelayMs:
+        randomBetween(
+          clampNumber(beatMs * 0.35, 150, 300),
+          clampNumber(beatMs * 0.8, 260, 600),
+        ) * speedFactor,
     };
   }
 
-  function sampleWordPlaySubtitleText(advanceChunks = 0, { allowMusic = true } = {}) {
+  function sampleWordPlaySubtitleText(
+    advanceChunks = 0,
+    { allowMusic = true } = {},
+  ) {
     const model = getWordPlayModel();
     const chunks = model.chunks;
     if (!chunks.length) return "";
@@ -2721,10 +2739,11 @@
       if (!chunk || !chunk.label) continue;
       labels.push(String(chunk.label));
     }
-    const text = labels.join(" / ");
+    const text = labels.join(" ");
 
     const shouldUseMusic =
-      allowMusic && wordPlaySubtitleEntriesSinceMusic >= wordPlaySubtitleNextMusicAfter;
+      allowMusic &&
+      wordPlaySubtitleEntriesSinceMusic >= wordPlaySubtitleNextMusicAfter;
     if (shouldUseMusic) {
       wordPlaySubtitleEntriesSinceMusic = 0;
       wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
@@ -2749,7 +2768,8 @@
 
     setSubtitleLines("", first);
 
-    const { leadDelayMs, holdDelayMs, gapDelayMs } = getWordPlaySubtitleTiming();
+    const { leadDelayMs, holdDelayMs, gapDelayMs } =
+      getWordPlaySubtitleTiming();
     wordPlaySubtitleTimerId = window.setTimeout(() => {
       wordPlaySubtitleTimerId = null;
       if (!shouldRunWordPlaySubtitleCycle()) {
@@ -5717,12 +5737,19 @@
       event.preventDefault();
     });
 
+    samplePadGrid.addEventListener("selectstart", (event) => {
+      event.preventDefault();
+    });
+
     samplePadGrid.addEventListener("pointerdown", (event) => {
       if (event.button != null && event.button !== 0) return;
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
       const padBtn = target.closest("button.samplePadBtn");
       if (!padBtn) return;
+
+      const pointerType = String(event.pointerType || "").toLowerCase();
+      const isTouchPointer = pointerType === "touch";
 
       event.preventDefault();
       const step = clampNumber(
@@ -5739,12 +5766,18 @@
 
       triggerSamplePadStep(step);
 
+      if (isTouchPointer) {
+        // On Android, clear stale touch hold timers before starting a fresh hold.
+        stopSamplePadHold();
+      }
       startSamplePadPreviewHold(event.pointerId, step);
 
-      try {
-        padBtn.setPointerCapture(event.pointerId);
-      } catch {
-        // ignore
+      if (!isTouchPointer) {
+        try {
+          padBtn.setPointerCapture(event.pointerId);
+        } catch {
+          // ignore
+        }
       }
     });
 
@@ -5990,13 +6023,20 @@
     samplePadPreviewBtn.addEventListener("pointerdown", (event) => {
       if (event.button != null && event.button !== 0) return;
       if (samplePadSelectedStep == null) return;
+      const pointerType = String(event.pointerType || "").toLowerCase();
+      const isTouchPointer = pointerType === "touch";
       event.preventDefault();
       triggerSamplePadStep(samplePadSelectedStep);
+      if (isTouchPointer) {
+        stopSamplePadHold();
+      }
       startSamplePadPreviewHold(event.pointerId, samplePadSelectedStep);
-      try {
-        samplePadPreviewBtn.setPointerCapture(event.pointerId);
-      } catch {
-        // ignore
+      if (!isTouchPointer) {
+        try {
+          samplePadPreviewBtn.setPointerCapture(event.pointerId);
+        } catch {
+          // ignore
+        }
       }
     });
 
@@ -6113,7 +6153,7 @@
   function syncStarBounceClass() {
     document.documentElement.classList.toggle(
       "is-star-bouncing",
-      starBounceEnabled && isPlaying,
+      themeEnabled && starBounceEnabled && isPlaying,
     );
   }
 
@@ -6135,7 +6175,10 @@
   function setBumpEnabled(nextEnabled) {
     bumpEnabled = Boolean(nextEnabled);
     if (bumpToggleBtn) {
-      bumpToggleBtn.setAttribute("aria-pressed", bumpEnabled ? "true" : "false");
+      bumpToggleBtn.setAttribute(
+        "aria-pressed",
+        bumpEnabled ? "true" : "false",
+      );
     }
     syncBumpModeClass();
   }
