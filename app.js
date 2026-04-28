@@ -46,16 +46,21 @@
   const themeSwapBtn = document.getElementById("themeSwapBtn");
   const themeResetBtn = document.getElementById("themeResetBtn");
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
+  const bumpIntensityRow = document.getElementById("bumpIntensityRow");
+  const bumpIntensityInput = document.getElementById("bumpIntensity");
+  const bumpIntensityOut = document.getElementById("bumpIntensityOut");
+  const bumpBounceRow = document.getElementById("bumpBounceRow");
+  const bumpBounceInput = document.getElementById("bumpBounce");
+  const bumpBounceOut = document.getElementById("bumpBounceOut");
   const autoExpandToggleBtn = document.getElementById("autoExpandToggleBtn");
   const autoExpandSpeedRow = document.getElementById("autoExpandSpeedRow");
   const autoExpandSpeedInput = document.getElementById("autoExpandSpeed");
   const autoExpandSpeedOut = document.getElementById("autoExpandSpeedOut");
   const samplePadToggleBtn = document.getElementById("samplePadToggleBtn");
   const wordPlayToggleBtn = document.getElementById("wordPlayToggleBtn");
-  const wordPlayTextBtn = document.getElementById("wordPlayTextBtn");
-  const wordPlayTextInput = document.getElementById("wordPlayTextInput");
-  const wordPlayTextOverlay = document.getElementById("wordPlayTextOverlay");
-  const wordPlayTextCloseBtn = document.getElementById("wordPlayTextCloseBtn");
+  const wordPlaySpeedRow = document.getElementById("wordPlaySpeedRow");
+  const wordPlaySpeedInput = document.getElementById("wordPlaySpeed");
+  const wordPlaySpeedOut = document.getElementById("wordPlaySpeedOut");
   const wordPlaySubtitleStack = document.getElementById(
     "wordPlaySubtitleStack",
   );
@@ -65,7 +70,6 @@
   const wordPlaySubtitleUpper = document.getElementById(
     "wordPlaySubtitleUpper",
   );
-  const wordPlayTextModal = document.getElementById("wordPlayTextModal");
   const autoscrollToggleBtn = document.getElementById("autoscrollToggleBtn");
 
   const tempoInput = document.getElementById("tempo");
@@ -96,11 +100,14 @@
   const presetSelect = document.getElementById("presetSelect");
   const presetNameInput = document.getElementById("presetName");
   const presetStatus = document.getElementById("presetStatus");
+  const autosaveToggleBtn = document.getElementById("autosaveToggleBtn");
+  const autosaveIntervalSelect = document.getElementById("autosaveInterval");
   const presetSaveBtn = document.getElementById("presetSaveBtn");
   const presetLoadBtn = document.getElementById("presetLoadBtn");
   const presetDefaultBtn = document.getElementById("presetDefaultBtn");
   const presetExportBtn = document.getElementById("presetExportBtn");
   const presetImportBtn = document.getElementById("presetImportBtn");
+  const autosaveStatus = document.getElementById("autosaveStatus");
   const songIo = document.getElementById("songIo");
   const songJson = document.getElementById("songJson");
   const songJsonHighlight = document.getElementById("songJsonHighlight");
@@ -208,18 +215,21 @@
   let padRollWasLongPress = false;
   let samplePadLayoutRaf = null;
   let wordPlayEnabled = false;
-  let wordPlayText = "";
+  let wordPlaySpeed = 100;
+  let autosaveEnabled = false;
+  let autosaveIntervalMinutes = 5;
 
   let settingsOpen = false;
-  let wordPlayEditModalOpen = false;
   let suppressSettingsToggleClickUntil = 0;
   let settingsLayoutRaf = null;
-  let wordPlayTextLayoutRaf = null;
+  let wordPlayLayoutRaf = null;
 
   let autoscrollEnabled = true;
 
   let themeEnabled = false;
   let bumpEnabled = false;
+  let bumpIntensity = 50;
+  let bumpBounce = 50;
 
   const DEFAULT_THEME_A = "#000000";
   const DEFAULT_THEME_B = "#ffffff";
@@ -239,8 +249,8 @@
   let wordPlaySubtitleEntriesSinceMusic = 0;
   let wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
   let wordPlaySubtitleLastTake = null;
-  let wordPlayHitCursor = 0;
-  let pausedWordPlayHitCursor = null;
+  let autosaveTimerId = null;
+  let autosaveStatusTimer = null;
   const samplePadHoldStates = new Map();
   let themeColorThrottleTimerId = null;
   let queuedThemeColorA = null;
@@ -720,6 +730,110 @@
     }, remaining);
   }
 
+  function normalizeAutosaveInterval(value) {
+    const allowed = [1, 5, 10, 15, 30, 60];
+    const next = Math.round(numberOrFallback(value, autosaveIntervalMinutes));
+    if (allowed.includes(next)) return next;
+    let best = allowed[0];
+    let bestDist = Math.abs(next - best);
+    for (let i = 1; i < allowed.length; i += 1) {
+      const dist = Math.abs(next - allowed[i]);
+      if (dist < bestDist) {
+        best = allowed[i];
+        bestDist = dist;
+      }
+    }
+    return best;
+  }
+
+  function clearAutosaveTimer() {
+    if (autosaveTimerId == null) return;
+    window.clearInterval(autosaveTimerId);
+    autosaveTimerId = null;
+  }
+
+  function showAutosaveStatus(message, { ok = true } = {}) {
+    if (!autosaveStatus) return;
+    if (autosaveStatusTimer) {
+      window.clearTimeout(autosaveStatusTimer);
+      autosaveStatusTimer = null;
+    }
+
+    autosaveStatus.hidden = false;
+    autosaveStatus.textContent = String(message || "saving");
+    autosaveStatus.classList.add("is-busy");
+    autosaveStatus.classList.toggle("is-ok", Boolean(ok));
+    autosaveStatus.classList.toggle("is-error", !ok);
+
+    autosaveStatusTimer = window.setTimeout(() => {
+      autosaveStatus.classList.remove("is-busy", "is-ok", "is-error");
+      autosaveStatus.hidden = true;
+      autosaveStatusTimer = null;
+    }, 3000);
+  }
+
+  function saveCurrentSongPreset({ statusLabel = "saved", showPresetStatus = true } = {}) {
+    if (showPresetStatus) {
+      setPresetStatus("", { busy: true });
+    }
+
+    const song = getSongObject();
+    const requestedName = String(presetNameInput.value || "").trim();
+    const selectedName = String(presetSelect.value || "").trim();
+    const name = requestedName || selectedName || makeUniquePresetName("song");
+
+    const ok = savePreset(name, song);
+    if (!ok) {
+      if (showPresetStatus) setPresetStatus("save failed", { ok: false });
+      return false;
+    }
+
+    presetNameInput.value = name;
+    refreshPresetSelect();
+    presetSelect.value = name;
+    if (showPresetStatus) setPresetStatus(statusLabel);
+    return true;
+  }
+
+  function runAutosave() {
+    if (!autosaveEnabled) return;
+    showAutosaveStatus("saving");
+    const ok = saveCurrentSongPreset({ showPresetStatus: false });
+    if (!ok) showAutosaveStatus("autosave failed", { ok: false });
+  }
+
+  function syncAutosaveTimer() {
+    clearAutosaveTimer();
+    if (!autosaveEnabled) return;
+    const minutes = normalizeAutosaveInterval(autosaveIntervalMinutes);
+    autosaveTimerId = window.setInterval(runAutosave, minutes * 60 * 1000);
+  }
+
+  function setAutosaveInterval(nextIntervalMinutes) {
+    autosaveIntervalMinutes = normalizeAutosaveInterval(nextIntervalMinutes);
+    if (autosaveIntervalSelect) {
+      autosaveIntervalSelect.value = String(autosaveIntervalMinutes);
+    }
+    syncAutosaveTimer();
+  }
+
+  function setAutosaveEnabled(nextEnabled) {
+    autosaveEnabled = Boolean(nextEnabled);
+    if (autosaveToggleBtn) {
+      autosaveToggleBtn.setAttribute(
+        "aria-pressed",
+        autosaveEnabled ? "true" : "false",
+      );
+      autosaveToggleBtn.title = autosaveEnabled
+        ? "autosave: on"
+        : "autosave: off";
+    }
+    if (autosaveIntervalSelect) {
+      autosaveIntervalSelect.disabled = !autosaveEnabled;
+    }
+    syncAutosaveTimer();
+  }
+
   function clearAllTracks() {
     for (const track of tracks.values()) {
       track.el.remove();
@@ -790,11 +904,31 @@
         MAX_STEPS,
       ),
       samplePadRollPattern,
-      wordPlayEnabled: Boolean(samplePadEnabled && wordPlayEnabled),
-      wordPlayText,
+      wordPlayEnabled: Boolean(wordPlayEnabled),
+      wordPlaySpeed: clampNumber(
+        Math.round(numberOrFallback(wordPlaySpeed, 100)),
+        20,
+        200,
+      ),
+      autosaveEnabled: Boolean(autosaveEnabled),
+      autosaveIntervalMinutes: clampNumber(
+        Math.round(numberOrFallback(autosaveIntervalMinutes, 5)),
+        1,
+        60,
+      ),
       autoscrollEnabled: Boolean(autoscrollEnabled),
       themeEnabled: Boolean(themeEnabled),
       bumpEnabled: Boolean(bumpEnabled),
+      bumpIntensity: clampNumber(
+        Math.round(numberOrFallback(bumpIntensity, 50)),
+        0,
+        100,
+      ),
+      bumpBounce: clampNumber(
+        Math.round(numberOrFallback(bumpBounce, 50)),
+        0,
+        100,
+      ),
       themeA,
       themeB,
       rangeFrom: range ? range.from : undefined,
@@ -913,14 +1047,26 @@
     );
     setSamplePadTransportMode(nextSamplePadTransportMode);
 
-    const nextWordPlayText =
-      typeof ui.wordPlayText === "string" ? ui.wordPlayText : "";
-    setWordPlayText(nextWordPlayText);
-
     const nextWordPlayEnabled = Boolean(
-      nextSamplePadEnabled && ui.wordPlayEnabled,
+      ui.wordPlayEnabled,
     );
+    const nextWordPlaySpeed = clampNumber(
+      Math.round(numberOrFallback(ui.wordPlaySpeed, wordPlaySpeed)),
+      20,
+      200,
+    );
+    const nextAutosaveEnabled = Boolean(ui.autosaveEnabled);
+    const nextAutosaveInterval = clampNumber(
+      Math.round(
+        numberOrFallback(ui.autosaveIntervalMinutes, autosaveIntervalMinutes),
+      ),
+      1,
+      60,
+    );
+    setWordPlaySpeed(nextWordPlaySpeed);
     setWordPlayEnabled(nextWordPlayEnabled);
+    setAutosaveInterval(nextAutosaveInterval);
+    setAutosaveEnabled(nextAutosaveEnabled);
 
     const nextAutoscrollEnabled =
       typeof ui.autoscrollEnabled === "boolean" ? ui.autoscrollEnabled : true;
@@ -942,6 +1088,18 @@
 
     const nextBumpEnabled =
       typeof ui.bumpEnabled === "boolean" ? ui.bumpEnabled : false;
+    const nextBumpIntensity = clampNumber(
+      Math.round(numberOrFallback(ui.bumpIntensity, bumpIntensity)),
+      0,
+      100,
+    );
+    const nextBumpBounce = clampNumber(
+      Math.round(numberOrFallback(ui.bumpBounce, bumpBounce)),
+      0,
+      100,
+    );
+    setBumpBounce(nextBumpBounce);
+    setBumpIntensity(nextBumpIntensity);
     setBumpEnabled(nextBumpEnabled);
 
     tempo = nextTempo;
@@ -1399,7 +1557,11 @@
   function syncBumpModeClass() {
     const customThemeActive =
       themeEnabled && document.documentElement.classList.contains("is-theme-custom");
-    document.body.classList.toggle("is-bump", customThemeActive && bumpEnabled);
+    const letterBumpActive = customThemeActive && bumpEnabled;
+    const anyBumpEnabled = bumpEnabled;
+
+    document.body.classList.toggle("is-bump", letterBumpActive);
+    document.body.classList.toggle("is-bump-letters", letterBumpActive);
 
     if (bumpToggleBtn) {
       bumpToggleBtn.disabled = !themeEnabled;
@@ -1411,6 +1573,34 @@
             : "bump: off"
           : "bump: requires custom theme colors";
     }
+
+    if (bumpIntensityRow) {
+      bumpIntensityRow.hidden = !anyBumpEnabled;
+    }
+    if (bumpBounceRow) {
+      bumpBounceRow.hidden = !anyBumpEnabled;
+    }
+
+    if (bumpIntensityInput) {
+      bumpIntensityInput.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+    if (bumpIntensityOut) {
+      bumpIntensityOut.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+    if (bumpBounceInput) {
+      bumpBounceInput.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+    if (bumpBounceOut) {
+      bumpBounceOut.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+  }
+
+  function getBumpHitDurations() {
+    const intensity = clampNumber(numberOrFallback(bumpIntensity, 50), 0, 100);
+    const softRatio = 1 - intensity / 100;
+    return {
+      letter: Math.round(90 + softRatio * 180),
+    };
   }
 
   function queueThemeColors(nextA, nextB, { immediate = false } = {}) {
@@ -1501,25 +1691,34 @@
 
   applyLetterHitAccentPalette();
 
-  function flashHit(button, durationMs = 90) {
+  function flashHit(button, durationMs = null) {
+    if (!button) return;
+    const useDuration = Number.isFinite(durationMs)
+      ? Math.max(0, durationMs)
+      : document.body.classList.contains("is-bump-letters")
+        ? getBumpHitDurations().letter
+        : 90;
     button.classList.add("is-hit");
     const existing = hitTimeouts.get(button);
     if (existing) window.clearTimeout(existing);
     const timeout = window.setTimeout(
       () => button.classList.remove("is-hit"),
-      durationMs,
+      useDuration,
     );
     hitTimeouts.set(button, timeout);
   }
 
-  function flashTrack(trackEl, durationMs = 110) {
+  function flashTrack(trackEl, durationMs = null) {
     if (!trackEl) return;
+    const useDuration = Number.isFinite(durationMs)
+      ? Math.max(0, durationMs)
+      : 110;
     trackEl.classList.add("is-hit");
     const existing = trackHitTimeouts.get(trackEl);
     if (existing) window.clearTimeout(existing);
     const timeout = window.setTimeout(
       () => trackEl.classList.remove("is-hit"),
-      durationMs,
+      useDuration,
     );
     trackHitTimeouts.set(trackEl, timeout);
   }
@@ -1553,45 +1752,8 @@
     settingsPanel.style.maxHeight = `${available}px`;
   }
 
-  function positionWordPlayTextPanel() {
-    if (!wordPlayTextModal) return;
-
-    const settingsRect =
-      settingsOpen && settingsPanel
-        ? settingsPanel.getBoundingClientRect()
-        : null;
+  function positionWordPlaySubtitleStack() {
     const barRect = transportBar ? transportBar.getBoundingClientRect() : null;
-
-    if (settingsRect && settingsRect.width > 0) {
-      const top = Math.max(8, Math.round(settingsRect.top));
-      const maxHeight = Math.max(
-        160,
-        Math.round(window.innerHeight - top - 12),
-      );
-      wordPlayTextModal.style.setProperty("--wordPlayEditTop", `${top}px`);
-      wordPlayTextModal.style.setProperty(
-        "--wordPlayEditMaxHeight",
-        `${maxHeight}px`,
-      );
-      wordPlayTextModal.style.setProperty(
-        "--wordPlayEditWidth",
-        `${Math.max(280, Math.floor(settingsRect.width))}px`,
-      );
-    } else if (barRect) {
-      const top = 12;
-      const width = Math.max(280, Math.floor(barRect.width * 0.5));
-      const maxHeight = Math.max(
-        160,
-        Math.round(window.innerHeight - top - 12),
-      );
-      wordPlayTextModal.style.setProperty("--wordPlayEditTop", `${top}px`);
-      wordPlayTextModal.style.setProperty(
-        "--wordPlayEditMaxHeight",
-        `${maxHeight}px`,
-      );
-      wordPlayTextModal.style.setProperty("--wordPlayEditWidth", `${width}px`);
-    }
-
     if (barRect && wordPlaySubtitleStack) {
       wordPlaySubtitleStack.style.left = `${barRect.left.toFixed(3)}px`;
       wordPlaySubtitleStack.style.width = `${barRect.width.toFixed(3)}px`;
@@ -1608,16 +1770,12 @@
     });
   }
 
-  function scheduleWordPlayTextPanelLayout() {
-    if (wordPlayTextLayoutRaf != null) return;
-    wordPlayTextLayoutRaf = window.requestAnimationFrame(() => {
-      wordPlayTextLayoutRaf = null;
-      if (
-        !wordPlayEditModalOpen &&
-        (!wordPlaySubtitleStack || wordPlaySubtitleStack.hidden)
-      )
-        return;
-      positionWordPlayTextPanel();
+  function scheduleWordPlaySubtitleLayout() {
+    if (wordPlayLayoutRaf != null) return;
+    wordPlayLayoutRaf = window.requestAnimationFrame(() => {
+      wordPlayLayoutRaf = null;
+      if (!wordPlaySubtitleStack || wordPlaySubtitleStack.hidden) return;
+      positionWordPlaySubtitleStack();
     });
   }
 
@@ -1736,21 +1894,11 @@
   }
 
   function syncWordPlayUiVisibility() {
-    const canShowFloating = samplePadEnabled && tracks.size > 0;
-    if (wordPlayTextBtn) {
-      wordPlayTextBtn.hidden = !canShowFloating;
-      wordPlayTextBtn.disabled = !canShowFloating;
-      wordPlayTextBtn.setAttribute(
-        "aria-pressed",
-        canShowFloating && wordPlayEditModalOpen ? "true" : "false",
-      );
-    }
-
     const showSubtitles = shouldRunWordPlaySubtitleCycle();
     if (wordPlaySubtitleStack) {
       wordPlaySubtitleStack.hidden = !showSubtitles;
       if (showSubtitles) {
-        positionWordPlayTextPanel();
+        positionWordPlaySubtitleStack();
       }
     }
 
@@ -1763,20 +1911,6 @@
     syncFloatingScrollClearance();
   }
 
-  function setWordPlayEditModalOpen(nextOpen) {
-    const open = Boolean(nextOpen) && samplePadEnabled && tracks.size > 0;
-    wordPlayEditModalOpen = open;
-    if (wordPlayTextModal) wordPlayTextModal.hidden = !open;
-    if (open) {
-      positionWordPlayTextPanel();
-      if (wordPlayTextInput && typeof wordPlayTextInput.focus === "function") {
-        wordPlayTextInput.focus({ preventScroll: true });
-      }
-    }
-    renderWordPlayTextOverlay();
-    syncWordPlayUiVisibility();
-  }
-
   function setSettingsOpen(nextOpen) {
     const hasTracks = tracks.size > 0;
     const open = Boolean(nextOpen) && hasTracks;
@@ -1785,9 +1919,6 @@
     if (open) {
       stopSamplePadKeyHolds();
       pressedAlphaKeys.clear();
-    }
-    if (!open) {
-      setWordPlayEditModalOpen(false);
     }
 
     if (settingsModal) {
@@ -1830,38 +1961,6 @@
     updateTransportControls();
   }
 
-  function renderWordPlayTextOverlay() {
-    if (!wordPlayTextOverlay) return;
-
-    const raw = String(wordPlayText || "");
-    wordPlayTextOverlay.innerHTML = "";
-    wordPlayTextOverlay.classList.toggle("is-empty", raw.length === 0);
-    if (raw.length === 0) return;
-
-    const model = getWordPlayModel();
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < raw.length; i += 1) {
-      const ch = raw[i];
-      const span = document.createElement("span");
-      span.className = "wordPlayOverlayChar";
-      span.textContent = ch;
-
-      const chunkIndex = model.charChunkMap.get(i);
-      if (typeof chunkIndex === "number") {
-        const chunk = model.chunks[chunkIndex];
-        if (chunk && !chunk.valid) span.classList.add("is-invalid");
-      }
-
-      frag.appendChild(span);
-    }
-
-    wordPlayTextOverlay.appendChild(frag);
-    if (wordPlayTextInput) {
-      wordPlayTextOverlay.scrollTop = wordPlayTextInput.scrollTop;
-      wordPlayTextOverlay.scrollLeft = wordPlayTextInput.scrollLeft;
-    }
-  }
-
   function formatPercent01(value01) {
     const clamped = clampNumber(numberOrFallback(value01, 0), 0, 1);
     return `${(clamped * 100).toFixed(4)}%`;
@@ -1896,7 +1995,7 @@
       }
     }
 
-    if (samplePadEnabled && (wordPlayEnabled || samplePadTransportMode)) {
+    if (samplePadEnabled && samplePadTransportMode) {
       stepFloat = ((stepFloat % steps) + steps) % steps;
     }
 
@@ -2172,9 +2271,6 @@
 
   function setSamplePadTransportMode(nextEnabled) {
     samplePadTransportMode = Boolean(samplePadEnabled && nextEnabled);
-    if (samplePadTransportMode && wordPlayEnabled) {
-      setWordPlayEnabled(false);
-    }
     if (samplePadPlaybackModeBtn) {
       samplePadPlaybackModeBtn.setAttribute(
         "aria-pressed",
@@ -2183,9 +2279,6 @@
       samplePadPlaybackModeBtn.title = samplePadTransportMode
         ? "sample pad playback on"
         : "sample pad playback";
-    }
-    if (wordPlayToggleBtn) {
-      wordPlayToggleBtn.disabled = !samplePadEnabled || samplePadTransportMode;
     }
     if (transportBar) {
       transportBar.dataset.mode = samplePadTransportMode ? "pad" : "sequence";
@@ -2202,6 +2295,7 @@
     ensureSamplePadRollPatternShape();
     rebuildTransportTicks();
     updateTransportBar();
+    rebuildTransportWordPlay();
     syncPadPlaybackChip();
     renderSamplePadRoll();
     scheduleSamplePadLayout();
@@ -2446,44 +2540,54 @@
   }
 
   function getWordPlayModel() {
-    const raw = String(wordPlayText || "");
-    const letterPairs = [];
-    for (let i = 0; i < raw.length; i += 1) {
-      const ch = raw[i];
-      if (!/[a-z]/i.test(ch)) continue;
-      letterPairs.push({ rawIndex: i, ch: ch.toLowerCase() });
-    }
-
-    const triggerToStep = new Map();
-    for (let step = 0; step < stepsCount; step += 1) {
-      const trigger = getSamplePadConfig(step).trigger;
-      if (!trigger || trigger.length !== 2) continue;
-      if (!triggerToStep.has(trigger)) triggerToStep.set(trigger, step);
-    }
-
-    const usableLen = Math.floor(letterPairs.length / 2) * 2;
     const chunks = [];
-    const charChunkMap = new Map();
 
-    for (let i = 0; i < usableLen; i += 2) {
-      const a = letterPairs[i];
-      const b = letterPairs[i + 1];
-      const combo = `${a.ch}${b.ch}`;
-      const mappedStep = triggerToStep.has(combo)
-        ? triggerToStep.get(combo)
-        : null;
-      const chunkIndex = chunks.length;
-      chunks.push({
-        combo,
-        valid: mappedStep != null,
-        step: mappedStep,
-        rawIndexes: [a.rawIndex, b.rawIndex],
-      });
-      charChunkMap.set(a.rawIndex, chunkIndex);
-      charChunkMap.set(b.rawIndex, chunkIndex);
+    if (samplePadEnabled && samplePadTransportMode) {
+      ensureSamplePadRollPatternShape();
+      const rows = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+      const cols = clampNumber(
+        Math.round(numberOrFallback(samplePadRollLength, 16)),
+        1,
+        MAX_STEPS,
+      );
+
+      for (let col = 0; col < cols; col += 1) {
+        for (let row = 0; row < rows; row += 1) {
+          const cell =
+            Array.isArray(samplePadRollPattern[row])
+              ? samplePadRollPattern[row][col]
+              : null;
+          if (!cell || !cell.on) continue;
+          chunks.push({
+            label: `pad ${row + 1}`,
+            index: row,
+          });
+        }
+      }
+    } else {
+      const steps = Math.max(1, Math.round(numberOrFallback(stepsCount, 1)));
+      for (let step = 0; step < steps; step += 1) {
+        for (const track of tracks.values()) {
+          if (!track) continue;
+          const state = getOrInitState(track.key);
+          if (!state || state.muted) continue;
+          const pattern = normalizePattern(state.pattern);
+          const mask = numberOrFallback(pattern[step], 0);
+          if (!mask) continue;
+          const letter = String(
+            (track.button && track.button.dataset
+              ? track.button.dataset.letter
+              : track.key) || "",
+          ).toLowerCase();
+          const instrument = String(state.sound || "").toLowerCase();
+          const label = `${letter} ${instrument}`.trim();
+          if (!label) continue;
+          chunks.push({ label, index: step });
+        }
+      }
     }
 
-    return { raw, chunks, charChunkMap };
+    return { chunks };
   }
 
   function updateTransportWordPlayActive(stepIndex) {
@@ -2506,10 +2610,10 @@
   }
 
   function shouldRunWordPlaySubtitleCycle() {
-    if (!(samplePadEnabled && wordPlayEnabled && isPlaying && tracks.size > 0))
+    if (!(wordPlayEnabled && isPlaying && tracks.size > 0))
       return false;
     const model = getWordPlayModel();
-    return model.chunks.length > 0 && model.raw.length > 0;
+    return model.chunks.length > 0;
   }
 
   function setSubtitleLines(lowerText, upperText) {
@@ -2573,34 +2677,33 @@
       166,
       3000,
     );
+    const speed = clampNumber(numberOrFallback(wordPlaySpeed, 100), 20, 200);
+    const speedFactor = clampNumber(100 / speed, 0.5, 5);
 
     return {
       leadDelayMs: randomBetween(
         clampNumber(beatMs * 0.6, 240, 700),
         clampNumber(beatMs * 1.2, 420, 1100),
-      ),
+      ) * speedFactor,
       holdDelayMs: randomBetween(
         clampNumber(beatMs * 2.8, 1400, 2800),
         clampNumber(beatMs * 4.6, 2000, 3800),
-      ),
+      ) * speedFactor,
       gapDelayMs: randomBetween(
         clampNumber(beatMs * 0.35, 150, 300),
         clampNumber(beatMs * 0.8, 260, 600),
-      ),
+      ) * speedFactor,
     };
   }
 
   function sampleWordPlaySubtitleText(advanceChunks = 0, { allowMusic = true } = {}) {
     const model = getWordPlayModel();
     const chunks = model.chunks;
-    const raw = model.raw;
-    if (!chunks.length || !raw.length) return "";
+    if (!chunks.length) return "";
 
     const chunkCount = chunks.length;
-    const cursor = Math.max(
-      0,
-      Math.round(numberOrFallback(wordPlayHitCursor, 0)),
-    );
+    const cursorBase = isPlaying && uiStep >= 0 ? uiStep : currentStep;
+    const cursor = Math.max(0, Math.round(numberOrFallback(cursorBase, 0)));
     const startIndex =
       (((cursor + Math.round(numberOrFallback(advanceChunks, 0))) %
         chunkCount) +
@@ -2608,21 +2711,13 @@
       chunkCount;
     const desiredTake = pickWordPlaySubtitleTake(chunkCount - startIndex);
     const take = Math.max(1, Math.min(desiredTake, chunkCount - startIndex));
-
-    const firstChunk = chunks[startIndex];
-    const lastChunk = chunks[Math.max(startIndex, startIndex + take - 1)];
-    const firstRaw =
-      firstChunk && Array.isArray(firstChunk.rawIndexes)
-        ? Math.min(...firstChunk.rawIndexes)
-        : 0;
-    const lastRaw =
-      lastChunk && Array.isArray(lastChunk.rawIndexes)
-        ? Math.max(...lastChunk.rawIndexes)
-        : firstRaw;
-
-    const start = clampNumber(firstRaw, 0, Math.max(0, raw.length - 1));
-    const end = clampNumber(lastRaw + 1, start, raw.length);
-    const text = raw.slice(start, end);
+    const labels = [];
+    for (let i = 0; i < take; i += 1) {
+      const chunk = chunks[startIndex + i];
+      if (!chunk || !chunk.label) continue;
+      labels.push(String(chunk.label));
+    }
+    const text = labels.join(" / ");
 
     const shouldUseMusic =
       allowMusic && wordPlaySubtitleEntriesSinceMusic >= wordPlaySubtitleNextMusicAfter;
@@ -2633,7 +2728,7 @@
     }
 
     wordPlaySubtitleEntriesSinceMusic += 1;
-    return text || raw.slice(start, Math.min(raw.length, start + 2));
+    return text;
   }
 
   function runWordPlaySubtitleCycle() {
@@ -2702,7 +2797,7 @@
       transportWordPlay.innerHTML = "";
     }
 
-    if (!(samplePadEnabled && wordPlayEnabled)) {
+    if (!wordPlayEnabled) {
       transportWordPlayKey = "";
       transportWordPlayActiveIndex = -1;
       transportWordPlayChunkCount = 0;
@@ -2711,9 +2806,11 @@
     }
 
     const model = getWordPlayModel();
-    transportWordPlayKey = `${model.raw}|${model.chunks.map((c) => `${c.combo}:${c.valid ? 1 : 0}`).join(",")}`;
+    transportWordPlayKey = model.chunks
+      .map((c) => String(c && c.label ? c.label : ""))
+      .join("|");
     transportWordPlayChunkCount = Math.max(1, model.chunks.length);
-    updateTransportWordPlayActive(isPlaying ? uiStep : wordPlayHitCursor);
+    updateTransportWordPlayActive(isPlaying ? uiStep : currentStep);
     wordPlaySubtitleCycleActive = false;
     resetWordPlaySubtitleMusicSpacing();
     syncWordPlayUiVisibility();
@@ -2807,7 +2904,7 @@
     seekToStep(step, { fromUser: true, viewStep: step });
     previewStepAtTransport(step);
     flashSamplePadStep(step);
-    if (samplePadEnabled && wordPlayEnabled) {
+    if (wordPlayEnabled) {
       updateTransportWordPlayActive(step);
     }
   }
@@ -5058,48 +5155,6 @@
     );
   }
 
-  function getWordPlayIntervalSeconds(chunk, baseStepDuration) {
-    if (!chunk || chunk.step == null) return baseStepDuration;
-    const cfg = getSamplePadConfig(chunk.step);
-    const ratchet = sanitizeSamplePadRatchet(cfg.ratchet);
-    return clampNumber(
-      baseStepDuration / ratchet,
-      baseStepDuration * 0.25,
-      baseStepDuration * 4,
-    );
-  }
-
-  function scheduleWordPlayHit(hitIndex, chunk, time, baseStepDuration) {
-    const msUntil = (time - audio.currentTime) * 1000;
-
-    window.setTimeout(
-      () => {
-        if (!isPlaying) return;
-        if (chunk && chunk.step != null) {
-          previewStepAtTransport(chunk.step);
-          flashSamplePadStep(
-            chunk.step,
-            Math.max(70, Math.min(baseStepDuration * 1000, 180)),
-          );
-        }
-        updateTransportWordPlayActive(hitIndex);
-      },
-      Math.max(0, msUntil),
-    );
-
-    window.setTimeout(
-      () => {
-        if (!isPlaying) return;
-        uiStep = hitIndex;
-        if (audio) uiStepStartedAt = audio.currentTime;
-        updateTransportBar();
-        startTransportRaf();
-        renderAllTrackGrids();
-      },
-      Math.max(0, msUntil),
-    );
-  }
-
   function getMaxEarlyOffsetSeconds() {
     let maxEarly = 0;
     for (const track of tracks.values()) {
@@ -5143,43 +5198,6 @@
       while (nextNoteTime < audio.currentTime + scheduleAheadTime + maxEarly) {
         scheduleSamplePadRollStep(currentStep, nextNoteTime, 60 / tempo / 4);
         nextStep();
-      }
-      return;
-    }
-
-    if (samplePadEnabled && wordPlayEnabled) {
-      const secondsPerBeat = 60 / tempo;
-      const baseStepDuration = secondsPerBeat / 4;
-      const model = getWordPlayModel();
-
-      const hasPlayableChunk = model.chunks.some(
-        (chunk) => chunk && chunk.step != null,
-      );
-      if (!hasPlayableChunk) {
-        while (
-          nextNoteTime <
-          audio.currentTime + scheduleAheadTime + maxEarly
-        ) {
-          scheduleStep(currentStep, nextNoteTime);
-          nextStep();
-        }
-        return;
-      }
-
-      const chunkCount = Math.max(1, model.chunks.length);
-
-      while (nextNoteTime < audio.currentTime + scheduleAheadTime + maxEarly) {
-        const chunkIndex =
-          ((wordPlayHitCursor % chunkCount) + chunkCount) % chunkCount;
-        const chunk = model.chunks[chunkIndex] || null;
-        scheduleWordPlayHit(
-          wordPlayHitCursor,
-          chunk,
-          nextNoteTime,
-          baseStepDuration,
-        );
-        nextNoteTime += getWordPlayIntervalSeconds(chunk, baseStepDuration);
-        wordPlayHitCursor += 1;
       }
       return;
     }
@@ -5233,8 +5251,6 @@
         0,
         Math.max(0, getActiveTransportSteps() - 1),
       );
-    } else if (samplePadEnabled && wordPlayEnabled) {
-      pausedWordPlayHitCursor = uiStep >= 0 ? uiStep : wordPlayHitCursor;
     } else {
       pausedStep = uiStep >= 0 ? uiStep : currentStep;
       if (loopEnabled) {
@@ -5253,9 +5269,7 @@
       }
     }
 
-    if (!(samplePadEnabled && wordPlayEnabled) || samplePadTransportMode) {
-      currentStep = pausedStep;
-    }
+    currentStep = pausedStep;
     isPlaying = false;
     followCenterLock = false;
 
@@ -5303,25 +5317,6 @@
             )
           : 0;
       }
-      pausedWordPlayHitCursor = null;
-    } else if (samplePadEnabled && wordPlayEnabled) {
-      if (pausedWordPlayHitCursor != null) {
-        wordPlayHitCursor = Math.max(
-          0,
-          Math.round(numberOrFallback(pausedWordPlayHitCursor, 0)),
-        );
-        pausedWordPlayHitCursor = null;
-      } else {
-        wordPlayHitCursor = hasManualSeek
-          ? Math.max(0, Math.round(numberOrFallback(currentStep, 0)))
-          : 0;
-      }
-      currentStep = clampNumber(
-        Math.round(numberOrFallback(currentStep, 0)),
-        0,
-        Math.max(0, stepsCount - 1),
-      );
-      pausedStep = null;
     } else {
       if (pausedStep != null) {
         if (loopEnabled) {
@@ -5372,13 +5367,11 @@
             0,
             Math.max(0, getActiveTransportSteps() - 1),
           )
-        : samplePadEnabled && wordPlayEnabled
-          ? Math.max(0, Math.round(numberOrFallback(wordPlayHitCursor, 0)))
-          : clampNumber(
-              Math.round(numberOrFallback(currentStep, 0)),
-              0,
-              stepsCount - 1,
-            );
+        : clampNumber(
+            Math.round(numberOrFallback(currentStep, 0)),
+            0,
+            stepsCount - 1,
+          );
     uiStepStartedAt = audio.currentTime;
     nextNoteTime = audio.currentTime + 0.05;
     scheduleTimer = window.setInterval(scheduler, lookaheadMs);
@@ -5408,8 +5401,6 @@
     } else {
       currentStep = loopEnabled ? loopStart : 0;
     }
-    wordPlayHitCursor = 0;
-    pausedWordPlayHitCursor = null;
     hasManualSeek = false;
     pausedStep = null;
     uiStepStartedAt = null;
@@ -5490,6 +5481,32 @@
   if (bumpToggleBtn) {
     bumpToggleBtn.addEventListener("click", () => {
       setBumpEnabled(!bumpEnabled);
+    });
+  }
+
+  if (bumpIntensityInput) {
+    bumpIntensityInput.addEventListener("input", () => {
+      setBumpIntensity(bumpIntensityInput.value);
+    });
+  }
+
+  if (bumpIntensityOut) {
+    bumpIntensityOut.addEventListener("input", () => {
+      if (bumpIntensityOut.value === "") return;
+      setBumpIntensity(bumpIntensityOut.value);
+    });
+  }
+
+  if (bumpBounceInput) {
+    bumpBounceInput.addEventListener("input", () => {
+      setBumpBounce(bumpBounceInput.value);
+    });
+  }
+
+  if (bumpBounceOut) {
+    bumpBounceOut.addEventListener("input", () => {
+      if (bumpBounceOut.value === "") return;
+      setBumpBounce(bumpBounceOut.value);
     });
   }
 
@@ -5966,39 +5983,20 @@
 
   if (wordPlayToggleBtn) {
     wordPlayToggleBtn.addEventListener("click", () => {
-      if (!samplePadEnabled) return;
       setWordPlayEnabled(!wordPlayEnabled);
     });
   }
 
-  if (wordPlayTextInput) {
-    wordPlayTextInput.addEventListener("input", () => {
-      setWordPlayText(wordPlayTextInput.value);
-    });
-
-    wordPlayTextInput.addEventListener("scroll", () => {
-      if (!wordPlayTextOverlay) return;
-      wordPlayTextOverlay.scrollTop = wordPlayTextInput.scrollTop;
-      wordPlayTextOverlay.scrollLeft = wordPlayTextInput.scrollLeft;
+  if (wordPlaySpeedInput) {
+    wordPlaySpeedInput.addEventListener("input", () => {
+      setWordPlaySpeed(wordPlaySpeedInput.value);
     });
   }
 
-  if (wordPlayTextBtn) {
-    wordPlayTextBtn.addEventListener("click", () => {
-      setWordPlayEditModalOpen(!wordPlayEditModalOpen);
-    });
-  }
-
-  if (wordPlayTextModal) {
-    wordPlayTextModal.addEventListener("pointerdown", (event) => {
-      if (event.target !== wordPlayTextModal) return;
-      setWordPlayEditModalOpen(false);
-    });
-  }
-
-  if (wordPlayTextCloseBtn) {
-    wordPlayTextCloseBtn.addEventListener("click", () => {
-      setWordPlayEditModalOpen(false);
+  if (wordPlaySpeedOut) {
+    wordPlaySpeedOut.addEventListener("input", () => {
+      if (wordPlaySpeedOut.value === "") return;
+      setWordPlaySpeed(wordPlaySpeedOut.value);
     });
   }
 
@@ -6027,17 +6025,13 @@
 
   window.addEventListener("keydown", (event) => {
     if (!event || event.key !== "Escape") return;
-    if (wordPlayEditModalOpen) {
-      setWordPlayEditModalOpen(false);
-      return;
-    }
     if (!settingsOpen) return;
     setSettingsOpen(false);
   });
 
   window.addEventListener("resize", () => {
     scheduleSettingsPanelLayout();
-    scheduleWordPlayTextPanelLayout();
+    scheduleWordPlaySubtitleLayout();
     scheduleSamplePadLayout();
     syncFloatingBarGeometry();
     syncFloatingScrollClearance();
@@ -6089,6 +6083,53 @@
       bumpToggleBtn.setAttribute("aria-pressed", bumpEnabled ? "true" : "false");
     }
     syncBumpModeClass();
+  }
+
+  function setBumpIntensity(nextIntensity) {
+    bumpIntensity = clampNumber(
+      Math.round(numberOrFallback(nextIntensity, bumpIntensity)),
+      0,
+      100,
+    );
+
+    if (bumpIntensityInput) bumpIntensityInput.value = String(bumpIntensity);
+    if (bumpIntensityOut) bumpIntensityOut.value = String(bumpIntensity);
+
+    const ratio = bumpIntensity / 100;
+    const softness = 1 - ratio;
+    const letterLift = 3 * ratio;
+    const trackLift = 4 * ratio;
+    const motionMs = Math.round(160 + softness * 180);
+    const letterGhostOpacity = (0.42 + ratio * 0.38).toFixed(3);
+    const trackGhostOpacity = (0.1 + ratio * 0.24).toFixed(3);
+
+    const root = document.documentElement;
+    root.style.setProperty("--bump-letter-lift", `${letterLift.toFixed(2)}px`);
+    root.style.setProperty("--bump-track-lift", `${trackLift.toFixed(2)}px`);
+    root.style.setProperty("--bump-motion-dur", `${motionMs}ms`);
+    root.style.setProperty("--bump-letter-ghost-opacity", letterGhostOpacity);
+    root.style.setProperty("--bump-track-ghost-opacity", trackGhostOpacity);
+  }
+
+  function setBumpBounce(nextBounce) {
+    bumpBounce = clampNumber(
+      Math.round(numberOrFallback(nextBounce, bumpBounce)),
+      0,
+      100,
+    );
+
+    if (bumpBounceInput) bumpBounceInput.value = String(bumpBounce);
+    if (bumpBounceOut) bumpBounceOut.value = String(bumpBounce);
+
+    const r = bumpBounce / 100;
+    const easeX1 = (0.18 + 0.08 * r).toFixed(3);
+    const easeY1 = (0.86 + 0.1 * r).toFixed(3);
+    const easeX2 = (0.26 + 0.12 * r).toFixed(3);
+    const easeY2 = (1 + 0.55 * r).toFixed(3);
+    document.documentElement.style.setProperty(
+      "--bump-motion-ease",
+      `cubic-bezier(${easeX1}, ${easeY1}, ${easeX2}, ${easeY2})`,
+    );
   }
 
   function setAutoscrollEnabled(nextEnabled) {
@@ -6156,8 +6197,6 @@
       pressedAlphaKeys.clear();
       samplePadTransportMode = false;
       setSamplePadEditEnabled(false);
-      setWordPlayEnabled(false);
-      setWordPlayEditModalOpen(false);
     }
     if (samplePadToggleBtn) {
       samplePadToggleBtn.setAttribute(
@@ -6167,9 +6206,6 @@
       samplePadToggleBtn.title = samplePadEnabled
         ? "sample pad: on"
         : "sample pad: off";
-    }
-    if (wordPlayToggleBtn) {
-      wordPlayToggleBtn.disabled = !samplePadEnabled || samplePadTransportMode;
     }
     syncWordPlayUiVisibility();
     syncSamplePadToolbarVisibility();
@@ -6182,13 +6218,9 @@
   }
 
   function setWordPlayEnabled(nextEnabled) {
-    wordPlayEnabled = Boolean(
-      samplePadEnabled && !samplePadTransportMode && nextEnabled,
-    );
+    wordPlayEnabled = Boolean(nextEnabled);
     if (!wordPlayEnabled) {
-      wordPlayHitCursor = 0;
-      pausedWordPlayHitCursor = null;
-      setWordPlayEditModalOpen(false);
+      resetWordPlaySubtitleMusicSpacing();
     }
     if (wordPlayToggleBtn) {
       wordPlayToggleBtn.setAttribute(
@@ -6199,18 +6231,22 @@
         ? "subtitles: on"
         : "subtitles: off";
     }
+    if (wordPlaySpeedRow) {
+      wordPlaySpeedRow.hidden = !wordPlayEnabled;
+    }
+    scheduleSettingsPanelLayout();
     syncWordPlayUiVisibility();
     rebuildTransportWordPlay();
-    renderWordPlayTextOverlay();
   }
 
-  function setWordPlayText(nextText) {
-    wordPlayText = String(nextText || "");
-    if (wordPlayTextInput && wordPlayTextInput.value !== wordPlayText) {
-      wordPlayTextInput.value = wordPlayText;
-    }
-    rebuildTransportWordPlay();
-    renderWordPlayTextOverlay();
+  function setWordPlaySpeed(nextSpeed) {
+    wordPlaySpeed = clampNumber(
+      Math.round(numberOrFallback(nextSpeed, wordPlaySpeed)),
+      20,
+      200,
+    );
+    if (wordPlaySpeedInput) wordPlaySpeedInput.value = String(wordPlaySpeed);
+    if (wordPlaySpeedOut) wordPlaySpeedOut.value = String(wordPlaySpeed);
   }
 
   function setAutoExpandEnabled(nextEnabled) {
@@ -6254,9 +6290,13 @@
   setSamplePadRollBeatSteps(samplePadRollBeatSteps);
   setSamplePadEnabled(samplePadEnabled);
   setSamplePadTransportMode(samplePadTransportMode);
-  setWordPlayText(wordPlayText);
+  setWordPlaySpeed(wordPlaySpeed);
   setWordPlayEnabled(wordPlayEnabled);
+  setAutosaveInterval(autosaveIntervalMinutes);
+  setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
+  setBumpBounce(bumpBounce);
+  setBumpIntensity(bumpIntensity);
   setBumpEnabled(bumpEnabled);
   setSettingsOpen(false);
   setThemeEnabled(themeEnabled);
@@ -6574,22 +6614,20 @@
     setPresetStatus("imported");
   });
 
-  presetSaveBtn.addEventListener("click", () => {
-    setPresetStatus("", { busy: true });
-    const song = getSongObject();
-    const requestedName = String(presetNameInput.value || "").trim();
-    const selectedName = String(presetSelect.value || "").trim();
-    const name = requestedName || selectedName || makeUniquePresetName("song");
+  if (autosaveToggleBtn) {
+    autosaveToggleBtn.addEventListener("click", () => {
+      setAutosaveEnabled(!autosaveEnabled);
+    });
+  }
 
-    const ok = savePreset(name, song);
-    if (!ok) {
-      setPresetStatus("save failed", { ok: false });
-      return;
-    }
-    presetNameInput.value = name;
-    refreshPresetSelect();
-    presetSelect.value = name;
-    setPresetStatus("saved");
+  if (autosaveIntervalSelect) {
+    autosaveIntervalSelect.addEventListener("change", () => {
+      setAutosaveInterval(autosaveIntervalSelect.value);
+    });
+  }
+
+  presetSaveBtn.addEventListener("click", () => {
+    saveCurrentSongPreset({ statusLabel: "saved", showPresetStatus: true });
   });
 
   presetSelect.addEventListener("change", () => {

@@ -24,6 +24,13 @@
   --trackGridCollapseDelay: 0.38s;
   --trackGridPeekHeightDur: 0.58s;
   --trackGridPeekFadeDur: 0.34s;
+
+  --bump-letter-lift: 3px;
+  --bump-track-lift: 4px;
+  --bump-motion-dur: 160ms;
+  --bump-motion-ease: cubic-bezier(0.2, 0.85, 0.28, 1);
+  --bump-letter-ghost-opacity: 0.68;
+  --bump-track-ghost-opacity: 0.2;
 }
 
 html {
@@ -873,6 +880,7 @@ html.is-theme .samplePadModeToolbar {
   padding: 0;
   margin: 0;
   font: inherit;
+  font-size: 0.5em;
   line-height: 1;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -1074,7 +1082,7 @@ html.is-theme .switchToggle:focus-visible {
   background-position: 0 100%;
   background-size: 0% 2px;
 
-  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease, transform 0.16s ease;
+  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease, transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
 }
 
 .logo .letter::before {
@@ -1247,8 +1255,8 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
     2px 2px 0 var(--t-fg, #ffffff);
 }
 
-html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:hover,
-html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:focus-visible {
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump-letters) .logo .letter:hover,
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible {
   text-shadow:
     -1px -1px 0 var(--hit),
     0 -1px 0 var(--hit),
@@ -1260,15 +1268,30 @@ html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:focus-vis
     1px 1px 0 var(--hit);
 }
 
-html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:hover::before,
-html.is-theme.is-theme-custom body.has-daw:not(.is-bump) .logo .letter:focus-visible::before {
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump-letters) .logo .letter:hover::before,
+html.is-theme.is-theme-custom body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible::before {
   color: var(--hit);
   opacity: 1;
   transform: translate(3px, 3px);
 }
 
-html.is-theme.is-theme-custom body.has-daw.is-bump .logo .letter.is-hit {
-  transform: translate(-3px, -3px);
+html.is-theme.is-theme-custom body.has-daw.is-bump-letters .logo .letter.is-hit {
+  transform: translate(0, calc(-1 * var(--bump-letter-lift, 3px)));
+}
+
+html.is-theme.is-theme-custom body.has-daw.is-bump-letters .logo .letter.is-hit::before {
+  color: var(--hit);
+  opacity: var(--bump-letter-ghost-opacity, 0.34);
+  transform: translate(0, var(--bump-letter-lift, 3px));
+  text-shadow:
+    -2px -2px 0 var(--hit),
+    0 -2px 0 var(--hit),
+    2px -2px 0 var(--hit),
+    -2px 0 0 var(--hit),
+    2px 0 0 var(--hit),
+    -2px 2px 0 var(--hit),
+    0 2px 0 var(--hit),
+    2px 2px 0 var(--hit);
 }
 
 .logo .letter.is-muted {
@@ -1559,14 +1582,6 @@ html.is-theme.is-theme-custom body.has-daw.is-bump .logo .letter.is-hit {
   text-decoration: underline line-through;
 }
 
-.wordPlayTextBtn {
-  justify-self: start;
-  margin-left: 0.32rem;
-  width: 28px;
-  min-width: 28px;
-  padding: 0;
-}
-
 .wordPlaySubtitleStack {
   position: fixed;
   left: calc(50% - ((min(900px, calc(100vw - 2rem)) - 1.3rem) / 2));
@@ -1632,153 +1647,6 @@ html.is-theme .padPlaybackChip {
 .wordPlaySubtitleLineUpper {
   justify-self: center;
   transform: translateY(-0.08rem);
-}
-
-.wordPlayTextModal {
-  position: fixed;
-  inset: 0;
-  z-index: 61;
-}
-
-.wordPlayTextPanel {
-  --accent: #000000;
-  position: fixed;
-  left: 50%;
-  top: var(--wordPlayEditTop, 1rem);
-  transform: translateX(-50%);
-  width: var(--wordPlayEditWidth, min(460px, calc(100vw - 2rem)));
-  max-height: var(--wordPlayEditMaxHeight, calc(100vh - 6rem));
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.55rem 0.65rem;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  overflow: auto;
-}
-
-html.is-theme .wordPlayTextPanel {
-  --accent: var(--t-fg, #ffffff);
-  background: var(--t-3, rgba(255, 255, 255, 0.03));
-  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
-}
-
-.wordPlayTextPanelBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.wordPlayTextPanelTitle {
-  font-size: 0.84rem;
-  font-weight: 800;
-  text-transform: lowercase;
-}
-
-.wordPlayTextCloseBtn {
-  padding: 0;
-}
-
-.wordPlayTextEditorWrap {
-  --wordPlayTextColor: #000000;
-  position: relative;
-  min-height: 7.25rem;
-  background: #ffffff;
-}
-
-html.is-theme .wordPlayTextEditorWrap {
-  --wordPlayTextColor: var(--accent, var(--t-fg, #ffffff));
-  background: var(--t-3, rgba(255, 255, 255, 0.03));
-}
-
-.wordPlayTextInput {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  min-height: 7.25rem;
-  resize: vertical;
-  overflow: auto;
-  background: transparent;
-  color: var(--wordPlayTextColor);
-  -webkit-text-fill-color: transparent;
-  caret-color: var(--wordPlayTextColor);
-  border: 1px solid rgba(0, 0, 0, 0.32);
-  padding: 0.48rem 0.5rem;
-  font: inherit;
-  font-size: 0.84rem;
-  line-height: 1.35;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-@media (max-width: 720px) {
-  .wordPlayTextPanel {
-    width: min(460px, calc(100vw - 1rem));
-    max-height: calc(100vh - 1.5rem);
-  }
-
-  .wordPlayTextEditorWrap,
-  .wordPlayTextInput {
-    min-height: 10.5rem;
-  }
-}
-
-.wordPlayTextInput::placeholder {
-  color: transparent;
-}
-
-.wordPlayTextInput:focus,
-.wordPlayTextInput:focus-visible {
-  outline: 1px solid currentColor;
-  outline-offset: 0;
-  box-shadow: none;
-}
-
-html.is-theme .wordPlayTextInput {
-  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
-  background: transparent;
-  color: var(--wordPlayTextColor);
-  -webkit-text-fill-color: transparent;
-  caret-color: var(--wordPlayTextColor);
-}
-
-html.is-theme .wordPlayTextInput:focus,
-html.is-theme .wordPlayTextInput:focus-visible {
-  outline-color: var(--t-72, rgba(255, 255, 255, 0.72));
-}
-
-.wordPlayTextOverlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  padding: 0.48rem 0.5rem;
-  font: inherit;
-  font-size: 0.84rem;
-  line-height: 1.35;
-  pointer-events: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow: auto;
-  color: var(--wordPlayTextColor);
-}
-
-.wordPlayTextOverlay .wordPlayOverlayChar {
-  color: var(--wordPlayTextColor) !important;
-}
-
-.wordPlayTextPanel,
-.wordPlayTextInput,
-.wordPlayTextOverlay {
-  scrollbar-color: rgba(0, 0, 0, 0.35) transparent;
-  scrollbar-width: thin;
-}
-
-html.is-theme .wordPlayTextPanel,
-html.is-theme .wordPlayTextInput,
-html.is-theme .wordPlayTextOverlay {
-  scrollbar-color: var(--t-32, rgba(255, 255, 255, 0.32)) transparent;
 }
 
 .settingsModal {
@@ -1859,6 +1727,19 @@ html.is-theme .settingsDivider {
 
 .settingsField .fieldLabel {
   white-space: nowrap;
+}
+
+.settingsFieldAutoSave {
+  grid-template-columns: 7ch max-content max-content;
+}
+
+.settingsFieldAutoSave .switchToggle {
+  justify-self: start;
+}
+
+.settingsFieldAutoSave select {
+  width: 9ch;
+  justify-self: start;
 }
 
 .settingsPanel #presetSelect,
@@ -2256,7 +2137,7 @@ html.is-theme .settingsDivider {
   flex-direction: column;
   gap: 0.55rem;
 
-  transition: border-color 0.14s ease, gap 0.18s ease, padding-bottom 0.18s ease, transform 0.16s ease;
+  transition: border-color 0.14s ease, gap 0.18s ease, padding-bottom 0.18s ease, transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
 }
 
 .track::before {
@@ -2269,6 +2150,18 @@ html.is-theme .settingsDivider {
   z-index: 0;
 }
 
+.track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  opacity: 0;
+  transform: translate(0, 0);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease), transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
+}
+
 .track > * {
   position: relative;
   z-index: 1;
@@ -2276,10 +2169,6 @@ html.is-theme .settingsDivider {
 
 .track.is-hit {
   border-color: var(--accent);
-}
-
-html.is-theme.is-theme-custom body.has-daw.is-bump .track.is-hit {
-  transform: translate(-4px, -4px);
 }
 
 .track.is-dragging {
@@ -2845,6 +2734,35 @@ html.is-auto-expand .lockToggle {
 .status.is-busy::before {
   opacity: 1;
   animation: statusSpin 0.8s linear infinite;
+}
+
+.autosaveStatus {
+  position: fixed;
+  right: 1rem;
+  top: 0.9rem;
+  z-index: 70;
+  pointer-events: none;
+  gap: 0.42rem;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.86);
+  letter-spacing: 0.03em;
+  text-transform: lowercase;
+}
+
+.autosaveStatus::before {
+  width: 1.08em;
+  height: 1.08em;
+  order: 2;
+}
+
+html.is-theme .autosaveStatus {
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .autosaveStatus::before {
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  border-top-color: var(--t-fg, rgba(255, 255, 255, 0.92));
 }
 
 @keyframes statusSpin {

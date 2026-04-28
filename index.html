@@ -126,6 +126,19 @@
                     <span id="presetStatus" class="status" aria-live="polite"></span>
                 </label>
 
+                <label class="field settingsField settingsFieldAutoSave">
+                    <span class="fieldLabel">autosave</span>
+                    <button type="button" class="switchToggle" id="autosaveToggleBtn" aria-label="autosave" aria-pressed="false"></button>
+                    <select id="autosaveInterval" aria-label="autosave interval">
+                        <option value="1">1 min</option>
+                        <option value="5" selected>5 min</option>
+                        <option value="10">10 min</option>
+                        <option value="15">15 min</option>
+                        <option value="30">30 min</option>
+                        <option value="60">60 min</option>
+                    </select>
+                </label>
+
                 <div class="controls settingsRow" aria-label="preset actions">
                     <button type="button" class="btn" id="presetSaveBtn">save</button>
                     <button type="button" class="btn" id="presetLoadBtn">load</button>
@@ -199,9 +212,21 @@
                     </label>
                 </div>
 
+            </div>
+
+            <div class="settingsDivider" aria-hidden="true"></div>
+
+            <div class="settingsSection" aria-label="follow">
                 <label class="field settingsField" aria-label="follow">
                     <span class="fieldLabel">follow playhead</span>
                     <button type="button" class="switchToggle" id="autoscrollToggleBtn" aria-label="follow playhead" aria-pressed="true"></button>
+                </label>
+            </div>
+
+            <div class="settingsSection" aria-label="sample pad">
+                <label class="field settingsField">
+                    <span class="fieldLabel">sample pad</span>
+                    <button type="button" class="switchToggle" id="samplePadToggleBtn" aria-label="sample pad" aria-pressed="false"></button>
                 </label>
             </div>
 
@@ -217,16 +242,40 @@
                 <div id="settingsThemeControlsMount" class="settingsThemeControlsMount" aria-label="theme options" hidden></div>
             </div>
 
-            <div class="settingsDivider" aria-hidden="true"></div>
-
             <div class="settingsSection" aria-label="bump">
                 <label class="field settingsField">
                     <span class="fieldLabel">bump</span>
-                    <button type="button" class="switchToggle" id="bumpToggleBtn" aria-label="bump" aria-pressed="false"></button>
+                    <button type="button" class="switchToggle" id="bumpToggleBtn" aria-label="bump text" aria-pressed="false"></button>
                 </label>
+
+                <div class="field settingsField settingsFieldRange" id="bumpIntensityRow" aria-label="bump intensity" hidden>
+                    <span class="rangeEdgeLabel">soft</span>
+                    <input id="bumpIntensity" type="range" min="0" max="100" step="1" value="50" aria-label="bump intensity softer to harder" />
+                    <span class="rangeEdgeLabel rangeEdgeLabelEnd">hard</span>
+                    <input id="bumpIntensityOut" class="num rangeValueMirror" type="number" min="0" max="100" step="1" value="50" aria-hidden="true" tabindex="-1" />
+                </div>
+
+                <div class="field settingsField settingsFieldRange" id="bumpBounceRow" aria-label="bump bounce" hidden>
+                    <span class="rangeEdgeLabel">tight</span>
+                    <input id="bumpBounce" type="range" min="0" max="100" step="1" value="50" aria-label="bump bounce tight to rubbery" />
+                    <span class="rangeEdgeLabel rangeEdgeLabelEnd">rubber</span>
+                    <input id="bumpBounceOut" class="num rangeValueMirror" type="number" min="0" max="100" step="1" value="50" aria-hidden="true" tabindex="-1" />
+                </div>
             </div>
 
-            <div class="settingsDivider" aria-hidden="true"></div>
+            <div class="settingsSection" aria-label="subtitles">
+                <label class="field settingsField">
+                    <span class="fieldLabel">subtitles</span>
+                    <button type="button" class="switchToggle" id="wordPlayToggleBtn" aria-label="subtitles" aria-pressed="false"></button>
+                </label>
+
+                <div class="field settingsField settingsFieldRange" id="wordPlaySpeedRow" aria-label="subtitle speed" hidden>
+                    <span class="rangeEdgeLabel">slower</span>
+                    <input id="wordPlaySpeed" type="range" min="20" max="200" step="1" value="100" aria-label="subtitle speed slower to faster" />
+                    <span class="rangeEdgeLabel rangeEdgeLabelEnd">faster</span>
+                    <input id="wordPlaySpeedOut" class="num rangeValueMirror" type="number" min="20" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
+                </div>
+            </div>
 
             <div class="settingsSection" aria-label="auto expand">
                 <label class="field settingsField">
@@ -241,36 +290,10 @@
                     <input id="autoExpandSpeedOut" class="num rangeValueMirror" type="number" min="0" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
                 </div>
             </div>
-
-            <div class="settingsDivider" aria-hidden="true"></div>
-
-            <div class="settingsSection" aria-label="sample pad">
-                <label class="field settingsField">
-                    <span class="fieldLabel">sample pad</span>
-                    <button type="button" class="switchToggle" id="samplePadToggleBtn" aria-label="sample pad" aria-pressed="false"></button>
-                </label>
-
-                <label class="field settingsField">
-                    <span class="fieldLabel">subtitles</span>
-                    <button type="button" class="switchToggle" id="wordPlayToggleBtn" aria-label="subtitles" aria-pressed="false"></button>
-                    <button type="button" class="caret wordPlayTextBtn" id="wordPlayTextBtn" aria-label="edit subtitles" title="edit subtitles" hidden>🗎</button>
-                </label>
-            </div>
         </div>
     </div>
 
-    <div id="wordPlayTextModal" class="wordPlayTextModal" hidden>
-        <div class="wordPlayTextPanel" role="dialog" aria-modal="true" aria-label="subtitles editor">
-            <div class="wordPlayTextPanelBar">
-                <span class="wordPlayTextPanelTitle">subtitles</span>
-                <button type="button" class="caret wordPlayTextCloseBtn" id="wordPlayTextCloseBtn" aria-label="close subtitles">×</button>
-            </div>
-            <div class="wordPlayTextEditorWrap">
-                <div id="wordPlayTextOverlay" class="wordPlayTextOverlay" aria-hidden="true" data-placeholder="type any text"></div>
-                <textarea id="wordPlayTextInput" class="wordPlayTextInput" rows="5" spellcheck="false" autocomplete="off" placeholder="type any text"></textarea>
-            </div>
-        </div>
-    </div>
+    <div id="autosaveStatus" class="status autosaveStatus" aria-live="polite" hidden>saving</div>
 
     <script src="app.js?v=1" defer></script>
 </body>
