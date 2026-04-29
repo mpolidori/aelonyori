@@ -698,8 +698,26 @@ html.is-theme .samplePadWrap {
   margin-left: 0;
 }
 
+.samplePadBtn:disabled,
+.samplePadBtn.is-empty {
+  opacity: 0.34;
+  cursor: default;
+}
+
+.samplePadBtn:disabled .samplePadTriggerText,
+.samplePadBtn.is-empty .samplePadTriggerText,
+.samplePadBtn:disabled .samplePadRepeatText,
+.samplePadBtn.is-empty .samplePadRepeatText {
+  opacity: 0.42;
+}
+
 .samplePadBtn:active {
   background: color-mix(in srgb, var(--samplePadBg) 92%, var(--samplePadNum) 8%);
+}
+
+.samplePadBtn:disabled:active,
+.samplePadBtn.is-empty:active {
+  background: transparent;
 }
 
 .samplePadWrap.is-editing .samplePadBtn {

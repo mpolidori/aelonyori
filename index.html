@@ -57,14 +57,14 @@
             <header class="samplerTopBar" aria-label="sampler controls">
                 <label class="field samplerField">
                     <span class="fieldLabel">bpm</span>
-                    <input id="samplerBpm" type="range" min="60" max="200" step="1" value="120" aria-label="sampler bpm" />
-                    <input id="samplerBpmOut" class="num" type="number" min="60" max="200" step="1" value="120" aria-label="sampler bpm value" />
+                    <input id="samplerBpm" type="range" min="20" max="360" step="1" value="120" aria-label="sampler bpm" />
+                    <input id="samplerBpmOut" class="num" type="number" min="20" max="360" step="1" value="120" aria-label="sampler bpm value" />
                 </label>
 
                 <label class="field samplerField">
                     <span class="fieldLabel">steps</span>
-                    <input id="samplerSteps" type="range" min="4" max="64" step="4" value="16" aria-label="sampler steps" />
-                    <input id="samplerStepsOut" class="num" type="number" min="4" max="64" step="4" value="16" aria-label="sampler steps value" />
+                    <input id="samplerSteps" type="range" min="4" max="256" step="1" value="16" aria-label="sampler steps" />
+                    <input id="samplerStepsOut" class="num" type="number" min="4" max="256" step="1" value="16" aria-label="sampler steps value" />
                 </label>
 
                 <label class="field samplerField">
@@ -89,9 +89,15 @@
         </section>
 
         <div class="samplerBottomDock" aria-label="sampler actions">
-            <button type="button" id="samplerRatchetBtn" class="samplerFab" aria-label="pad ratchet settings" aria-pressed="false" title="pad ratchet settings">⚙</button>
-            <button type="button" id="samplerRecordFab" class="samplerFab" aria-label="toggle sampler record" aria-pressed="false">◉</button>
-            <button type="button" id="samplerPlayFab" class="samplerFab" aria-label="toggle sampler play" aria-pressed="false" hidden>▶</button>
+            <button type="button" id="samplerRatchetBtn" class="samplerFab" aria-label="pad ratchet settings" aria-pressed="false" title="pad ratchet settings">
+                <span class="samplerSettingsIcon" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="samplerRecordFab" class="samplerFab" aria-label="toggle sampler record" aria-pressed="false">
+                <span class="samplerRecordIcon" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="samplerPlayFab" class="samplerFab" aria-label="toggle sampler play" aria-pressed="false" hidden>
+                <span class="samplerPlayIcon" aria-hidden="true"></span>
+            </button>
         </div>
         <div id="samplerRecordStatus" class="samplerRecordStatus" aria-live="polite" hidden>recording...</div>
         <div id="samplerComposeRatchetPicker" class="samplerComposeRatchetPicker" hidden aria-label="set compose ratchet" role="dialog"></div>

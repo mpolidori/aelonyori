@@ -3377,16 +3377,34 @@
       1,
       Math.max(1, stepsCount),
     );
+    const stepsWithNotes = new Set();
+
+    for (const track of tracks.values()) {
+      const state = getOrInitState(track.key);
+      const normalizedPattern = normalizePattern(state.pattern);
+      for (let step = 0; step < stepsCount; step += 1) {
+        const mask = clampNumber(
+          Math.round(numberOrFallback(normalizedPattern[step], 0)),
+          0,
+          NOTE_MASK_ALL,
+        );
+        if (mask) stepsWithNotes.add(step);
+      }
+    }
 
     for (let i = 0; i < stepsCount; i += 1) {
       const config = getSamplePadConfig(i);
+      const hasNotes = stepsWithNotes.has(i);
       const padBtn = document.createElement("button");
       padBtn.type = "button";
       padBtn.className = "samplePadBtn";
       padBtn.dataset.step = String(i);
       padBtn.setAttribute("aria-label", `sample pad ${i + 1}`);
+      padBtn.disabled = !hasNotes;
+      padBtn.setAttribute("aria-disabled", hasNotes ? "false" : "true");
       padBtn.classList.toggle("is-selected", samplePadSelectedStep === i);
       padBtn.classList.toggle("is-beat-start", i !== 0 && i % groupLen === 0);
+      padBtn.classList.toggle("is-empty", !hasNotes);
 
       const beatNum = document.createElement("span");
       beatNum.className = "samplePadBeatNum";

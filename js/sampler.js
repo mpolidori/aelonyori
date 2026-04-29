@@ -305,7 +305,7 @@
   }
 
   function setBpm(nextBpm) {
-    bpm = clampNumber(Math.round(numberOrFallback(nextBpm, bpm)), 60, 200);
+    bpm = clampNumber(Math.round(numberOrFallback(nextBpm, bpm)), 20, 360);
     if (bpmInput) bpmInput.value = String(bpm);
     if (bpmOut) bpmOut.value = String(bpm);
     syncRecordFabPulse();
@@ -316,10 +316,9 @@
     const clamped = clampNumber(
       Math.round(numberOrFallback(nextSteps, stepsCount)),
       4,
-      64,
+      256,
     );
-    const snapped = Math.max(4, Math.min(64, Math.round(clamped / 4) * 4));
-    stepsCount = snapped;
+    stepsCount = clamped;
 
     pattern = pattern.map((row) => {
       if (!Array.isArray(row)) row = [];
@@ -392,6 +391,43 @@
     if (playFab) playFab.hidden = activeTab !== "compose";
 
     closeComposeRatchetPicker();
+
+    if (activeTab === "compose") {
+      renderCompose();
+    }
+  }
+
+  function syncComposeLayout() {
+    if (!composeGrid || !composeView || composeView.hidden) return;
+
+    const gridStyles = window.getComputedStyle(composeGrid);
+    const paddingX =
+      parseFloat(gridStyles.paddingLeft || "0") +
+      parseFloat(gridStyles.paddingRight || "0");
+    const paddingY =
+      parseFloat(gridStyles.paddingTop || "0") +
+      parseFloat(gridStyles.paddingBottom || "0");
+    const rowGap = parseFloat(gridStyles.gap || "0");
+    const cellGap = 3;
+    const beatGap = 3;
+    const sideGap = 0.42 * 16;
+    const beatStarts = Math.floor((stepsCount - 1) / beatSteps);
+
+    const availableWidth = Math.max(
+      0,
+      composeGrid.clientWidth - paddingX - sideGap - cellGap * (stepsCount - 1) - beatGap * beatStarts,
+    );
+    const availableHeight = Math.max(
+      0,
+      composeGrid.clientHeight - paddingY - rowGap * NUM_PADS,
+    );
+
+    const cellFromWidth = availableWidth / (stepsCount + 1);
+    const cellFromHeight = availableHeight / (NUM_PADS + 1);
+    const nextCell = Math.max(18, Math.floor(Math.min(cellFromWidth, cellFromHeight) || 32));
+
+    composeGrid.style.setProperty("--compose-cell", `${nextCell}px`);
+    composeGrid.style.setProperty("--compose-label", `${nextCell}px`);
   }
 
   function toggleStep(row, col) {
@@ -607,6 +643,8 @@
   function renderCompose() {
     if (!composeGrid) return;
 
+    syncComposeLayout();
+
     const frag = document.createDocumentFragment();
 
     const header = document.createElement("div");
@@ -619,14 +657,9 @@
     headerNums.className = "samplerStepNumbers";
 
     for (let col = 0; col < stepsCount; col += 1) {
-      if (col > 0 && col % beatSteps === 0) {
-        const beatBreak = document.createElement("div");
-        beatBreak.className = "samplerStepBeatBreak";
-        headerNums.appendChild(beatBreak);
-      }
-
       const num = document.createElement("div");
       num.className = "samplerStepNumber";
+      if (col > 0 && col % beatSteps === 0) num.classList.add("is-beat-start");
       if (col % beatSteps === 0) {
         num.textContent = String(Math.floor(col / beatSteps) + 1);
         num.classList.add("is-beat");
@@ -648,7 +681,7 @@
       rowPadBtn.setAttribute("aria-label", `play pad ${row + 1}`);
       rowPadBtn.addEventListener("click", () => {
         if (!padStates[row].isLoaded) return;
-        scheduleRatchetedPlay(row, 0);
+        playPadWithRatchet(row, 1);
       });
       rowEl.appendChild(rowPadBtn);
 
@@ -656,15 +689,12 @@
       stepsEl.className = "samplerRowSteps";
 
       for (let col = 0; col < stepsCount; col += 1) {
-        if (col > 0 && col % beatSteps === 0) {
-          const beatBreak = document.createElement("div");
-          beatBreak.className = "samplerStepBeatBreak";
-          stepsEl.appendChild(beatBreak);
-        }
-
         const stepBtn = document.createElement("button");
         stepBtn.type = "button";
         stepBtn.className = "samplerStep";
+        if (col > 0 && col % beatSteps === 0) {
+          stepBtn.classList.add("is-beat-start");
+        }
 
         const cell = pattern[row] && pattern[row][col];
         if (cell && cell.on) stepBtn.classList.add("is-on");
@@ -685,6 +715,7 @@
 
         stepBtn.addEventListener("pointerdown", (event) => {
           if (event.button != null && event.button !== 0) return;
+          stepBtn._pointerDownTime = event.timeStamp;
           composeCellWasLongPress = false;
           composeCellLongPressTarget = stepBtn;
           const rect = stepBtn.getBoundingClientRect();
@@ -733,9 +764,12 @@
         stepBtn.addEventListener("pointerup", clearComposePress);
         stepBtn.addEventListener("pointercancel", clearComposePress);
 
-        stepBtn.addEventListener("click", () => {
+        stepBtn.addEventListener("click", (event) => {
           if (composeCellWasLongPress) {
             composeCellWasLongPress = false;
+            return;
+          }
+          if (isPlaying && event.timeStamp - (stepBtn._pointerDownTime || 0) < 50) {
             return;
           }
           closeComposeRatchetPicker();
@@ -813,9 +847,15 @@
     navToDawBtn.addEventListener("click", closeSamplerView);
   }
 
+  window.addEventListener("resize", () => {
+    if (activeTab === "compose") {
+      renderCompose();
+    }
+  });
+
   samplerRoot.addEventListener("contextmenu", (event) => {
     const target = event.target instanceof Element ? event.target : null;
-    if (target && target.closest(".samplerPad")) {
+    if (target && target.closest(".samplerPad, .samplerStep")) {
       event.preventDefault();
     }
   });
@@ -854,6 +894,12 @@
   if (bpmOut) {
     bpmOut.addEventListener("input", () => {
       if (bpmOut.value === "") return;
+      const val = Number(bpmOut.value);
+      if (Number.isFinite(val) && val >= 20 && val <= 360) {
+        setBpm(val);
+      }
+    });
+    bpmOut.addEventListener("blur", () => {
       setBpm(bpmOut.value);
     });
   }
