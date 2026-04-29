@@ -101,7 +101,10 @@
 
   function syncRecordFabPulse() {
     if (!recordFab) return;
-    const beatMs = Math.max(300, Math.round((60 / clampNumber(bpm, 60, 200)) * 1000));
+    const beatMs = Math.max(
+      300,
+      Math.round((60 / clampNumber(bpm, 60, 200)) * 1000),
+    );
     recordFab.style.setProperty("--sampler-record-pulse-dur", `${beatMs}ms`);
   }
 
@@ -161,7 +164,7 @@
 
     const ratchet = sanitizeRatchet(ratchetValue);
     const repeats = ratchet >= 1 ? Math.max(1, Math.round(ratchet)) : 1;
-    const stepDuration = (60 / clampNumber(bpm, 60, 200)) / 4;
+    const stepDuration = 60 / clampNumber(bpm, 60, 200) / 4;
     const repeatInterval = stepDuration / repeats;
 
     for (let i = 0; i < repeats; i += 1) {
@@ -349,7 +352,10 @@
     isRatchetEditOpen = Boolean(nextOpen);
     if (padRatchetPanel) padRatchetPanel.hidden = true;
     if (ratchetBtn) {
-      ratchetBtn.setAttribute("aria-pressed", isRatchetEditOpen ? "true" : "false");
+      ratchetBtn.setAttribute(
+        "aria-pressed",
+        isRatchetEditOpen ? "true" : "false",
+      );
     }
     renderPads();
   }
@@ -473,7 +479,9 @@
     const frag = document.createDocumentFragment();
 
     for (const pad of padStates) {
-      const padEl = document.createElement(isRatchetEditOpen ? "div" : "button");
+      const padEl = document.createElement(
+        isRatchetEditOpen ? "div" : "button",
+      );
       if (!isRatchetEditOpen) {
         padEl.type = "button";
       }
@@ -514,7 +522,10 @@
         for (let q = 0; q < 4; q += 1) {
           const selectEl = document.createElement("select");
           selectEl.className = `samplerPadEditSelect samplerPadEditQ${q}`;
-          selectEl.setAttribute("aria-label", `pad ${pad.index + 1} quarter ${q + 1} repeat`);
+          selectEl.setAttribute(
+            "aria-label",
+            `pad ${pad.index + 1} quarter ${q + 1} repeat`,
+          );
 
           const options = [0.25, 0.3333, 0.5, 0.6667, 1, 2, 3, 4, 5];
           for (const value of options) {
@@ -657,7 +668,8 @@
 
         const cell = pattern[row] && pattern[row][col];
         if (cell && cell.on) stepBtn.classList.add("is-on");
-        if (isPlaying && col === currentStep) stepBtn.classList.add("is-current");
+        if (isPlaying && col === currentStep)
+          stepBtn.classList.add("is-current");
 
         stepBtn.setAttribute("aria-label", `pad ${row + 1} step ${col + 1}`);
         if (cell && cell.on) {
@@ -698,7 +710,12 @@
             if (!c || !c.on) return;
 
             composeCellWasLongPress = true;
-            showComposeRatchetPicker(target, row, col, numberOrFallback(c.corner, 0));
+            showComposeRatchetPicker(
+              target,
+              row,
+              col,
+              numberOrFallback(c.corner, 0),
+            );
           }, 420);
         });
 
@@ -881,7 +898,9 @@
   if (composeRatchetPicker) {
     composeRatchetPicker.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
-      const btn = target ? target.closest(".samplerComposeRatchetOption") : null;
+      const btn = target
+        ? target.closest(".samplerComposeRatchetOption")
+        : null;
       if (!btn) return;
 
       const row = clampNumber(

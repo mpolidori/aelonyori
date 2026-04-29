@@ -108,6 +108,9 @@
     "settingsThemeControlsMount",
   );
 
+  let settingsScrollHintUp = null;
+  let settingsScrollHintDown = null;
+
   const rangeFromInput = document.getElementById("rangeFrom");
   const rangeToInput = document.getElementById("rangeTo");
   const rangeCopyBtn = document.getElementById("rangeCopyBtn");
@@ -241,6 +244,8 @@
   let suppressSettingsToggleClickUntil = 0;
   let suppressThemeStarClickUntil = 0;
   let settingsLayoutRaf = null;
+  let settingsScrollHintRaf = null;
+  let settingsScrollHintObserver = null;
   let wordPlayLayoutRaf = null;
 
   let autoscrollEnabled = true;
@@ -271,6 +276,7 @@
   let wordPlaySubtitleEntriesSinceMusic = 0;
   let wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
   let wordPlaySubtitleLastTake = null;
+  let wordPlaySubtitleLastTier = "short";
   let autosaveTimerId = null;
   let autosaveStatusTimer = null;
   const samplePadHoldStates = new Map();
@@ -1800,6 +1806,99 @@
     const topMargin = 12;
     const available = Math.max(0, Math.round(barRect.top - gap - topMargin));
     settingsPanel.style.maxHeight = `${available}px`;
+    scheduleSettingsScrollHintSync();
+  }
+
+  function ensureSettingsScrollHintElements() {
+    if (!settingsModal || settingsScrollHintUp || settingsScrollHintDown)
+      return;
+
+    const up = document.createElement("div");
+    up.className = "settingsScrollHint settingsScrollHintUp";
+    up.textContent = "▴";
+    up.hidden = true;
+    up.setAttribute("aria-hidden", "true");
+
+    const down = document.createElement("div");
+    down.className = "settingsScrollHint settingsScrollHintDown";
+    down.textContent = "▾";
+    down.hidden = true;
+    down.setAttribute("aria-hidden", "true");
+
+    settingsModal.appendChild(up);
+    settingsModal.appendChild(down);
+    settingsScrollHintUp = up;
+    settingsScrollHintDown = down;
+  }
+
+  function syncSettingsScrollHints() {
+    if (!settingsPanel) return;
+    ensureSettingsScrollHintElements();
+
+    if (!settingsScrollHintUp || !settingsScrollHintDown) return;
+
+    if (!settingsOpen || (settingsModal && settingsModal.hidden)) {
+      settingsScrollHintUp.hidden = true;
+      settingsScrollHintDown.hidden = true;
+      return;
+    }
+
+    const maxScroll = Math.max(
+      0,
+      settingsPanel.scrollHeight - settingsPanel.clientHeight,
+    );
+    const top = Math.max(0, numberOrFallback(settingsPanel.scrollTop, 0));
+    const canScrollDown = maxScroll > 2 && top < maxScroll - 2;
+    const canScrollUp = maxScroll > 2 && top > 2;
+
+    settingsPanel.classList.toggle("can-scroll-down", canScrollDown);
+    settingsPanel.classList.toggle("can-scroll-up", canScrollUp);
+
+    const rect = settingsPanel.getBoundingClientRect();
+    const hintFontPx = numberOrFallback(
+      parseFloat(window.getComputedStyle(settingsScrollHintUp).fontSize),
+      12,
+    );
+    const hintSize = clampNumber(hintFontPx, 8, 48);
+    const scrollbarGap = 16;
+    const x = Math.round(
+      clampNumber(
+        rect.right - hintSize - scrollbarGap,
+        0,
+        Math.max(0, window.innerWidth - hintSize),
+      ),
+    );
+    settingsScrollHintUp.style.left = `${x}px`;
+    settingsScrollHintUp.style.top = `${Math.round(rect.top + 4)}px`;
+    settingsScrollHintDown.style.left = `${x}px`;
+    settingsScrollHintDown.style.top = `${Math.round(rect.bottom - hintSize - 8)}px`;
+
+    settingsScrollHintUp.hidden = !canScrollUp;
+    settingsScrollHintDown.hidden = !canScrollDown;
+  }
+
+  function scheduleSettingsScrollHintSync() {
+    if (settingsScrollHintRaf != null) return;
+    settingsScrollHintRaf = window.requestAnimationFrame(() => {
+      settingsScrollHintRaf = null;
+      syncSettingsScrollHints();
+    });
+  }
+
+  function ensureSettingsScrollHintObserver() {
+    if (!settingsPanel || settingsScrollHintObserver) return;
+    if (!("MutationObserver" in window)) return;
+
+    settingsScrollHintObserver = new MutationObserver(() => {
+      scheduleSettingsScrollHintSync();
+    });
+
+    settingsScrollHintObserver.observe(settingsPanel, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["hidden", "style", "class"],
+    });
   }
 
   function positionWordPlaySubtitleStack() {
@@ -1882,8 +1981,22 @@
     }
 
     if (padPlaybackChip) {
-      padPlaybackChip.style.left = `${rect.left.toFixed(3)}px`;
-      padPlaybackChip.style.bottom = `${Math.round(window.innerHeight - rect.top + 10)}px`;
+      padPlaybackChip.style.bottom = "";
+      if (
+        samplePadModeToolbar &&
+        !samplePadModeToolbar.hidden &&
+        isElementVisible(samplePadModeToolbar)
+      ) {
+        const modeRect = samplePadModeToolbar.getBoundingClientRect();
+        padPlaybackChip.style.left = `${modeRect.left.toFixed(3)}px`;
+        padPlaybackChip.style.top = `${Math.round(modeRect.bottom + 4)}px`;
+      } else {
+        const editBarH = samplePadToolbar
+          ? samplePadToolbar.getBoundingClientRect().height || 38
+          : 38;
+        padPlaybackChip.style.left = `${rect.left.toFixed(3)}px`;
+        padPlaybackChip.style.top = `${Math.round(14 + editBarH + 4)}px`;
+      }
     }
   }
 
@@ -1976,6 +2089,10 @@
       settingsModal.hidden = !open;
     }
 
+    if (!open && settingsPanel) {
+      settingsPanel.classList.remove("can-scroll-down", "can-scroll-up");
+    }
+
     if (transportSettingsBtn) {
       transportSettingsBtn.setAttribute(
         "aria-pressed",
@@ -1989,6 +2106,10 @@
       if (presetSelect && typeof presetSelect.focus === "function") {
         presetSelect.focus({ preventScroll: true });
       }
+      scheduleSettingsScrollHintSync();
+    } else if (settingsScrollHintUp && settingsScrollHintDown) {
+      settingsScrollHintUp.hidden = true;
+      settingsScrollHintDown.hidden = true;
     }
 
     syncThemeControlsMount();
@@ -2739,25 +2860,46 @@
     wordPlaySubtitleEntriesSinceMusic = 0;
     wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
     wordPlaySubtitleLastTake = null;
+    wordPlaySubtitleLastTier = "short";
   }
 
   function pickWordPlaySubtitleTake(maxTake) {
     const clampedMax = Math.max(1, Math.round(numberOrFallback(maxTake, 1)));
-    const shortChoices = [5, 6, 7, 8, 9].filter((n) => n <= clampedMax);
+    const shortChoices = [2, 3, 4, 5, 6].filter((n) => n <= clampedMax);
+    const mediumChoices = [7, 8, 9].filter((n) => n <= clampedMax);
     const longChoices = [10, 11, 12].filter((n) => n <= clampedMax);
 
     const usedLongLastTime = Number(wordPlaySubtitleLastTake) >= 10;
     const allowLong =
-      longChoices.length > 0 &&
-      Math.random() < (usedLongLastTime ? 0.12 : 0.28);
+      longChoices.length > 0 && Math.random() < (usedLongLastTime ? 0.04 : 0.1);
+    const allowMedium = mediumChoices.length > 0 && Math.random() < 0.3;
 
-    let pool = allowLong ? longChoices : shortChoices;
+    let pool = shortChoices;
+    let tier = "short";
+    if (allowLong) {
+      pool = longChoices;
+      tier = "long";
+    } else if (allowMedium) {
+      pool = mediumChoices;
+      tier = "medium";
+    }
+
+    if (tier === wordPlaySubtitleLastTier && shortChoices.length) {
+      pool = shortChoices;
+      tier = "short";
+    }
+
     if (!pool.length) {
-      pool = shortChoices.length ? shortChoices : longChoices;
+      pool = shortChoices.length
+        ? shortChoices
+        : mediumChoices.length
+          ? mediumChoices
+          : longChoices;
     }
 
     if (!pool.length) {
       wordPlaySubtitleLastTake = 1;
+      wordPlaySubtitleLastTier = "short";
       return 1;
     }
 
@@ -2767,6 +2909,7 @@
     }
 
     wordPlaySubtitleLastTake = picked;
+    wordPlaySubtitleLastTier = tier;
     return picked;
   }
 
@@ -2782,18 +2925,18 @@
     return {
       leadDelayMs:
         randomBetween(
-          clampNumber(beatMs * 0.6, 240, 700),
-          clampNumber(beatMs * 1.2, 420, 1100),
+          clampNumber(beatMs * 1.1, 420, 950),
+          clampNumber(beatMs * 1.8, 650, 1400),
         ) * speedFactor,
       holdDelayMs:
         randomBetween(
-          clampNumber(beatMs * 2.8, 1400, 2800),
-          clampNumber(beatMs * 4.6, 2000, 3800),
+          clampNumber(beatMs * 3.2, 1800, 3200),
+          clampNumber(beatMs * 5.4, 2500, 4700),
         ) * speedFactor,
       gapDelayMs:
         randomBetween(
-          clampNumber(beatMs * 0.35, 150, 300),
-          clampNumber(beatMs * 0.8, 260, 600),
+          clampNumber(beatMs * 0.9, 350, 700),
+          clampNumber(beatMs * 1.6, 520, 980),
         ) * speedFactor,
     };
   }
@@ -6200,6 +6343,18 @@
     });
   }
 
+  if (settingsPanel) {
+    settingsPanel.addEventListener(
+      "scroll",
+      () => {
+        scheduleSettingsScrollHintSync();
+      },
+      { passive: true },
+    );
+
+    ensureSettingsScrollHintObserver();
+  }
+
   window.addEventListener("keydown", (event) => {
     if (!event || event.key !== "Escape") return;
     if (!settingsOpen) return;
@@ -6232,11 +6387,7 @@
     if (themeStarBtn) {
       themeStarBtn.hidden = !themeEnabled;
 
-      if (
-        themeEnabled &&
-        tracks.size > 0 &&
-        !starDawIntroPlayed
-      ) {
+      if (themeEnabled && tracks.size > 0 && !starDawIntroPlayed) {
         starDawIntroPlayed = true;
         themeStarBtn.classList.remove("is-star-bounce-intro");
         themeStarBtn.classList.add("is-star-daw-intro");
@@ -6336,7 +6487,11 @@
       0,
       1,
     );
-    const heightRatio = clampNumber(numberOrFallback(bumpHeight, 0) / 100, 0, 1);
+    const heightRatio = clampNumber(
+      numberOrFallback(bumpHeight, 0) / 100,
+      0,
+      1,
+    );
 
     const liftScale = 1 + heightRatio * 2;
     const letterLift = 3 * intensityRatio * liftScale;
@@ -7047,5 +7202,4 @@
   updateRangeButtons();
 
   refreshPresetSelect();
-
 })();

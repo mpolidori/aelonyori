@@ -1738,7 +1738,7 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
 .padPlaybackChip {
   position: fixed;
   left: calc(50% - (var(--floatingBarWidth) / 2));
-  bottom: calc(0.85rem + 38px + 0.5rem);
+  top: calc(0.85rem + 38px + 38px + 0.5rem);
   z-index: 53;
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.18);
@@ -1823,6 +1823,32 @@ html.is-theme .padPlaybackChip {
   gap: 0.55rem;
 }
 
+.settingsScrollHint {
+  --settings-scroll-hint-size: 20px;
+
+  position: fixed;
+  z-index: 9999;
+  width: var(--settings-scroll-hint-size);
+  height: var(--settings-scroll-hint-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--settings-scroll-hint-size);
+  line-height: 1;
+  font-weight: 900;
+  font-family: "Arial Black", "Segoe UI Symbol", sans-serif;
+  color: rgba(0, 0, 0, 0.82);
+  pointer-events: none;
+  overflow: visible;
+  text-shadow:
+    0 0 3px var(--page-bg, #ffffff),
+    0 0 6px var(--page-bg, #ffffff);
+}
+
+.settingsScrollHint[hidden] {
+  display: none;
+}
+
 body.is-settings-open {
   overflow: hidden;
 }
@@ -1831,6 +1857,13 @@ html.is-theme .settingsPanel {
   --accent: var(--t-fg, #ffffff);
   background: var(--t-3, rgba(255, 255, 255, 0.03));
   border-color: var(--t-18, rgba(255, 255, 255, 0.18));
+}
+
+html.is-theme .settingsScrollHint {
+  color: var(--t-96, rgba(255, 255, 255, 0.96));
+  text-shadow:
+    0 0 3px var(--t-bg, #000000),
+    0 0 6px var(--t-bg, #000000);
 }
 
 .settingsSection {
