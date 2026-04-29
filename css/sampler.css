@@ -1,0 +1,705 @@
+.samplerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: var(--page-bg, #ffffff);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+  padding: 1rem 0 0.8rem;
+  display: flex;
+  flex-direction: column;
+}
+
+body.is-sampler-view .samplerRoot {
+  transform: translateX(0);
+}
+
+.container,
+#samplePadToolbar,
+#samplePadModeToolbar,
+#transportBar,
+#padPlaybackChip,
+#wordPlaySubtitleStack {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+body.is-sampler-view .container,
+body.is-sampler-view #samplePadToolbar,
+body.is-sampler-view #samplePadModeToolbar,
+body.is-sampler-view #transportBar,
+body.is-sampler-view #padPlaybackChip,
+body.is-sampler-view #wordPlaySubtitleStack {
+  transform: translateX(-100vw);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.is-sampler-view #settingsModal {
+  display: none !important;
+}
+
+.samplerShell {
+  width: min(900px, calc(100vw - 2rem));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.samplerTopBar {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.52rem 0.62rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.samplerRatchetBtn {
+  align-self: center;
+}
+
+.samplerField {
+  min-width: 0;
+}
+
+.samplerField .fieldLabel,
+.samplerPadEditorRow .fieldLabel {
+  color: inherit;
+}
+
+.samplerField input[type="range"],
+.samplerField input[type="number"],
+.samplerPadRatchetPanel select {
+  color: inherit;
+}
+
+.samplerField input[type="range"] {
+  accent-color: currentColor;
+}
+
+.samplerField input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.samplerField input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.34);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.samplerField input[type="range"]::-moz-range-track,
+.samplerField input[type="range"]::-moz-range-progress {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.samplerField input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.34);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.samplerTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.samplerTab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+  padding: 0.58rem 0.46rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.1s ease, background-color 0.12s ease;
+}
+
+.samplerTab.is-active {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.samplerView {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#samplerPadsView {
+  min-height: 0;
+  padding: 0.4rem;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+#samplerComposeView {
+  min-height: 0;
+}
+
+.samplerPadGrid {
+  --pad-gap: 0.42rem;
+  --pad-size: min(
+    calc((100cqw - (var(--pad-gap) * 3)) / 4),
+    calc((100cqh - (var(--pad-gap) * 3)) / 4)
+  );
+  width: calc(var(--pad-size) * 4 + var(--pad-gap) * 3);
+  height: calc(var(--pad-size) * 4 + var(--pad-gap) * 3);
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, var(--pad-size));
+  grid-template-rows: repeat(4, var(--pad-size));
+  gap: var(--pad-gap);
+  place-content: stretch;
+}
+
+.samplerPad {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  background: transparent;
+  color: inherit;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  gap: 0.22rem;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.08s ease, border-color 0.08s ease, transform 0.08s ease;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.samplerPadQuarterLines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.samplerPadQuarterLines::before,
+.samplerPadQuarterLines::after {
+  content: "";
+  position: absolute;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.samplerPadQuarterLines::before {
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.samplerPadQuarterLines::after {
+  left: 50%;
+  top: 8%;
+  bottom: 8%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.samplerPadNum {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.samplerPadRepeat {
+  font-size: 0.72rem;
+  opacity: 0.52;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+}
+
+.samplerPadQuarterVal {
+  position: absolute;
+  font-size: 0.65rem;
+  opacity: 0.58;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  line-height: 1;
+  padding: 0.08rem 0.12rem;
+  z-index: 2;
+}
+
+.samplerPadQ0 {
+  top: 0.12rem;
+  left: 0.12rem;
+}
+
+.samplerPadQ1 {
+  top: 0.12rem;
+  right: 0.12rem;
+}
+
+.samplerPadQ2 {
+  bottom: 0.12rem;
+  left: 0.12rem;
+}
+
+.samplerPadQ3 {
+  bottom: 0.12rem;
+  right: 0.12rem;
+}
+
+.samplerPadEditContainer {
+  display: contents;
+}
+
+.samplerPadEditSelect {
+  position: absolute;
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: var(--page-bg, #ffffff);
+  color: inherit;
+  font: inherit;
+  font-size: 0.68rem;
+  padding: 0.12rem 0.2rem;
+  cursor: pointer;
+  z-index: 2;
+  width: calc(50% - 0.44rem);
+}
+
+.samplerPadEditSelect option {
+  background: var(--page-bg, #ffffff);
+  color: inherit;
+}
+
+.samplerPadEditQ0 {
+  top: 0.34rem;
+  left: 0.34rem;
+}
+
+.samplerPadEditQ1 {
+  top: 0.34rem;
+  right: 0.34rem;
+}
+
+.samplerPadEditQ2 {
+  bottom: 0.34rem;
+  left: 0.34rem;
+}
+
+.samplerPadEditQ3 {
+  bottom: 0.34rem;
+  right: 0.34rem;
+}
+
+.samplerPad.is-loaded {
+  border-style: solid;
+  border-width: 2px;
+  border-color: rgba(0, 0, 0, 0.72);
+}
+
+.samplerPad.is-playing {
+  background: rgba(0, 0, 0, 0.08);
+  transform: translate(-1px, -1px);
+}
+
+.samplerPad.is-recording {
+  border-color: #d32f2f;
+  background: rgba(211, 47, 47, 0.12);
+}
+
+.samplerQuarterField {
+  min-width: 0;
+}
+
+.samplerComposeGrid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.samplerStepHeader,
+.samplerComposeRow {
+  display: grid;
+  grid-template-columns: 2.35rem 1fr;
+  gap: 0.42rem;
+  align-items: center;
+}
+
+.samplerStepNumbers,
+.samplerRowSteps {
+  display: flex;
+  align-items: center;
+  min-width: max-content;
+  gap: 0.15rem;
+}
+
+.samplerStepNumber {
+  width: 2.04rem;
+  text-align: center;
+  font-size: 0.72rem;
+  opacity: 0.5;
+}
+
+.samplerStepNumber.is-beat {
+  opacity: 0.82;
+}
+
+.samplerRowPadIndex {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  font: inherit;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0.22rem 0;
+  cursor: pointer;
+}
+
+.samplerStep {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  width: 2.04rem;
+  height: 2.55rem;
+  padding: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.samplerStepBeatBreak {
+  width: 0.3rem;
+  margin: 0 0.15rem;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.samplerStep.is-on {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(0, 0, 0, 0.85);
+}
+
+.samplerStep.is-current {
+  outline: 1px solid rgba(0, 0, 0, 0.68);
+  outline-offset: 1px;
+}
+
+.samplerFab {
+  position: relative;
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(0, 0, 0, 0.92);
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+  transition: transform 0.08s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+#samplerRatchetBtn {
+  font-size: 1.1rem;
+}
+
+#samplerRecordFab,
+#samplerPlayFab {
+  font-size: 1.18rem;
+}
+
+#samplerRecordFab {
+  padding-left: 0.03rem;
+}
+
+#samplerPlayFab {
+  padding-left: 0.08rem;
+}
+
+.samplerBottomDock {
+  position: relative;
+  width: min(900px, calc(100vw - 2rem));
+  margin: 0.5rem auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 2.7rem;
+  gap: 0.55rem;
+}
+
+.samplerRecordStatus {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.9rem;
+  z-index: 95;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.9);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  padding: 0.2rem 0.36rem;
+  pointer-events: none;
+}
+
+.samplerRecordStatus[hidden] {
+  display: none;
+}
+
+#samplerRatchetBtn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.samplerComposeRatchetPicker {
+  position: fixed;
+  z-index: 72;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.24rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.samplerComposeRatchetOption {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.96rem;
+  width: 1.9rem;
+  height: 1.6rem;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.samplerFab:active {
+  transform: scale(0.95);
+}
+
+#samplerRatchetBtn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.samplerFab[aria-pressed="true"] {
+  background: rgba(0, 0, 0, 0.9);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+#samplerRecordFab[aria-pressed="true"] {
+  animation: samplerRecordPulse var(--sampler-record-pulse-dur, 500ms) steps(1, end) infinite;
+}
+
+body:not(.is-sampler-view) .samplerFab {
+  display: none;
+}
+
+#navToDawBtn[hidden] {
+  display: none !important;
+}
+
+html.is-theme .samplerTopBar,
+html.is-theme .samplerTabs,
+html.is-theme .samplerView,
+html.is-theme .samplerPad,
+html.is-theme .samplerRowPadIndex,
+html.is-theme .samplerStep,
+html.is-theme .samplerFab {
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .samplerField input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .samplerField input[type="range"]::-webkit-slider-thumb {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background: var(--t-bg, #000000);
+}
+
+html.is-theme .samplerField input[type="range"]::-moz-range-track,
+html.is-theme .samplerField input[type="range"]::-moz-range-progress {
+  background: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .samplerField input[type="range"]::-moz-range-thumb {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background: var(--t-bg, #000000);
+}
+
+html.is-theme .samplerTopBar,
+html.is-theme .samplerView {
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+html.is-theme .samplerTab.is-active {
+  background: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+html.is-theme .samplerPad.is-playing {
+  background: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+html.is-theme .samplerPad.is-loaded {
+  border-color: var(--t-72, rgba(255, 255, 255, 0.72));
+}
+
+html.is-theme .samplerPadQuarterLines::before,
+html.is-theme .samplerPadQuarterLines::after {
+  background: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .samplerStep.is-on {
+  background: var(--t-92, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .samplerStep.is-current {
+  outline-color: var(--t-72, rgba(255, 255, 255, 0.72));
+}
+
+html.is-theme .samplerFab {
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .samplerFab[aria-pressed="true"] {
+  background: var(--t-92, rgba(255, 255, 255, 0.92));
+  color: var(--t-bg, #000000);
+}
+
+html.is-theme #samplerRecordFab[aria-pressed="true"] {
+  animation-name: samplerRecordPulseTheme;
+}
+
+html.is-theme .samplerComposeRatchetPicker {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+html.is-theme .samplerRecordStatus {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .samplerComposeRatchetOption {
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .samplerPadEditSelect,
+html.is-theme .samplerPadEditSelect option {
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+@media (max-width: 860px) {
+  .samplerTopBar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes samplerRecordPulse {
+  0%, 49% {
+    background: rgba(0, 0, 0, 0.9);
+    color: rgba(255, 255, 255, 0.96);
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+
+  50%, 100% {
+    background: rgba(211, 47, 47, 0.92);
+    color: rgba(255, 255, 255, 0.98);
+    border-color: rgba(211, 47, 47, 0.92);
+  }
+}
+
+@keyframes samplerRecordPulseTheme {
+  0%, 49% {
+    background: var(--t-92, rgba(255, 255, 255, 0.92));
+    color: var(--t-bg, #000000);
+    border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  }
+
+  50%, 100% {
+    background: color-mix(in srgb, var(--t-bg, #000000) 18%, #ff4d4d 82%);
+    color: rgba(255, 255, 255, 0.98);
+    border-color: color-mix(in srgb, var(--t-bg, #000000) 18%, #ff4d4d 82%);
+  }
+}
+
+@media (max-width: 740px) and (pointer: coarse) {
+  #samplerPadsView {
+    align-items: flex-start;
+    justify-content: stretch;
+    padding: 0.4rem;
+    container-type: inline-size;
+  }
+
+  .samplerPadGrid {
+    --pad-size: calc((100cqi - (var(--pad-gap) * 2)) / 3);
+    width: 100%;
+    height: auto;
+    max-height: none;
+    grid-template-columns: repeat(3, var(--pad-size));
+    grid-auto-rows: var(--pad-size);
+    grid-template-rows: none;
+    place-content: start center;
+  }
+
+  .samplerPad {
+    touch-action: pan-y;
+  }
+}

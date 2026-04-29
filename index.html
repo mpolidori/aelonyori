@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>aelonyori</title>
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="css/style.css?v=16">
+    <link rel="stylesheet" href="css/sampler.css?v=5">
 </head>
 <body>
+    <button type="button" id="navToSamplerBtn" class="edgeNav edgeNavRight" aria-label="open sampler">&gt;</button>
+    <button type="button" id="navToDawBtn" class="edgeNav edgeNavLeft" aria-label="back to daw" hidden>&lt;</button>
+
     <div class="container">
         <section id="samplePadWrap" class="samplePadWrap" hidden aria-label="sample pad">
             <div id="samplePadGrid" class="samplePadGrid" role="group" aria-label="sample pads"></div>
@@ -40,13 +44,58 @@
             <button type="button" class="letter" data-key="6" data-letter="o" aria-pressed="false">o</button>
             <button type="button" class="letter" data-key="7" data-letter="r" aria-pressed="false">r</button>
             <button type="button" class="letter" data-key="8" data-letter="i" aria-pressed="false">i</button>
-            <button type="button" class="logoStar" id="themeStarBtn" aria-label="theme colors" hidden>✶</button>
+            <button type="button" class="logoStar" id="themeStarBtn" aria-label="theme colors" hidden></button>
         </h1>
 
         <section id="daw" class="daw" hidden aria-label="daw">
             <div id="tracks" class="tracks" aria-label="tracks"></div>
         </section>
     </div>
+
+    <main id="samplerRoot" class="samplerRoot" aria-label="sampler">
+        <section class="samplerShell" aria-label="sampler app">
+            <header class="samplerTopBar" aria-label="sampler controls">
+                <label class="field samplerField">
+                    <span class="fieldLabel">bpm</span>
+                    <input id="samplerBpm" type="range" min="60" max="200" step="1" value="120" aria-label="sampler bpm" />
+                    <input id="samplerBpmOut" class="num" type="number" min="60" max="200" step="1" value="120" aria-label="sampler bpm value" />
+                </label>
+
+                <label class="field samplerField">
+                    <span class="fieldLabel">steps</span>
+                    <input id="samplerSteps" type="range" min="4" max="64" step="4" value="16" aria-label="sampler steps" />
+                    <input id="samplerStepsOut" class="num" type="number" min="4" max="64" step="4" value="16" aria-label="sampler steps value" />
+                </label>
+
+                <label class="field samplerField">
+                    <span class="fieldLabel">beat</span>
+                    <input id="samplerBeat" type="range" min="1" max="16" step="1" value="4" aria-label="sampler beat grouping" />
+                    <input id="samplerBeatOut" class="num" type="number" min="1" max="16" step="1" value="4" aria-label="sampler beat grouping value" />
+                </label>
+            </header>
+
+            <nav class="samplerTabs" aria-label="sampler views">
+                <button type="button" class="samplerTab is-active" data-tab="pads" aria-pressed="true">pads</button>
+                <button type="button" class="samplerTab" data-tab="compose" aria-pressed="false">compose</button>
+            </nav>
+
+            <section id="samplerPadsView" class="samplerView" aria-label="sample pads">
+                <div id="samplerPadGrid" class="samplerPadGrid" role="group" aria-label="16 sample pads"></div>
+            </section>
+
+            <section id="samplerComposeView" class="samplerView" aria-label="sampler composer" hidden>
+                <div id="samplerComposeGrid" class="samplerComposeGrid" role="group" aria-label="sampler sequence grid"></div>
+            </section>
+        </section>
+
+        <div class="samplerBottomDock" aria-label="sampler actions">
+            <button type="button" id="samplerRatchetBtn" class="samplerFab" aria-label="pad ratchet settings" aria-pressed="false" title="pad ratchet settings">⚙</button>
+            <button type="button" id="samplerRecordFab" class="samplerFab" aria-label="toggle sampler record" aria-pressed="false">◉</button>
+            <button type="button" id="samplerPlayFab" class="samplerFab" aria-label="toggle sampler play" aria-pressed="false" hidden>▶</button>
+        </div>
+        <div id="samplerRecordStatus" class="samplerRecordStatus" aria-live="polite" hidden>recording...</div>
+        <div id="samplerComposeRatchetPicker" class="samplerComposeRatchetPicker" hidden aria-label="set compose ratchet" role="dialog"></div>
+    </main>
 
     <div id="samplePadToolbar" class="samplePadToolbar" aria-label="sample pad tools" hidden>
         <button type="button" id="samplePadEditBtn" class="samplePadEditBtn" aria-label="edit sample pads" aria-pressed="false" title="edit sample pads">✎</button>
@@ -253,6 +302,13 @@
                     <button type="button" class="switchToggle" id="bumpToggleBtn" aria-label="bump text" aria-pressed="false"></button>
                 </label>
 
+                <div class="field settingsField settingsFieldRange" id="bumpHeightRow" aria-label="bump height" hidden>
+                    <span class="rangeEdgeLabel">low</span>
+                    <input id="bumpHeight" type="range" min="0" max="100" step="1" value="0" aria-label="bump height low to high" />
+                    <span class="rangeEdgeLabel rangeEdgeLabelEnd">high</span>
+                    <input id="bumpHeightOut" class="num rangeValueMirror" type="number" min="0" max="100" step="1" value="0" aria-hidden="true" tabindex="-1" />
+                </div>
+
                 <div class="field settingsField settingsFieldRange" id="bumpIntensityRow" aria-label="bump intensity" hidden>
                     <span class="rangeEdgeLabel">soft</span>
                     <input id="bumpIntensity" type="range" min="0" max="100" step="1" value="50" aria-label="bump intensity softer to harder" />
@@ -300,6 +356,7 @@
 
     <div id="autosaveStatus" class="status autosaveStatus" aria-live="polite" hidden>saving</div>
 
-    <script src="app.js?v=1" defer></script>
+    <script src="js/sampler.js?v=3" defer></script>
+    <script src="js/app.js?v=2" defer></script>
 </body>
 </html>

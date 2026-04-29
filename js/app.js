@@ -16,6 +16,8 @@
   const tracksContainer = document.getElementById("tracks");
 
   const themeStarBtn = document.getElementById("themeStarBtn");
+  const navToSamplerBtn = document.getElementById("navToSamplerBtn");
+  const navToDawBtn = document.getElementById("navToDawBtn");
   const samplePadWrap = document.getElementById("samplePadWrap");
   const samplePadGrid = document.getElementById("samplePadGrid");
   const samplePadRollWrap = document.getElementById("samplePadRollWrap");
@@ -59,6 +61,9 @@
   const themeResetBtn = document.getElementById("themeResetBtn");
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
+  const bumpHeightRow = document.getElementById("bumpHeightRow");
+  const bumpHeightInput = document.getElementById("bumpHeight");
+  const bumpHeightOut = document.getElementById("bumpHeightOut");
   const bumpIntensityRow = document.getElementById("bumpIntensityRow");
   const bumpIntensityInput = document.getElementById("bumpIntensity");
   const bumpIntensityOut = document.getElementById("bumpIntensityOut");
@@ -243,6 +248,8 @@
   let themeEnabled = false;
   let bumpEnabled = false;
   let starBounceEnabled = false;
+  let starDawIntroPlayed = false;
+  let bumpHeight = 0;
   let bumpIntensity = 50;
   let bumpBounce = 50;
 
@@ -272,6 +279,12 @@
   let queuedThemeColorB = null;
 
   let isSyncingGridScroll = false;
+
+  let samplerSwipePointerId = null;
+  let samplerSwipeStartX = 0;
+  let samplerSwipeStartY = 0;
+  let samplerSwipeStartAt = 0;
+  let samplerSwipeStartedFromRightEdge = false;
 
   let reorderState = null;
   let suppressNextTrackTopBarToggle = false;
@@ -938,6 +951,11 @@
       starBounceEnabled: Boolean(starBounceEnabled),
       themeEnabled: Boolean(themeEnabled),
       bumpEnabled: Boolean(bumpEnabled),
+      bumpHeight: clampNumber(
+        Math.round(numberOrFallback(bumpHeight, 0)),
+        0,
+        100,
+      ),
       bumpIntensity: clampNumber(
         Math.round(numberOrFallback(bumpIntensity, 50)),
         0,
@@ -1109,6 +1127,11 @@
 
     const nextBumpEnabled =
       typeof ui.bumpEnabled === "boolean" ? ui.bumpEnabled : false;
+    const nextBumpHeight = clampNumber(
+      Math.round(numberOrFallback(ui.bumpHeight, bumpHeight)),
+      0,
+      100,
+    );
     const nextBumpIntensity = clampNumber(
       Math.round(numberOrFallback(ui.bumpIntensity, bumpIntensity)),
       0,
@@ -1119,6 +1142,7 @@
       0,
       100,
     );
+    setBumpHeight(nextBumpHeight);
     setBumpBounce(nextBumpBounce);
     setBumpIntensity(nextBumpIntensity);
     setBumpEnabled(nextBumpEnabled);
@@ -1594,6 +1618,9 @@
     if (bumpIntensityRow) {
       bumpIntensityRow.hidden = !anyBumpEnabled;
     }
+    if (bumpHeightRow) {
+      bumpHeightRow.hidden = !anyBumpEnabled;
+    }
     if (bumpBounceRow) {
       bumpBounceRow.hidden = !anyBumpEnabled;
     }
@@ -1603,6 +1630,12 @@
     }
     if (bumpIntensityOut) {
       bumpIntensityOut.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+    if (bumpHeightInput) {
+      bumpHeightInput.disabled = !themeEnabled || !anyBumpEnabled;
+    }
+    if (bumpHeightOut) {
+      bumpHeightOut.disabled = !themeEnabled || !anyBumpEnabled;
     }
     if (bumpBounceInput) {
       bumpBounceInput.disabled = !themeEnabled || !anyBumpEnabled;
@@ -1932,6 +1965,7 @@
     const hasTracks = tracks.size > 0;
     const open = Boolean(nextOpen) && hasTracks;
     settingsOpen = open;
+    document.body.classList.toggle("is-settings-open", open);
 
     if (open) {
       stopSamplePadKeyHolds();
@@ -1976,6 +2010,55 @@
     syncSamplePadToolbarVisibility();
     renderSamplePadGrid();
     updateTransportControls();
+    if (navToSamplerBtn) {
+      navToSamplerBtn.hidden = false;
+      navToSamplerBtn.disabled = !hasTracks || isSamplerViewOpen();
+    }
+    if (navToDawBtn) {
+      navToDawBtn.hidden = false;
+      navToDawBtn.disabled = !isSamplerViewOpen();
+    }
+
+    if (
+      hasTracks &&
+      !starDawIntroPlayed &&
+      themeStarBtn &&
+      !themeStarBtn.hidden
+    ) {
+      starDawIntroPlayed = true;
+      themeStarBtn.classList.remove("is-star-bounce-intro");
+      themeStarBtn.classList.add("is-star-daw-intro");
+      themeStarBtn.addEventListener(
+        "animationend",
+        () => themeStarBtn.classList.remove("is-star-daw-intro"),
+        { once: true },
+      );
+    }
+  }
+
+  function setSamplerViewOpen(nextOpen) {
+    const open = Boolean(nextOpen);
+    document.body.classList.toggle("is-sampler-view", open);
+    if (navToDawBtn) {
+      navToDawBtn.hidden = false;
+      navToDawBtn.disabled = !open;
+    }
+    if (navToSamplerBtn) {
+      navToSamplerBtn.hidden = false;
+      navToSamplerBtn.disabled = open || !tracks.size;
+    }
+
+    if (open) {
+      stop();
+      if (settingsOpen) setSettingsOpen(false);
+      document.dispatchEvent(new CustomEvent("sampler:view-open"));
+    } else {
+      document.dispatchEvent(new CustomEvent("sampler:view-close"));
+    }
+  }
+
+  function isSamplerViewOpen() {
+    return document.body.classList.contains("is-sampler-view");
   }
 
   function formatPercent01(value01) {
@@ -5512,6 +5595,19 @@
     themeStarBtn.setAttribute("aria-expanded", "false");
   }
 
+  if (navToSamplerBtn) {
+    navToSamplerBtn.addEventListener("click", () => {
+      if (!tracks.size) return;
+      setSamplerViewOpen(true);
+    });
+  }
+
+  if (navToDawBtn) {
+    navToDawBtn.addEventListener("click", () => {
+      setSamplerViewOpen(false);
+    });
+  }
+
   if (themeModeBtn) {
     themeModeBtn.addEventListener("click", () => {
       setThemeEnabled(!themeEnabled);
@@ -5540,6 +5636,19 @@
     bumpIntensityOut.addEventListener("input", () => {
       if (bumpIntensityOut.value === "") return;
       setBumpIntensity(bumpIntensityOut.value);
+    });
+  }
+
+  if (bumpHeightInput) {
+    bumpHeightInput.addEventListener("input", () => {
+      setBumpHeight(bumpHeightInput.value);
+    });
+  }
+
+  if (bumpHeightOut) {
+    bumpHeightOut.addEventListener("input", () => {
+      if (bumpHeightOut.value === "") return;
+      setBumpHeight(bumpHeightOut.value);
     });
   }
 
@@ -6122,6 +6231,21 @@
 
     if (themeStarBtn) {
       themeStarBtn.hidden = !themeEnabled;
+
+      if (
+        themeEnabled &&
+        tracks.size > 0 &&
+        !starDawIntroPlayed
+      ) {
+        starDawIntroPlayed = true;
+        themeStarBtn.classList.remove("is-star-bounce-intro");
+        themeStarBtn.classList.add("is-star-daw-intro");
+        themeStarBtn.addEventListener(
+          "animationend",
+          () => themeStarBtn.classList.remove("is-star-daw-intro"),
+          { once: true },
+        );
+      }
     }
 
     if (!themeEnabled) {
@@ -6195,18 +6319,57 @@
 
     const ratio = bumpIntensity / 100;
     const softness = 1 - ratio;
-    const letterLift = 3 * ratio;
     const trackLift = 4 * ratio;
     const motionMs = Math.round(160 + softness * 180);
-    const letterGhostOpacity = (0.42 + ratio * 0.38).toFixed(3);
     const trackGhostOpacity = (0.1 + ratio * 0.24).toFixed(3);
 
     const root = document.documentElement;
-    root.style.setProperty("--bump-letter-lift", `${letterLift.toFixed(2)}px`);
     root.style.setProperty("--bump-track-lift", `${trackLift.toFixed(2)}px`);
     root.style.setProperty("--bump-motion-dur", `${motionMs}ms`);
-    root.style.setProperty("--bump-letter-ghost-opacity", letterGhostOpacity);
     root.style.setProperty("--bump-track-ghost-opacity", trackGhostOpacity);
+    applyBumpLetterHeightVars();
+  }
+
+  function applyBumpLetterHeightVars() {
+    const intensityRatio = clampNumber(
+      numberOrFallback(bumpIntensity, 50) / 100,
+      0,
+      1,
+    );
+    const heightRatio = clampNumber(numberOrFallback(bumpHeight, 0) / 100, 0, 1);
+
+    const liftScale = 1 + heightRatio * 2;
+    const letterLift = 3 * intensityRatio * liftScale;
+
+    const baseGhostOpacity = 0.42 + intensityRatio * 0.38;
+    const ghostBoost = 1 + heightRatio * 0.75;
+    const letterGhostOpacity = clampNumber(baseGhostOpacity * ghostBoost, 0, 1);
+
+    const shadowSpread = 2 + 2 * heightRatio;
+
+    const root = document.documentElement;
+    root.style.setProperty("--bump-letter-lift", `${letterLift.toFixed(2)}px`);
+    root.style.setProperty(
+      "--bump-letter-ghost-opacity",
+      letterGhostOpacity.toFixed(3),
+    );
+    root.style.setProperty(
+      "--bump-letter-shadow-spread",
+      `${shadowSpread.toFixed(2)}px`,
+    );
+  }
+
+  function setBumpHeight(nextHeight) {
+    bumpHeight = clampNumber(
+      Math.round(numberOrFallback(nextHeight, bumpHeight)),
+      0,
+      100,
+    );
+
+    if (bumpHeightInput) bumpHeightInput.value = String(bumpHeight);
+    if (bumpHeightOut) bumpHeightOut.value = String(bumpHeight);
+
+    applyBumpLetterHeightVars();
   }
 
   function setBumpBounce(nextBounce) {
@@ -6393,6 +6556,7 @@
   setAutosaveInterval(autosaveIntervalMinutes);
   setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
+  setBumpHeight(bumpHeight);
   setBumpBounce(bumpBounce);
   setBumpIntensity(bumpIntensity);
   setBumpEnabled(bumpEnabled);
@@ -6765,6 +6929,7 @@
   window.addEventListener("keydown", (event) => {
     if (event.defaultPrevented) return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (isSamplerViewOpen()) return;
     if (!samplePadEnabled || settingsOpen || isTypingTarget(event.target))
       return;
 
@@ -6788,9 +6953,59 @@
     stopSamplePadKeyHolds();
   });
 
+  window.addEventListener("pointerdown", (event) => {
+    if (!event || event.pointerType === "mouse") return;
+    if (isSamplerViewOpen()) return;
+    if (!tracks.size || settingsOpen) return;
+    if (isTypingTarget(event.target)) return;
+    const startedNearRightEdge = event.clientX >= window.innerWidth - 28;
+    if (
+      event.target instanceof Element &&
+      !startedNearRightEdge &&
+      event.target.closest(
+        "button, input, select, textarea, .transportBar, .settingsModal, .settingsPanel",
+      )
+    ) {
+      return;
+    }
+
+    samplerSwipePointerId = event.pointerId;
+    samplerSwipeStartX = event.clientX;
+    samplerSwipeStartY = event.clientY;
+    samplerSwipeStartAt = Date.now();
+    samplerSwipeStartedFromRightEdge = startedNearRightEdge;
+  });
+
+  window.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== samplerSwipePointerId) return;
+
+    const dx = event.clientX - samplerSwipeStartX;
+    const dy = event.clientY - samplerSwipeStartY;
+    const dt = Date.now() - samplerSwipeStartAt;
+
+    samplerSwipePointerId = null;
+
+    const horizontal = Math.abs(dx) >= 90 && Math.abs(dy) <= 55;
+    const quickEnough = dt <= 700;
+    const startedFromRightHalf = samplerSwipeStartX >= window.innerWidth * 0.45;
+    const allowStart = startedFromRightHalf || samplerSwipeStartedFromRightEdge;
+    samplerSwipeStartedFromRightEdge = false;
+
+    if (horizontal && quickEnough && allowStart && dx <= -90) {
+      setSamplerViewOpen(true);
+    }
+  });
+
+  window.addEventListener("pointercancel", (event) => {
+    if (event.pointerId !== samplerSwipePointerId) return;
+    samplerSwipePointerId = null;
+    samplerSwipeStartedFromRightEdge = false;
+  });
+
   window.addEventListener("keydown", (event) => {
     if (event.defaultPrevented) return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (isSamplerViewOpen()) return;
     if (settingsOpen) return;
     if (isTypingTarget(event.target)) return;
     if (!isShortcutTarget(event.target)) return;
@@ -6820,6 +7035,8 @@
   });
 
   updateDawVisibility();
+  window.setSamplerViewOpen = setSamplerViewOpen;
+  window.isSamplerViewOpen = isSamplerViewOpen;
   updateSoloSuppression();
   stepsOut.value = String(stepsCount);
   globalVolumeOut.value = String(globalVolume);
@@ -6831,12 +7048,4 @@
 
   refreshPresetSelect();
 
-  if (themeStarBtn && starBounceEnabled === false) {
-    themeStarBtn.classList.add("is-star-bounce-intro");
-    themeStarBtn.addEventListener(
-      "animationend",
-      () => themeStarBtn.classList.remove("is-star-bounce-intro"),
-      { once: true },
-    );
-  }
 })();

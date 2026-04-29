@@ -32,6 +32,7 @@
   --bump-motion-dur: 160ms;
   --bump-motion-ease: cubic-bezier(0.2, 0.85, 0.28, 1);
   --bump-letter-ghost-opacity: 0.68;
+  --bump-letter-shadow-spread: 2px;
   --bump-track-ghost-opacity: 0.2;
 }
 
@@ -74,6 +75,76 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   font-family: sans-serif;
+}
+
+.edgeNav {
+  position: fixed;
+  top: 50%;
+  z-index: 70;
+  width: 1.9rem;
+  height: 2.2rem;
+  border: 0;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.72);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.36;
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+}
+
+.edgeNav:hover,
+.edgeNav:focus-visible {
+  opacity: 0.92;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.edgeNav:disabled {
+  opacity: 0.14;
+  cursor: default;
+}
+
+.edgeNav:focus-visible {
+  outline: 1px solid rgba(0, 0, 0, 0.26);
+  outline-offset: 2px;
+}
+
+.edgeNavLeft {
+  left: 0.08rem;
+}
+
+.edgeNavRight {
+  right: 0.08rem;
+}
+
+body:not(.has-daw) .edgeNavRight {
+  display: none;
+}
+
+body:not(.is-sampler-view) .edgeNavLeft {
+  display: none;
+}
+
+body.is-sampler-view .edgeNavRight {
+  display: none;
+}
+
+html.is-theme .edgeNav {
+  color: var(--t-72, rgba(255, 255, 255, 0.72));
+}
+
+html.is-theme .edgeNav:hover,
+html.is-theme .edgeNav:focus-visible {
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .edgeNav:disabled {
+  color: var(--t-32, rgba(255, 255, 255, 0.32));
 }
 
 html.is-theme {
@@ -873,6 +944,8 @@ html.is-theme .samplePadModeToolbar {
   left: 50%;
   top: var(--logo-y);
   transform: translate(-50%, -50%);
+  --star-x-offset: 0.08ch;
+  --star-floor-offset: 0.56em;
 }
 
 .logoStar {
@@ -881,28 +954,85 @@ html.is-theme .samplePadModeToolbar {
   border: 0;
   padding: 0;
   margin: 0;
-  font: inherit;
-  font-size: 0.35em;
-  line-height: 1;
-  letter-spacing: inherit;
-  text-transform: inherit;
+  width: 0.33em;
+  height: 0.33em;
+  font-size: inherit;
+  line-height: 0;
   color: inherit;
   cursor: pointer;
   position: absolute;
   left: 100%;
-  top: 25%;
-  transform: translate3d(0.25ch, -50%, 0);
+  top: 26%;
+  transform: translate3d(var(--star-x-offset), -50%, 0);
   isolation: isolate;
 }
 
+.logoStar[aria-expanded="true"] {
+  border: 1.6px solid currentColor;
+  border-radius: 999px;
+}
+
+.logoStar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.logoStar[aria-expanded="true"]::before {
+  opacity: 0.72;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
 @keyframes starBounce {
-  0%   { transform: translate3d(0.25ch, -50%, 0); animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
-  50%  { transform: translate3d(0.25ch, calc(-50% + 1.5em), 0); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
-  100% { transform: translate3d(0.25ch, -50%, 0); }
+  0% {
+    transform: translate3d(var(--star-x-offset), -50%, 0);
+    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  }
+  50% {
+    transform: translate3d(
+      var(--star-x-offset),
+      calc(-50% + var(--star-floor-offset)),
+      0
+    );
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  100% {
+    transform: translate3d(var(--star-x-offset), -50%, 0);
+  }
 }
 
 html.is-star-bouncing .logoStar {
   animation: starBounce var(--star-bounce-dur, 1s) linear infinite;
+}
+
+@keyframes starDawRollIn {
+  0% {
+    transform: translate3d(
+      60vw,
+      calc(-50% + var(--star-floor-offset)),
+      0
+    ) rotate(0turn);
+    animation-timing-function: cubic-bezier(0.18, 0.82, 0.24, 1);
+  }
+  82% {
+    transform: translate3d(
+      calc(var(--star-x-offset) + 0.04ch),
+      calc(-50% + var(--star-floor-offset)),
+      0
+    ) rotate(-2.45turn);
+    animation-timing-function: cubic-bezier(0.2, 0.9, 0.28, 1);
+  }
+  100% {
+    transform: translate3d(var(--star-x-offset), -50%, 0) rotate(-2.55turn);
+  }
+}
+
+.logoStar.is-star-daw-intro {
+  animation: starDawRollIn 2.45s linear 1 forwards;
 }
 
 .logoStar.is-star-bounce-intro {
@@ -918,36 +1048,6 @@ html.is-android-chrome .logoStar {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   will-change: transform;
-}
-
-.logoStar::after {
-  content: '✶';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: rotate(90deg);
-  pointer-events: none;
-  z-index: 1;
-}
-
-html.is-theme .logoStar {
-  color: var(--t-bg, #000000);
-  text-shadow:
-    -2px -2px 0 var(--t-fg, #ffffff),
-    0 -2px 0 var(--t-fg, #ffffff),
-    2px -2px 0 var(--t-fg, #ffffff),
-    -2px 0 0 var(--t-fg, #ffffff),
-    2px 0 0 var(--t-fg, #ffffff),
-    -2px 2px 0 var(--t-fg, #ffffff),
-    0 2px 0 var(--t-fg, #ffffff),
-    2px 2px 0 var(--t-fg, #ffffff);
-}
-
-html.is-theme .logoStar[aria-expanded="true"] {
-  color: var(--t-fg, #ffffff);
-  text-shadow: none;
 }
 
 .logoStar:focus-visible {
@@ -1324,14 +1424,14 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
   opacity: var(--bump-letter-ghost-opacity, 0.34);
   transform: translate(0, var(--bump-letter-lift, 3px));
   text-shadow:
-    -2px -2px 0 var(--hit),
-    0 -2px 0 var(--hit),
-    2px -2px 0 var(--hit),
-    -2px 0 0 var(--hit),
-    2px 0 0 var(--hit),
-    -2px 2px 0 var(--hit),
-    0 2px 0 var(--hit),
-    2px 2px 0 var(--hit);
+    calc(-1 * var(--bump-letter-shadow-spread, 2px)) calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
+    0 calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
+    var(--bump-letter-shadow-spread, 2px) calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
+    calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 0 var(--hit),
+    var(--bump-letter-shadow-spread, 2px) 0 0 var(--hit),
+    calc(-1 * var(--bump-letter-shadow-spread, 2px)) var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
+    0 var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
+    var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px) 0 var(--hit);
 }
 
 .logo .letter.is-muted {
@@ -1693,6 +1793,8 @@ html.is-theme .padPlaybackChip {
   position: fixed;
   inset: 0;
   z-index: 60;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .settingsPanel {
@@ -1708,6 +1810,9 @@ html.is-theme .padPlaybackChip {
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 1rem - (var(--floatingBarBottom) + 38px + 0.2rem));
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.18);
@@ -1716,6 +1821,10 @@ html.is-theme .padPlaybackChip {
 
   display: grid;
   gap: 0.55rem;
+}
+
+body.is-settings-open {
+  overflow: hidden;
 }
 
 html.is-theme .settingsPanel {
