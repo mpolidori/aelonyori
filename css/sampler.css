@@ -485,30 +485,10 @@ body.is-sampler-view #settingsModal {
 .samplerSettingsIcon {
   width: 1.7rem;
   height: 1.7rem;
-}
-
-.samplerSettingsIcon::before,
-.samplerSettingsIcon::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-}
-
-.samplerSettingsIcon::before {
-  content: "⚙";
+  font-size: 1.58rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 1.58rem;
-  line-height: 1;
-  transform: translate(-50%, -50%);
-}
-
-.samplerSettingsIcon::after {
-  display: none;
 }
 
 .samplerRecordIcon {
@@ -523,21 +503,14 @@ body.is-sampler-view #settingsModal {
   height: 1.72rem;
 }
 
-.samplerPlayIcon::before,
-.samplerPlayIcon::after {
-  content: "";
+.samplerPlayIcon::before {
+  content: "▶";
   position: absolute;
   left: 50%;
   top: 50%;
-}
-
-.samplerPlayIcon::before {
-  width: 0;
-  height: 0;
-  border-top: 0.56rem solid transparent;
-  border-bottom: 0.56rem solid transparent;
-  border-left: 0.88rem solid currentColor;
-  transform: translate(-28%, -50%);
+  font-size: 1.15rem;
+  line-height: 1;
+  transform: translate(-50%, -50%);
 }
 
 .samplerPlayIcon::after {
@@ -545,19 +518,8 @@ body.is-sampler-view #settingsModal {
 }
 
 #samplerPlayFab[aria-pressed="true"] .samplerPlayIcon::before {
-  width: 0.28rem;
-  height: 1.08rem;
-  border: 0;
-  background: currentColor;
-  transform: translate(-0.45rem, -50%);
-}
-
-#samplerPlayFab[aria-pressed="true"] .samplerPlayIcon::after {
-  display: block;
-  width: 0.28rem;
-  height: 1.08rem;
-  background: currentColor;
-  transform: translate(0.17rem, -50%);
+  content: "■";
+  font-size: 1.0rem;
 }
 
 

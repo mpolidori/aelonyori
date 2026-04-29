@@ -78,6 +78,8 @@
   let composeCellLongPressTarget = null;
   let composeCellWasLongPress = false;
   let composeCellLongPressAnchorRect = null;
+  let padLongPressTimer = null;
+  let padsLoadedFromStorage = false;
 
   function numberOrFallback(value, fallback) {
     const n = Number(value);
@@ -139,9 +141,121 @@
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) throw new Error("Audio unavailable");
       audioCtx = new Ctx();
+      if (!padsLoadedFromStorage) {
+        padsLoadedFromStorage = true;
+        loadPadsFromStorage();
+      }
     }
     if (audioCtx.state === "suspended") {
       audioCtx.resume();
+    }
+  }
+
+  function audioBufferToWav(buffer) {
+    const numChannels = Math.min(buffer.numberOfChannels, 2);
+    const sampleRate = buffer.sampleRate;
+    const numSamples = buffer.length;
+    const blockAlign = numChannels * 2;
+    const dataSize = numSamples * blockAlign;
+    const ab = new ArrayBuffer(44 + dataSize);
+    const v = new DataView(ab);
+    function setStr(off, s) {
+      for (let i = 0; i < s.length; i += 1)
+        v.setUint8(off + i, s.charCodeAt(i));
+    }
+    setStr(0, "RIFF");
+    v.setUint32(4, 36 + dataSize, true);
+    setStr(8, "WAVE");
+    setStr(12, "fmt ");
+    v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true);
+    v.setUint16(22, numChannels, true);
+    v.setUint32(24, sampleRate, true);
+    v.setUint32(28, sampleRate * blockAlign, true);
+    v.setUint16(32, blockAlign, true);
+    v.setUint16(34, 16, true);
+    setStr(36, "data");
+    v.setUint32(40, dataSize, true);
+    let offset = 44;
+    for (let i = 0; i < numSamples; i += 1) {
+      for (let ch = 0; ch < numChannels; ch += 1) {
+        const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+        v.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        offset += 2;
+      }
+    }
+    return ab;
+  }
+
+  function arrayBufferToBase64(ab) {
+    const bytes = new Uint8Array(ab);
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return window.btoa(bin);
+  }
+
+  function base64ToArrayBuffer(b64) {
+    const bin = window.atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  function savePadToStorage(index) {
+    if (!buffers[index]) return;
+    try {
+      const wav = audioBufferToWav(buffers[index]);
+      const b64 = arrayBufferToBase64(wav);
+      window.localStorage.setItem(`sampler_pad_${index}`, b64);
+    } catch {
+      // ignore storage errors (e.g. quota exceeded)
+    }
+  }
+
+  async function loadPadsFromStorage() {
+    if (!audioCtx) return;
+    let hasAny = false;
+    for (let i = 0; i < NUM_PADS; i += 1) {
+      if (window.localStorage.getItem(`sampler_pad_${i}`)) {
+        hasAny = true;
+        break;
+      }
+    }
+    if (!hasAny) return;
+    for (let i = 0; i < NUM_PADS; i += 1) {
+      const b64 = window.localStorage.getItem(`sampler_pad_${i}`);
+      if (!b64) continue;
+      try {
+        const ab = base64ToArrayBuffer(b64);
+        const decoded = await audioCtx.decodeAudioData(ab);
+        buffers[i] = decoded;
+        padStates[i].isLoaded = true;
+      } catch {
+        window.localStorage.removeItem(`sampler_pad_${i}`);
+      }
+    }
+    renderPads();
+    renderCompose();
+  }
+
+  function downloadPad(index) {
+    if (!buffers[index]) return;
+    try {
+      const wav = audioBufferToWav(buffers[index]);
+      const blob = new Blob([wav], { type: "audio/wav" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pad-${index + 1}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore download errors
     }
   }
 
@@ -158,7 +272,12 @@
 
   function playPadWithRatchet(index, ratchetValue) {
     const pad = padStates[index];
-    if (!pad || !buffers[index]) return;
+    if (!pad) return;
+
+    if (!buffers[index]) {
+      flashPad(index);
+      return;
+    }
 
     ensureAudio();
 
@@ -211,6 +330,7 @@
           const decoded = await audioCtx.decodeAudioData(data);
           buffers[recordingPadIndex] = decoded;
           padStates[recordingPadIndex].isLoaded = true;
+          savePadToStorage(recordingPadIndex);
         } catch {
           // ignore failed decode
         }
@@ -415,7 +535,11 @@
 
     const availableWidth = Math.max(
       0,
-      composeGrid.clientWidth - paddingX - sideGap - cellGap * (stepsCount - 1) - beatGap * beatStarts,
+      composeGrid.clientWidth -
+        paddingX -
+        sideGap -
+        cellGap * (stepsCount - 1) -
+        beatGap * beatStarts,
     );
     const availableHeight = Math.max(
       0,
@@ -424,7 +548,10 @@
 
     const cellFromWidth = availableWidth / (stepsCount + 1);
     const cellFromHeight = availableHeight / (NUM_PADS + 1);
-    const nextCell = Math.max(18, Math.floor(Math.min(cellFromWidth, cellFromHeight) || 32));
+    const nextCell = Math.max(
+      18,
+      Math.floor(Math.min(cellFromWidth, cellFromHeight) || 32),
+    );
 
     composeGrid.style.setProperty("--compose-cell", `${nextCell}px`);
     composeGrid.style.setProperty("--compose-label", `${nextCell}px`);
@@ -607,6 +734,14 @@
             startRecording(pad.index);
           } else {
             scheduleRatchetedPlay(pad.index, quarterIndex);
+            if (pad.isLoaded) {
+              if (padLongPressTimer != null)
+                window.clearTimeout(padLongPressTimer);
+              padLongPressTimer = window.setTimeout(() => {
+                padLongPressTimer = null;
+                downloadPad(pad.index);
+              }, 600);
+            }
           }
 
           try {
@@ -626,6 +761,10 @@
 
         const onRelease = () => {
           if (isRecordingMode) stopRecording();
+          if (padLongPressTimer != null) {
+            window.clearTimeout(padLongPressTimer);
+            padLongPressTimer = null;
+          }
         };
 
         padEl.addEventListener("pointerup", onRelease);
@@ -769,7 +908,10 @@
             composeCellWasLongPress = false;
             return;
           }
-          if (isPlaying && event.timeStamp - (stepBtn._pointerDownTime || 0) < 50) {
+          if (
+            isPlaying &&
+            event.timeStamp - (stepBtn._pointerDownTime || 0) < 50
+          ) {
             return;
           }
           closeComposeRatchetPicker();
