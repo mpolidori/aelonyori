@@ -1542,11 +1542,11 @@ html.is-theme
   transform: translate(3px, 3px);
 }
 
-html.is-theme body.is-bump-letters .logo .letter.is-hit {
+body.is-bump-letters .logo .letter.is-hit {
   transform: translate(0, calc(-1 * var(--bump-letter-lift, 3px)));
 }
 
-html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
+body.is-bump-letters .logo .letter.is-hit::before {
   color: var(--hit);
   opacity: var(--bump-letter-ghost-opacity, 0.34);
   transform: translate(0, var(--bump-letter-lift, 3px));
@@ -1645,10 +1645,10 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
     - 5  = Almost indistinguishable shifts.
     Tweak this number to widen or tighten your gradient!
   */
-  --hue-step: 20;
+  --hue-step: 15;
 
   /* The actual animation driver. Change '40s' to adjust speed. */
-  animation: rainbow-wave 120s linear infinite;
+  animation: rainbow-wave 90s linear infinite;
 }
 
 /* ==========================================================================
@@ -1689,7 +1689,7 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
 
 html:not(.is-theme) {
   /* 6 seconds makes it feel like a slow, breathing pulse */
-  animation: star-pulse 8s ease-in-out infinite alternate;
+  /*animation: star-pulse 8s ease-in-out infinite alternate;*/
 }
 
 /* ==========================================================================
@@ -1700,10 +1700,10 @@ html:not(.is-theme) .logoStar {
   /* We drop the lightness to 60% and chroma to 0.32. 
      This forces the Indigo to look deep and rich, 
      while keeping the Magenta bright and electric. */
-  --star-chroma: 0.32;
+  /*--star-chroma: 0.32;
   --star-light: 60%;
 
-  color: oklch(var(--star-light) var(--star-chroma) var(--star-hue));
+  color: oklch(var(--star-light) var(--star-chroma) var(--star-hue));*/
 }
 
 .daw {
@@ -2567,7 +2567,7 @@ html.is-theme .settingsDivider {
 .track {
   --accent: #000000;
   --steps: 16;
-  --cell: 16px;
+  --cell: 18px;
   --gap: 3px;
 
   position: relative;
@@ -3290,7 +3290,7 @@ html.is-theme .autosaveStatus::before {
   }
 
   .track {
-    --cell: 18px;
+    --cell: 20px;
   }
 }
 

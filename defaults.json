@@ -1,0 +1,87 @@
+{
+  "globals": {
+    "tempo": 120,
+    "globalSwing": 0,
+    "globalVolume": 100,
+    "stepsCount": 16,
+    "beatSteps": 4
+  },
+  "ui": {
+    "autoExpandEnabled": false,
+    "autoExpandSpeed": 100,
+    "samplePadEnabled": false,
+    "samplePadTransportMode": false,
+    "samplePadRollLength": 16,
+    "samplePadRollBeatSteps": 4,
+    "wordPlayEnabled": false,
+    "wordPlaySpeed": 100,
+    "autosaveEnabled": false,
+    "autosaveIntervalMinutes": 5,
+    "autoscrollEnabled": true,
+    "themeEnabled": false,
+    "bumpEnabled": true,
+    "bumpHeight": 0,
+    "bumpIntensity": 50,
+    "bumpBounce": 50,
+    "starBounceEnabled": true,
+    "starBounceAlwaysEnabled": true,
+    "themeA": "#000000",
+    "themeB": "#ffffff"
+  },
+  "trackDefaults": {
+    "sound": "kick",
+    "pitch": 60,
+    "tuneCents": 0,
+    "volume": 100,
+    "pan": 0,
+    "swing": 0,
+    "offsetMs": 0,
+    "muted": false,
+    "solo": false,
+    "collapsed": true,
+    "seqMode": "single",
+    "gridCollapsed": false
+  },
+  "envDefaultsBySound": {
+    "kick": {
+      "attack": 2,
+      "hold": 10,
+      "decay": 15,
+      "sustain": 36,
+      "release": 20
+    },
+    "snare": {
+      "attack": 2,
+      "hold": 0,
+      "decay": 20,
+      "sustain": 60,
+      "release": 25
+    },
+    "hat": {
+      "attack": 2,
+      "hold": 4,
+      "decay": 8,
+      "sustain": 12,
+      "release": 16
+    },
+    "blip": {
+      "attack": 4,
+      "hold": 20,
+      "decay": 20,
+      "sustain": 30,
+      "release": 15
+    },
+    "bass": {
+      "attack": 4,
+      "hold": 0,
+      "decay": 20,
+      "sustain": 96,
+      "release": 25
+    }
+  },
+  "accent": {
+    "nonThemeBumpOffsetFraction": 0.5,
+    "nonThemeBumpLighten": 0.1,
+    "nonThemeBumpDesaturate": 0.08
+  }
+}

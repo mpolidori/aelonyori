@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   const userAgent = String(navigator.userAgent || "");
   const isAndroidChrome =
     /Android/i.test(userAgent) &&
@@ -64,6 +64,9 @@
   const themeResetBtn = document.getElementById("themeResetBtn");
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
+  const starBounceAlwaysToggleBtn = document.getElementById(
+    "starBounceAlwaysToggleBtn",
+  );
   const bumpHeightRow = document.getElementById("bumpHeightRow");
   const bumpHeightInput = document.getElementById("bumpHeight");
   const bumpHeightOut = document.getElementById("bumpHeightOut");
@@ -185,27 +188,242 @@
     SOUND_OPTIONS.filter((o) => o.tonal).map((o) => o.value),
   );
 
+  const DEFAULTS_PATH = "defaults.json";
+  const DEFAULT_APP_DEFAULTS = Object.freeze({
+    globals: Object.freeze({
+      tempo: Number(tempoInput?.value || 120),
+      globalSwing: Number(globalSwingInput?.value || 0),
+      globalVolume: Number(globalVolumeInput?.value || 100),
+      stepsCount: Number(stepsInput?.value || 16),
+      beatSteps: numberOrFallback(beatStepsInput?.value || 4, 4),
+    }),
+    ui: Object.freeze({
+      autoExpandEnabled: false,
+      autoExpandSpeed: 100,
+      samplePadEnabled: false,
+      samplePadTransportMode: false,
+      samplePadRollLength: 16,
+      samplePadRollBeatSteps: 4,
+      wordPlayEnabled: false,
+      wordPlaySpeed: 100,
+      autosaveEnabled: false,
+      autosaveIntervalMinutes: 5,
+      autoscrollEnabled: true,
+      themeEnabled: false,
+      bumpEnabled: false,
+      bumpHeight: 0,
+      bumpIntensity: 50,
+      bumpBounce: 50,
+      starBounceEnabled: true,
+      starBounceAlwaysEnabled: true,
+      themeA: "#000000",
+      themeB: "#ffffff",
+    }),
+    trackDefaults: Object.freeze({
+      sound: "kick",
+      pitch: 60,
+      tuneCents: 0,
+      volume: 100,
+      pan: 0,
+      swing: 0,
+      offsetMs: 0,
+      muted: false,
+      solo: false,
+      collapsed: true,
+      seqMode: "single",
+      gridCollapsed: false,
+    }),
+    envDefaultsBySound: Object.freeze({
+      kick: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 }),
+      snare: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 60, release: 25 }),
+      hat: Object.freeze({ attack: 4, hold: 8, decay: 16, sustain: 36, release: 20 }),
+      blip: Object.freeze({ attack: 4, hold: 16, decay: 20, sustain: 60, release: 25 }),
+      bass: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 }),
+    }),
+    accent: Object.freeze({
+      nonThemeBumpOffsetFraction: 0.5,
+      nonThemeBumpLighten: 0.1,
+      nonThemeBumpDesaturate: 0.08,
+    }),
+  });
+
+  function mergeDefaultSection(base, patch) {
+    if (!patch || typeof patch !== "object") return { ...base };
+    return { ...base, ...patch };
+  }
+
+  async function loadAppDefaults() {
+    try {
+      const response = await fetch(DEFAULTS_PATH, { cache: "no-store" });
+      if (!response.ok) {
+        return {
+          globals: { ...DEFAULT_APP_DEFAULTS.globals },
+          ui: { ...DEFAULT_APP_DEFAULTS.ui },
+        };
+      }
+      const parsed = await response.json();
+      const globals = mergeDefaultSection(
+        DEFAULT_APP_DEFAULTS.globals,
+        parsed && parsed.globals,
+      );
+      const ui = mergeDefaultSection(DEFAULT_APP_DEFAULTS.ui, parsed && parsed.ui);
+      const trackDefaults = mergeDefaultSection(
+        DEFAULT_APP_DEFAULTS.trackDefaults,
+        parsed && parsed.trackDefaults,
+      );
+      const envDefaultsBySound = mergeDefaultSection(
+        DEFAULT_APP_DEFAULTS.envDefaultsBySound,
+        parsed && parsed.envDefaultsBySound,
+      );
+      const accent = mergeDefaultSection(
+        DEFAULT_APP_DEFAULTS.accent,
+        parsed && parsed.accent,
+      );
+      return { globals, ui, trackDefaults, envDefaultsBySound, accent };
+    } catch {
+      return {
+        globals: { ...DEFAULT_APP_DEFAULTS.globals },
+        ui: { ...DEFAULT_APP_DEFAULTS.ui },
+        trackDefaults: { ...DEFAULT_APP_DEFAULTS.trackDefaults },
+        envDefaultsBySound: { ...DEFAULT_APP_DEFAULTS.envDefaultsBySound },
+        accent: { ...DEFAULT_APP_DEFAULTS.accent },
+      };
+    }
+  }
+
+  const appDefaults = await loadAppDefaults();
+
+  const TRACK_DEFAULTS = Object.freeze({
+    sound: String(appDefaults.trackDefaults?.sound || "kick"),
+    pitch: numberOrFallback(appDefaults.trackDefaults?.pitch, 60),
+    tuneCents: numberOrFallback(appDefaults.trackDefaults?.tuneCents, 0),
+    volume: numberOrFallback(appDefaults.trackDefaults?.volume, 100),
+    pan: numberOrFallback(appDefaults.trackDefaults?.pan, 0),
+    swing: numberOrFallback(appDefaults.trackDefaults?.swing, 0),
+    offsetMs: numberOrFallback(appDefaults.trackDefaults?.offsetMs, 0),
+    muted: Boolean(appDefaults.trackDefaults?.muted),
+    solo: Boolean(appDefaults.trackDefaults?.solo),
+    collapsed:
+      typeof appDefaults.trackDefaults?.collapsed === "boolean"
+        ? appDefaults.trackDefaults.collapsed
+        : true,
+    seqMode:
+      appDefaults.trackDefaults?.seqMode === "roll" ? "roll" : "single",
+    gridCollapsed: Boolean(appDefaults.trackDefaults?.gridCollapsed),
+  });
+
+  function normalizeEnvDefaults(raw, fallback) {
+    const input = raw && typeof raw === "object" ? raw : {};
+    return {
+      attack: clampNumber(numberOrFallback(input.attack, fallback.attack), 0, 127),
+      hold: clampNumber(numberOrFallback(input.hold, fallback.hold), 0, 100),
+      decay: clampNumber(numberOrFallback(input.decay, fallback.decay), 0, 127),
+      sustain: clampNumber(numberOrFallback(input.sustain, fallback.sustain), 0, 127),
+      release: clampNumber(numberOrFallback(input.release, fallback.release), 0, 127),
+    };
+  }
+
+  const ENV_DEFAULTS_BY_SOUND = Object.freeze({
+    kick: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.kick ?? appDefaults.envDefaultsBySound?.default,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound.kick,
+    ),
+    snare: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.snare,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound.snare,
+    ),
+    hat: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.hat,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound.hat,
+    ),
+    blip: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.blip,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound.blip,
+    ),
+    bass: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.bass,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound.bass,
+    ),
+  });
+
+  const NON_THEME_BUMP_OFFSET_FRACTION = clampNumber(
+    numberOrFallback(appDefaults.accent?.nonThemeBumpOffsetFraction, 0.5),
+    0,
+    1,
+  );
+  const NON_THEME_BUMP_LIGHTEN = clampNumber(
+    numberOrFallback(appDefaults.accent?.nonThemeBumpLighten, 0.1),
+    0,
+    1,
+  );
+  const NON_THEME_BUMP_DESATURATE = clampNumber(
+    numberOrFallback(appDefaults.accent?.nonThemeBumpDesaturate, 0.08),
+    0,
+    1,
+  );
+
   function getEnvDefaultsForSound(kind) {
-    const base = { attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 };
+    const base = ENV_DEFAULTS_BY_SOUND.kick;
     switch (kind) {
+      case "kick":
+        return ENV_DEFAULTS_BY_SOUND.kick;
       case "snare":
-        return { ...base, sustain: 60 };
+        return ENV_DEFAULTS_BY_SOUND.snare;
       case "hat":
-        return { ...base, sustain: 36, hold: 8, decay: 16, release: 20 };
+        return ENV_DEFAULTS_BY_SOUND.hat;
       case "blip":
-        return { ...base, sustain: 60, hold: 16 };
+        return ENV_DEFAULTS_BY_SOUND.blip;
+      case "bass":
+        return ENV_DEFAULTS_BY_SOUND.bass;
       default:
         return base;
     }
   }
 
-  let tempo = Number(tempoInput.value);
-  let globalSwing = Number(globalSwingInput.value);
-  let globalVolume = Number(globalVolumeInput.value);
-  let stepsCount = Number(stepsInput.value);
+  let tempo = numberOrFallback(appDefaults.globals.tempo, Number(tempoInput.value));
+  let globalSwing = numberOrFallback(
+    appDefaults.globals.globalSwing,
+    Number(globalSwingInput.value),
+  );
+  let globalVolume = numberOrFallback(
+    appDefaults.globals.globalVolume,
+    Number(globalVolumeInput.value),
+  );
+  let stepsCount = numberOrFallback(
+    appDefaults.globals.stepsCount,
+    Number(stepsInput.value),
+  );
   let beatSteps = numberOrFallback(
+    appDefaults.globals.beatSteps,
     beatStepsInput ? beatStepsInput.value : 4,
+  );
+
+  let autoExpandEnabled = Boolean(appDefaults.ui.autoExpandEnabled);
+  let autoExpandSpeed = numberOrFallback(appDefaults.ui.autoExpandSpeed, 100);
+  let samplePadEnabled = Boolean(appDefaults.ui.samplePadEnabled);
+  let samplePadEditEnabled = false;
+  let samplePadSelectedStep = null;
+  let samplePadConfigs = Object.create(null);
+  let samplePadTransportMode = Boolean(appDefaults.ui.samplePadTransportMode);
+  let samplePadRollLength = numberOrFallback(
+    appDefaults.ui.samplePadRollLength,
+    16,
+  );
+  let samplePadRollBeatSteps = numberOrFallback(
+    appDefaults.ui.samplePadRollBeatSteps,
     4,
+  );
+  let samplePadRollPattern = [];
+  let padRollLongPressTimer = null;
+  let padRollLongPressTarget = null;
+  let padRollWasLongPress = false;
+  let samplePadLayoutRaf = null;
+  let wordPlayEnabled = Boolean(appDefaults.ui.wordPlayEnabled);
+  let wordPlaySpeed = numberOrFallback(appDefaults.ui.wordPlaySpeed, 100);
+  let autosaveEnabled = Boolean(appDefaults.ui.autosaveEnabled);
+  let autosaveIntervalMinutes = numberOrFallback(
+    appDefaults.ui.autosaveIntervalMinutes,
+    5,
   );
 
   const states = new Map();
@@ -228,25 +446,6 @@
   let loopStart = 0;
   let loopEnd = Math.max(0, stepsCount - 1);
 
-  let autoExpandEnabled = false;
-  let autoExpandSpeed = 100;
-  let samplePadEnabled = false;
-  let samplePadEditEnabled = false;
-  let samplePadSelectedStep = null;
-  let samplePadConfigs = Object.create(null);
-  let samplePadTransportMode = false;
-  let samplePadRollLength = 16;
-  let samplePadRollBeatSteps = 4;
-  let samplePadRollPattern = [];
-  let padRollLongPressTimer = null;
-  let padRollLongPressTarget = null;
-  let padRollWasLongPress = false;
-  let samplePadLayoutRaf = null;
-  let wordPlayEnabled = false;
-  let wordPlaySpeed = 100;
-  let autosaveEnabled = false;
-  let autosaveIntervalMinutes = 5;
-
   let settingsOpen = false;
   let suppressSettingsToggleClickUntil = 0;
   let suppressThemeStarClickUntil = 0;
@@ -255,18 +454,19 @@
   let settingsScrollHintObserver = null;
   let wordPlayLayoutRaf = null;
 
-  let autoscrollEnabled = true;
+  let autoscrollEnabled = Boolean(appDefaults.ui.autoscrollEnabled);
 
-  let themeEnabled = false;
-  let bumpEnabled = false;
-  let starBounceEnabled = false;
+  let themeEnabled = Boolean(appDefaults.ui.themeEnabled);
+  let bumpEnabled = Boolean(appDefaults.ui.bumpEnabled);
+  let starBounceEnabled = Boolean(appDefaults.ui.starBounceEnabled);
+  let starBounceAlwaysEnabled = Boolean(appDefaults.ui.starBounceAlwaysEnabled);
   let starDawIntroPlayed = false;
-  let bumpHeight = 0;
-  let bumpIntensity = 50;
-  let bumpBounce = 50;
+  let bumpHeight = numberOrFallback(appDefaults.ui.bumpHeight, 0);
+  let bumpIntensity = numberOrFallback(appDefaults.ui.bumpIntensity, 50);
+  let bumpBounce = numberOrFallback(appDefaults.ui.bumpBounce, 50);
 
-  const DEFAULT_THEME_A = "#000000";
-  const DEFAULT_THEME_B = "#ffffff";
+  const DEFAULT_THEME_A = String(appDefaults.ui.themeA || "#000000");
+  const DEFAULT_THEME_B = String(appDefaults.ui.themeB || "#ffffff");
   let themeA = DEFAULT_THEME_A;
   let themeB = DEFAULT_THEME_B;
 
@@ -317,6 +517,7 @@
     bumpIntensity,
     bumpBounce,
     starBounceEnabled,
+    starBounceAlwaysEnabled,
     themeA,
     themeB,
   });
@@ -993,13 +1194,13 @@
         key: String(key),
         sound: String(state.sound || "kick"),
         pattern: normalizePattern(state.pattern),
-        pitch: numberOrFallback(state.pitch, 60),
-        tuneCents: numberOrFallback(state.tuneCents, 0),
+        pitch: numberOrFallback(state.pitch, TRACK_DEFAULTS.pitch),
+        tuneCents: numberOrFallback(state.tuneCents, TRACK_DEFAULTS.tuneCents),
         hold: numberOrFallback(state.hold, defaults.hold),
-        volume: numberOrFallback(state.volume, 100),
-        pan: numberOrFallback(state.pan, 0),
-        swing: numberOrFallback(state.swing, 0),
-        offsetMs: numberOrFallback(state.offsetMs, 0),
+        volume: numberOrFallback(state.volume, TRACK_DEFAULTS.volume),
+        pan: numberOrFallback(state.pan, TRACK_DEFAULTS.pan),
+        swing: numberOrFallback(state.swing, TRACK_DEFAULTS.swing),
+        offsetMs: numberOrFallback(state.offsetMs, TRACK_DEFAULTS.offsetMs),
         attack: numberOrFallback(state.attack, defaults.attack),
         decay: numberOrFallback(state.decay, defaults.decay),
         sustain: numberOrFallback(state.sustain, defaults.sustain),
@@ -1050,6 +1251,7 @@
       ),
       autoscrollEnabled: Boolean(autoscrollEnabled),
       starBounceEnabled: Boolean(starBounceEnabled),
+      starBounceAlwaysEnabled: Boolean(starBounceAlwaysEnabled),
       themeEnabled: Boolean(themeEnabled),
       bumpEnabled: Boolean(bumpEnabled),
       bumpHeight: clampNumber(
@@ -1146,7 +1348,9 @@
     }
 
     const nextAutoExpandEnabled =
-      typeof ui.autoExpandEnabled === "boolean" ? ui.autoExpandEnabled : false;
+      typeof ui.autoExpandEnabled === "boolean"
+        ? ui.autoExpandEnabled
+        : INITIAL_UI.autoExpandEnabled;
     setAutoExpandEnabled(nextAutoExpandEnabled);
 
     const nextAutoExpandSpeed = clampNumber(
@@ -1177,7 +1381,9 @@
     setSamplePadRollBeatSteps(samplePadRollBeatSteps);
 
     const nextSamplePadEnabled =
-      typeof ui.samplePadEnabled === "boolean" ? ui.samplePadEnabled : false;
+      typeof ui.samplePadEnabled === "boolean"
+        ? ui.samplePadEnabled
+        : INITIAL_UI.samplePadEnabled;
     setSamplePadEnabled(nextSamplePadEnabled);
 
     const nextSamplePadTransportMode = Boolean(
@@ -1185,13 +1391,19 @@
     );
     setSamplePadTransportMode(nextSamplePadTransportMode);
 
-    const nextWordPlayEnabled = Boolean(ui.wordPlayEnabled);
+    const nextWordPlayEnabled =
+      typeof ui.wordPlayEnabled === "boolean"
+        ? ui.wordPlayEnabled
+        : INITIAL_UI.wordPlayEnabled;
     const nextWordPlaySpeed = clampNumber(
       Math.round(numberOrFallback(ui.wordPlaySpeed, wordPlaySpeed)),
       20,
       200,
     );
-    const nextAutosaveEnabled = Boolean(ui.autosaveEnabled);
+    const nextAutosaveEnabled =
+      typeof ui.autosaveEnabled === "boolean"
+        ? ui.autosaveEnabled
+        : INITIAL_UI.autosaveEnabled;
     const nextAutosaveInterval = clampNumber(
       Math.round(
         numberOrFallback(ui.autosaveIntervalMinutes, autosaveIntervalMinutes),
@@ -1209,8 +1421,16 @@
     setAutoscrollEnabled(nextAutoscrollEnabled);
 
     const nextStarBounceEnabled =
-      typeof ui.starBounceEnabled === "boolean" ? ui.starBounceEnabled : false;
+      typeof ui.starBounceEnabled === "boolean"
+        ? ui.starBounceEnabled
+        : INITIAL_UI.starBounceEnabled;
     setStarBounceEnabled(nextStarBounceEnabled);
+
+    const nextStarBounceAlwaysEnabled =
+      typeof ui.starBounceAlwaysEnabled === "boolean"
+        ? ui.starBounceAlwaysEnabled
+        : INITIAL_UI.starBounceAlwaysEnabled;
+    setStarBounceAlwaysEnabled(nextStarBounceAlwaysEnabled);
 
     const nextThemeA =
       typeof ui.themeA === "string" ? ui.themeA : DEFAULT_THEME_A;
@@ -1223,11 +1443,13 @@
         ? ui.themeEnabled
         : typeof ui.darkMode === "boolean"
           ? ui.darkMode
-          : false;
+          : INITIAL_UI.themeEnabled;
     setThemeEnabled(nextThemeEnabled);
 
     const nextBumpEnabled =
-      typeof ui.bumpEnabled === "boolean" ? ui.bumpEnabled : false;
+      typeof ui.bumpEnabled === "boolean"
+        ? ui.bumpEnabled
+        : INITIAL_UI.bumpEnabled;
     const nextBumpHeight = clampNumber(
       Math.round(numberOrFallback(ui.bumpHeight, bumpHeight)),
       0,
@@ -1374,26 +1596,27 @@
     samplePadRollPattern = [];
     setSamplePadRollLength(INITIAL_UI.samplePadRollLength);
     setSamplePadRollBeatSteps(INITIAL_UI.samplePadRollBeatSteps);
-    setSamplePadEnabled(false);
-    setSamplePadTransportMode(false);
+    setSamplePadEnabled(INITIAL_UI.samplePadEnabled);
+    setSamplePadTransportMode(INITIAL_UI.samplePadTransportMode);
     setSamplePadEditEnabled(false);
 
     setWordPlaySpeed(INITIAL_UI.wordPlaySpeed);
-    setWordPlayEnabled(false);
+    setWordPlayEnabled(INITIAL_UI.wordPlayEnabled);
     setAutoExpandSpeed(INITIAL_UI.autoExpandSpeed);
-    setAutoExpandEnabled(false);
+    setAutoExpandEnabled(INITIAL_UI.autoExpandEnabled);
     setAutoscrollEnabled(INITIAL_UI.autoscrollEnabled);
-    setStarBounceEnabled(false);
+    setStarBounceEnabled(INITIAL_UI.starBounceEnabled);
+    setStarBounceAlwaysEnabled(INITIAL_UI.starBounceAlwaysEnabled);
     setBumpHeight(INITIAL_UI.bumpHeight);
     setBumpBounce(INITIAL_UI.bumpBounce);
     setBumpIntensity(INITIAL_UI.bumpIntensity);
-    setBumpEnabled(false);
+    setBumpEnabled(INITIAL_UI.bumpEnabled);
 
-    setThemeColors(DEFAULT_THEME_A, DEFAULT_THEME_B);
-    setThemeEnabled(false);
+    setThemeColors(INITIAL_UI.themeA, INITIAL_UI.themeB);
+    setThemeEnabled(INITIAL_UI.themeEnabled);
 
     setAutosaveInterval(INITIAL_UI.autosaveIntervalMinutes);
-    setAutosaveEnabled(false);
+    setAutosaveEnabled(INITIAL_UI.autosaveEnabled);
 
     tempo = INITIAL_GLOBALS.tempo;
     tempoInput.value = String(tempo);
@@ -1433,38 +1656,45 @@
   function getOrInitState(key) {
     let state = states.get(key);
     if (!state) {
-      const defaults = getEnvDefaultsForSound("kick");
+      const defaultSound = SOUND_OPTIONS.some((o) => o.value === TRACK_DEFAULTS.sound)
+        ? TRACK_DEFAULTS.sound
+        : "kick";
+      const defaults = getEnvDefaultsForSound(defaultSound);
       state = {
-        sound: "kick",
+        sound: defaultSound,
         pattern: new Array(stepsCount).fill(0),
-        pitch: 60,
-        tuneCents: 0,
+        pitch: TRACK_DEFAULTS.pitch,
+        tuneCents: TRACK_DEFAULTS.tuneCents,
         hold: defaults.hold,
-        volume: 100,
-        pan: 0,
-        swing: 0,
-        offsetMs: 0,
+        volume: TRACK_DEFAULTS.volume,
+        pan: TRACK_DEFAULTS.pan,
+        swing: TRACK_DEFAULTS.swing,
+        offsetMs: TRACK_DEFAULTS.offsetMs,
         attack: defaults.attack,
         decay: defaults.decay,
         sustain: defaults.sustain,
         release: defaults.release,
-        muted: false,
-        solo: false,
-        collapsed: true,
-        seqMode: "single",
-        gridCollapsed: false,
+        muted: TRACK_DEFAULTS.muted,
+        solo: TRACK_DEFAULTS.solo,
+        collapsed: TRACK_DEFAULTS.collapsed,
+        seqMode: TRACK_DEFAULTS.seqMode,
+        gridCollapsed: TRACK_DEFAULTS.gridCollapsed,
       };
       states.set(key, state);
     }
 
     state.sound = SOUND_OPTIONS.some((o) => o.value === state.sound)
       ? state.sound
-      : "kick";
+      : TRACK_DEFAULTS.sound;
     const defaults = getEnvDefaultsForSound(state.sound);
     state.pattern = normalizePattern(state.pattern);
-    state.pitch = clampNumber(Number(state.pitch) || 60, PITCH_MIN, PITCH_MAX);
+    state.pitch = clampNumber(
+      numberOrFallback(state.pitch, TRACK_DEFAULTS.pitch),
+      PITCH_MIN,
+      PITCH_MAX,
+    );
     state.tuneCents = clampNumber(
-      numberOrFallback(state.tuneCents, 0),
+      numberOrFallback(state.tuneCents, TRACK_DEFAULTS.tuneCents),
       -100,
       100,
     );
@@ -1473,11 +1703,23 @@
       0,
       100,
     );
-    state.volume = clampNumber(numberOrFallback(state.volume, 100), 0, 127);
-    state.pan = clampNumber(numberOrFallback(state.pan, 0), -100, 100);
-    state.swing = clampNumber(numberOrFallback(state.swing, 0), 0, 127);
+    state.volume = clampNumber(
+      numberOrFallback(state.volume, TRACK_DEFAULTS.volume),
+      0,
+      127,
+    );
+    state.pan = clampNumber(
+      numberOrFallback(state.pan, TRACK_DEFAULTS.pan),
+      -100,
+      100,
+    );
+    state.swing = clampNumber(
+      numberOrFallback(state.swing, TRACK_DEFAULTS.swing),
+      0,
+      127,
+    );
     state.offsetMs = clampNumber(
-      numberOrFallback(state.offsetMs, 0),
+      numberOrFallback(state.offsetMs, TRACK_DEFAULTS.offsetMs),
       -100,
       100,
     );
@@ -1778,19 +2020,15 @@
   }
 
   function syncBumpModeClass() {
-    const letterBumpActive = themeEnabled && bumpEnabled;
+    const letterBumpActive = bumpEnabled;
     const anyBumpEnabled = bumpEnabled;
 
     document.body.classList.toggle("is-bump", letterBumpActive);
     document.body.classList.toggle("is-bump-letters", letterBumpActive);
 
     if (bumpToggleBtn) {
-      bumpToggleBtn.disabled = !themeEnabled;
-      bumpToggleBtn.title = !themeEnabled
-        ? "bump: requires theme"
-        : bumpEnabled
-          ? "bump: on"
-          : "bump: off";
+      bumpToggleBtn.disabled = false;
+      bumpToggleBtn.title = bumpEnabled ? "bump: on" : "bump: off";
     }
 
     if (bumpIntensityRow) {
@@ -1804,22 +2042,22 @@
     }
 
     if (bumpIntensityInput) {
-      bumpIntensityInput.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpIntensityInput.disabled = !anyBumpEnabled;
     }
     if (bumpIntensityOut) {
-      bumpIntensityOut.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpIntensityOut.disabled = !anyBumpEnabled;
     }
     if (bumpHeightInput) {
-      bumpHeightInput.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpHeightInput.disabled = !anyBumpEnabled;
     }
     if (bumpHeightOut) {
-      bumpHeightOut.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpHeightOut.disabled = !anyBumpEnabled;
     }
     if (bumpBounceInput) {
-      bumpBounceInput.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpBounceInput.disabled = !anyBumpEnabled;
     }
     if (bumpBounceOut) {
-      bumpBounceOut.disabled = !themeEnabled || !anyBumpEnabled;
+      bumpBounceOut.disabled = !anyBumpEnabled;
     }
   }
 
@@ -1921,8 +2159,7 @@
     }
 
     for (const btn of letters) {
-      const accent = getAccentFromLetter(btn);
-      if (accent) btn.style.setProperty("--hit", accent);
+      btn.style.setProperty("--hit", "#000000");
     }
   }
 
@@ -2331,11 +2568,15 @@
       themeStarBtn
     ) {
       starDawIntroPlayed = true;
+      syncStarBounceClass();
       themeStarBtn.classList.remove("is-star-bounce-intro");
       themeStarBtn.classList.add("is-star-daw-intro");
       themeStarBtn.addEventListener(
         "animationend",
-        () => themeStarBtn.classList.remove("is-star-daw-intro"),
+        () => {
+          themeStarBtn.classList.remove("is-star-daw-intro");
+          syncStarBounceClass();
+        },
         { once: true },
       );
     }
@@ -5974,6 +6215,12 @@
     });
   }
 
+  if (starBounceAlwaysToggleBtn) {
+    starBounceAlwaysToggleBtn.addEventListener("click", () => {
+      setStarBounceAlwaysEnabled(!starBounceAlwaysEnabled);
+    });
+  }
+
   if (bumpToggleBtn) {
     bumpToggleBtn.addEventListener("click", () => {
       setBumpEnabled(!bumpEnabled);
@@ -6659,10 +6906,20 @@
     document.documentElement.style.setProperty("--star-bounce-dur", dur + "s");
   }
 
+  function isStarBounceBlockedByIntro() {
+    return Boolean(
+      themeStarBtn && themeStarBtn.classList.contains("is-star-daw-intro"),
+    );
+  }
+
   function syncStarBounceClass() {
+    const bounceActive =
+      starBounceEnabled &&
+      (isPlaying || starBounceAlwaysEnabled) &&
+      !isStarBounceBlockedByIntro();
     document.documentElement.classList.toggle(
       "is-star-bouncing",
-      starBounceEnabled && isPlaying,
+      bounceActive,
     );
   }
 
@@ -6678,6 +6935,21 @@
         : "star bounce: off";
     }
     if (starBounceEnabled) syncStarBounceDuration();
+    syncStarBounceClass();
+  }
+
+  function setStarBounceAlwaysEnabled(nextEnabled) {
+    starBounceAlwaysEnabled = Boolean(nextEnabled);
+    if (starBounceAlwaysToggleBtn) {
+      starBounceAlwaysToggleBtn.setAttribute(
+        "aria-pressed",
+        starBounceAlwaysEnabled ? "true" : "false",
+      );
+      starBounceAlwaysToggleBtn.title = starBounceAlwaysEnabled
+        ? "always bounce: on"
+        : "always bounce: off";
+    }
+    if (starBounceEnabled && starBounceAlwaysEnabled) syncStarBounceDuration();
     syncStarBounceClass();
   }
 
@@ -6945,6 +7217,8 @@
   setAutosaveInterval(autosaveIntervalMinutes);
   setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
+  setStarBounceEnabled(starBounceEnabled);
+  setStarBounceAlwaysEnabled(starBounceAlwaysEnabled);
   setBumpHeight(bumpHeight);
   setBumpBounce(bumpBounce);
   setBumpIntensity(bumpIntensity);
