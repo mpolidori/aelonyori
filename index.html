@@ -74,6 +74,29 @@
                 </label>
             </header>
 
+            <div class="samplerPackBar" aria-label="sampler sample packs">
+                <label class="field samplerPackField">
+                    <span class="fieldLabel">pack</span>
+                    <select id="samplerPackSelect" aria-label="sampler pack select"></select>
+                </label>
+
+                <label class="field samplerPackField">
+                    <span class="fieldLabel">name</span>
+                    <input id="samplerPackName" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="sample pack" aria-label="sampler pack name" />
+                </label>
+
+                <label class="field samplerPackAutoField">
+                    <span class="fieldLabel">autosave</span>
+                    <button type="button" class="switchToggle" id="samplerPackAutosaveBtn" aria-label="sampler autosave" aria-pressed="false"></button>
+                </label>
+
+                <div class="controls samplerPackActions" aria-label="sampler pack actions">
+                    <button type="button" class="btn" id="samplerPackSaveBtn">save</button>
+                    <button type="button" class="btn" id="samplerPackLoadBtn">load</button>
+                    <button type="button" class="btn" id="samplerPackDefaultBtn">default</button>
+                </div>
+            </div>
+
             <nav class="samplerTabs" aria-label="sampler views">
                 <button type="button" class="samplerTab is-active" data-tab="pads" aria-pressed="true">pads</button>
                 <button type="button" class="samplerTab" data-tab="compose" aria-pressed="false">compose</button>
@@ -139,6 +162,18 @@
                 <input type="color" id="themeColorA" class="themeSwatch" aria-label="theme color 1" value="#000000" />
                 <button type="button" class="caret themeSwapBtn" id="themeSwapBtn" aria-label="swap theme colors">⇄</button>
                 <input type="color" id="themeColorB" class="themeSwatch" aria-label="theme color 2" value="#ffffff" />
+            </div>
+        </div>
+    </div>
+
+    <div id="themeEnableModal" class="themePicker" hidden>
+        <div class="themePickerBox" role="dialog" aria-modal="true" aria-label="enable custom theme">
+            <div class="themePickerRow">
+                <span>Do you want to enable custom theming?</span>
+            </div>
+            <div class="themePickerRow">
+                <button type="button" class="btn" id="themeEnableYesBtn">Yes</button>
+                <button type="button" class="btn" id="themeEnableNoBtn">No</button>
             </div>
         </div>
     </div>

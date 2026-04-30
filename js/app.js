@@ -54,6 +54,9 @@
   );
   const themePicker = document.getElementById("themePicker");
   const themePickerBox = document.getElementById("themePickerBox");
+  const themeEnableModal = document.getElementById("themeEnableModal");
+  const themeEnableYesBtn = document.getElementById("themeEnableYesBtn");
+  const themeEnableNoBtn = document.getElementById("themeEnableNoBtn");
   const themeControls = document.getElementById("themeControls");
   const themeColorAInput = document.getElementById("themeColorA");
   const themeColorBInput = document.getElementById("themeColorB");
@@ -806,6 +809,17 @@
     }, 3000);
   }
 
+  function broadcastAutosaveConfig() {
+    document.dispatchEvent(
+      new CustomEvent("aelonyori:autosave-config", {
+        detail: {
+          enabled: Boolean(autosaveEnabled),
+          intervalMinutes: Number(autosaveIntervalMinutes),
+        },
+      }),
+    );
+  }
+
   function saveCurrentSongPreset({
     statusLabel = "saved",
     showPresetStatus = true,
@@ -852,6 +866,7 @@
       autosaveIntervalSelect.value = String(autosaveIntervalMinutes);
     }
     syncAutosaveTimer();
+    broadcastAutosaveConfig();
   }
 
   function setAutosaveEnabled(nextEnabled) {
@@ -869,6 +884,7 @@
       autosaveIntervalSelect.disabled = !autosaveEnabled;
     }
     syncAutosaveTimer();
+    broadcastAutosaveConfig();
   }
 
   function clearAllTracks() {
@@ -1719,6 +1735,15 @@
     setThemePickerOpen(false);
   }
 
+  function setThemeEnableModalOpen(nextOpen) {
+    if (!themeEnableModal) return;
+    themeEnableModal.hidden = !Boolean(nextOpen);
+  }
+
+  function closeThemeEnableModal() {
+    setThemeEnableModalOpen(false);
+  }
+
   function toggleThemePicker() {
     if (!themePicker) return;
     if (themePicker.hidden) {
@@ -2140,11 +2165,14 @@
       navToDawBtn.disabled = !isSamplerViewOpen();
     }
 
+    if (themeStarBtn) {
+      themeStarBtn.hidden = !hasTracks;
+    }
+
     if (
       hasTracks &&
       !starDawIntroPlayed &&
-      themeStarBtn &&
-      !themeStarBtn.hidden
+      themeStarBtn
     ) {
       starDawIntroPlayed = true;
       themeStarBtn.classList.remove("is-star-bounce-intro");
@@ -2244,7 +2272,13 @@
       1,
       steps,
     );
-    const key = `${steps}|${groupLen}`;
+    const beatCount = Math.floor((steps - 1) / groupLen) + 1;
+    const viewportWidth = Math.max(320, window.innerWidth || 1024);
+    const mobileToDesktop = clampNumber((viewportWidth - 420) / 780, 0, 1);
+    const maxBeatLabels = Math.round(16 + (40 - 16) * mobileToDesktop);
+    const beatLabelStride = Math.max(1, Math.ceil(beatCount / maxBeatLabels));
+
+    const key = `${steps}|${groupLen}|${beatLabelStride}|${Math.round(viewportWidth / 24)}`;
     if (key === transportTicksKey) return;
     transportTicksKey = key;
 
@@ -2260,10 +2294,13 @@
       tick.style.left = formatPercent01(i / steps);
 
       if (isBeat) {
+        const beatIndex = Math.floor(i / groupLen);
         const num = document.createElement("span");
         num.className = "transportBeatNum";
-        num.textContent = String(Math.floor(i / groupLen) + 1);
-        tick.appendChild(num);
+        if (beatIndex % beatLabelStride === 0) {
+          num.textContent = String(beatIndex + 1);
+          tick.appendChild(num);
+        }
       }
 
       frag.appendChild(tick);
@@ -5836,7 +5873,35 @@
     themeStarBtn.addEventListener("click", (event) => {
       event.preventDefault();
       if (Date.now() < suppressThemeStarClickUntil) return;
+
+      if (!themeEnabled) {
+        setThemeEnableModalOpen(true);
+        return;
+      }
+
       toggleThemePicker();
+    });
+  }
+
+  if (themeEnableModal) {
+    themeEnableModal.addEventListener("pointerdown", (event) => {
+      if (event.target !== themeEnableModal) return;
+      closeThemeEnableModal();
+    });
+  }
+
+  if (themeEnableNoBtn) {
+    themeEnableNoBtn.addEventListener("click", () => {
+      closeThemeEnableModal();
+    });
+  }
+
+  if (themeEnableYesBtn) {
+    themeEnableYesBtn.addEventListener("click", () => {
+      closeThemeEnableModal();
+      setThemeEnabled(true);
+      syncThemePickerInputs();
+      setThemePickerOpen(true);
     });
   }
 
@@ -6375,6 +6440,10 @@
 
   window.addEventListener("keydown", (event) => {
     if (!event || event.key !== "Escape") return;
+    if (themeEnableModal && !themeEnableModal.hidden) {
+      closeThemeEnableModal();
+      return;
+    }
     if (!settingsOpen) return;
     setSettingsOpen(false);
   });
@@ -6383,6 +6452,7 @@
     scheduleSettingsPanelLayout();
     scheduleWordPlaySubtitleLayout();
     scheduleSamplePadLayout();
+    rebuildTransportTicks();
     syncFloatingBarGeometry();
     syncFloatingScrollClearance();
   });
@@ -6403,22 +6473,12 @@
     document.documentElement.classList.toggle("is-theme", themeEnabled);
 
     if (themeStarBtn) {
-      themeStarBtn.hidden = !themeEnabled;
-
-      if (themeEnabled && tracks.size > 0 && !starDawIntroPlayed) {
-        starDawIntroPlayed = true;
-        themeStarBtn.classList.remove("is-star-bounce-intro");
-        themeStarBtn.classList.add("is-star-daw-intro");
-        themeStarBtn.addEventListener(
-          "animationend",
-          () => themeStarBtn.classList.remove("is-star-daw-intro"),
-          { once: true },
-        );
-      }
+      themeStarBtn.hidden = tracks.size === 0;
     }
 
     if (!themeEnabled) {
       closeThemePicker();
+      closeThemeEnableModal();
     }
 
     if (themeModeBtn) {
@@ -6446,7 +6506,7 @@
   function syncStarBounceClass() {
     document.documentElement.classList.toggle(
       "is-star-bouncing",
-      themeEnabled && starBounceEnabled && isPlaying,
+      starBounceEnabled && isPlaying,
     );
   }
 

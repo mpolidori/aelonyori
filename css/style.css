@@ -387,6 +387,7 @@ html.is-theme .transportSeekBtn:focus-visible {
 .samplePadWrap {
   --pad: 68px;
   --padGap: 0.4rem;
+  --samplePadSideGutter: clamp(0.9rem, calc(var(--pad) * 0.82), 4rem);
   --samplePadBg: var(--page-bg);
   --samplePadBorder: rgba(0, 0, 0, 0.18);
   --samplePadNum: rgba(0, 0, 0, 0.86);
@@ -397,6 +398,7 @@ html.is-theme .transportSeekBtn:focus-visible {
   width: 100%;
   transform: translateY(-100%);
   padding-top: var(--samplePadTopSpace);
+  padding-inline: var(--samplePadSideGutter);
   display: grid;
   gap: 0.55rem;
 }
@@ -2485,6 +2487,8 @@ html.is-theme .settingsDivider {
 .trackTitle {
   flex: 1 1 auto;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 .caret.trackReorderHandle,
@@ -2616,8 +2620,17 @@ html.is-theme .trackMainControls::before {
 
 .trackLetter {
   color: var(--accent);
-  font-size: 0.9rem;
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
   letter-spacing: 0.02em;
+  vertical-align: middle;
+  padding-right: 0.15rem;
+}
+
+html:not(.is-theme) .trackLetter {
+  -webkit-text-stroke: 0.7px rgba(0, 0, 0, 0.65);
+  paint-order: stroke fill;
 }
 
 .trackSound {
@@ -3406,7 +3419,11 @@ html.is-theme .trackRollLabel:focus-visible {
   font-size: 0.55rem;
   line-height: 1;
   font-weight: 800;
-  color: var(--accent);
+  color: rgba(0, 0, 0, 0.72);
+}
+
+html.is-theme .trackBeatHeaderNum {
+  color: var(--t-72, rgba(255, 255, 255, 0.72));
 }
 
 .trackBeatHeaderSpacer {

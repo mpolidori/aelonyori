@@ -1,5 +1,5 @@
 .samplerRoot {
-  --sampler-accent: var(--t-fg, rgba(0, 0, 0, 0.86));
+  --sampler-accent: rgba(0, 0, 0, 0.86);
   position: fixed;
   inset: 0;
   z-index: 55;
@@ -11,6 +11,10 @@
   padding: 1rem 0 0.8rem;
   display: flex;
   flex-direction: column;
+}
+
+html.is-theme .samplerRoot {
+  --sampler-accent: var(--t-fg, rgba(255, 255, 255, 0.92));
 }
 
 body.is-sampler-view .samplerRoot {
@@ -58,6 +62,35 @@ body.is-sampler-view #settingsModal {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
+}
+
+.samplerPackBar {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.45rem 0.62rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
+  gap: 0.45rem 0.55rem;
+  align-items: center;
+}
+
+.samplerPackField {
+  min-width: 0;
+}
+
+.samplerPackField select,
+.samplerPackField input {
+  width: 100%;
+  min-width: 0;
+}
+
+.samplerPackAutoField {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.samplerPackActions {
+  grid-column: 1 / -1;
 }
 
 .samplerRatchetBtn {
@@ -614,6 +647,7 @@ body:not(.is-sampler-view) .samplerFab {
 }
 
 html.is-theme .samplerTopBar,
+html.is-theme .samplerPackBar,
 html.is-theme .samplerTabs,
 html.is-theme .samplerView,
 html.is-theme .samplerPad {
@@ -654,6 +688,7 @@ html.is-theme .samplerField input[type="range"]::-moz-range-thumb {
 }
 
 html.is-theme .samplerTopBar,
+html.is-theme .samplerPackBar,
 html.is-theme .samplerView {
   background: var(--t-3, rgba(255, 255, 255, 0.03));
 }
@@ -727,6 +762,14 @@ html.is-theme .samplerPadEditSelect option {
 @media (max-width: 860px) {
   .samplerTopBar {
     grid-template-columns: 1fr;
+  }
+
+  .samplerPackBar {
+    grid-template-columns: 1fr;
+  }
+
+  .samplerPackAutoField {
+    justify-self: start;
   }
 }
 

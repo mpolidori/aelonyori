@@ -7,6 +7,17 @@
 
   const navToDawBtn = document.getElementById("navToDawBtn");
 
+  const samplerPackSelect = document.getElementById("samplerPackSelect");
+  const samplerPackNameInput = document.getElementById("samplerPackName");
+  const samplerPackAutosaveBtn = document.getElementById(
+    "samplerPackAutosaveBtn",
+  );
+  const samplerPackSaveBtn = document.getElementById("samplerPackSaveBtn");
+  const samplerPackLoadBtn = document.getElementById("samplerPackLoadBtn");
+  const samplerPackDefaultBtn = document.getElementById(
+    "samplerPackDefaultBtn",
+  );
+
   const bpmInput = document.getElementById("samplerBpm");
   const bpmOut = document.getElementById("samplerBpmOut");
   const stepsInput = document.getElementById("samplerSteps");
@@ -80,6 +91,15 @@
   let composeCellLongPressAnchorRect = null;
   let padLongPressTimer = null;
   let padsLoadedFromStorage = false;
+  let samplerAutosaveEnabled = false;
+  let sharedAutosaveIntervalMinutes = 5;
+  let samplerAutosaveTimerId = null;
+  const activeSources = new Set();
+
+  const SAMPLER_PACK_INDEX_KEY = "aelonyori.sampler.pack.index";
+  const SAMPLER_PACK_DEFAULT_KEY = "aelonyori.sampler.pack.default";
+  const SAMPLER_PACK_AUTOSAVE_KEY = "aelonyori.sampler.pack.autosave";
+  const SAMPLER_PACK_STORAGE_PREFIX = "aelonyori.sampler.pack.";
 
   function numberOrFallback(value, fallback) {
     const n = Number(value);
@@ -204,29 +224,222 @@
     return bytes.buffer;
   }
 
-  function savePadToStorage(index) {
-    if (!buffers[index]) return;
+  function samplerPackStorageKey(name) {
+    return `${SAMPLER_PACK_STORAGE_PREFIX}${String(name || "").trim()}`;
+  }
+
+  function readSamplerPackIndex() {
     try {
-      const wav = audioBufferToWav(buffers[index]);
-      const b64 = arrayBufferToBase64(wav);
-      window.localStorage.setItem(`sampler_pad_${index}`, b64);
+      const raw = window.localStorage.getItem(SAMPLER_PACK_INDEX_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((v) => String(v || "").trim()).filter(Boolean);
     } catch {
-      // ignore storage errors (e.g. quota exceeded)
+      return [];
     }
   }
 
-  async function loadPadsFromStorage() {
-    if (!audioCtx) return;
-    let hasAny = false;
+  function writeSamplerPackIndex(names) {
+    try {
+      window.localStorage.setItem(
+        SAMPLER_PACK_INDEX_KEY,
+        JSON.stringify(Array.isArray(names) ? names : []),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function getDefaultSamplerPackName() {
+    try {
+      return String(window.localStorage.getItem(SAMPLER_PACK_DEFAULT_KEY) || "");
+    } catch {
+      return "";
+    }
+  }
+
+  function setDefaultSamplerPackName(name) {
+    try {
+      window.localStorage.setItem(SAMPLER_PACK_DEFAULT_KEY, String(name || ""));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function getSamplerPack(name) {
+    const clean = String(name || "").trim();
+    if (!clean) return null;
+    try {
+      const raw = window.localStorage.getItem(samplerPackStorageKey(clean));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function makeUniqueSamplerPackName(base) {
+    const baseName = String(base || "").trim() || "sample pack";
+    const existing = new Set(readSamplerPackIndex());
+    if (!existing.has(baseName)) return baseName;
+    let i = 2;
+    while (existing.has(`${baseName} ${i}`)) i += 1;
+    return `${baseName} ${i}`;
+  }
+
+  function getSamplerPackNameFromUi() {
+    const requested = String(samplerPackNameInput?.value || "").trim();
+    const selected = String(samplerPackSelect?.value || "").trim();
+    const defaultName = String(getDefaultSamplerPackName() || "").trim();
+    return requested || selected || defaultName || "";
+  }
+
+  function normalizePatternCell(cell) {
+    if (!cell || typeof cell !== "object") return null;
+    if (!cell.on) return null;
+    const corner = clampNumber(Math.round(numberOrFallback(cell.corner, 0)), 0, 3);
+    return {
+      on: true,
+      corner,
+      ratchet: sanitizeRatchet(cell.ratchet),
+    };
+  }
+
+  function buildCurrentSamplerPackData() {
+    const pads = new Array(NUM_PADS).fill(null);
     for (let i = 0; i < NUM_PADS; i += 1) {
-      if (window.localStorage.getItem(`sampler_pad_${i}`)) {
-        hasAny = true;
-        break;
+      if (!buffers[i]) continue;
+      try {
+        const wav = audioBufferToWav(buffers[i]);
+        pads[i] = arrayBufferToBase64(wav);
+      } catch {
+        pads[i] = null;
       }
     }
-    if (!hasAny) return;
+
+    const nextPattern = Array.from({ length: NUM_PADS }, (_, row) => {
+      const srcRow = Array.isArray(pattern[row]) ? pattern[row] : [];
+      const outRow = new Array(stepsCount).fill(null);
+      for (let col = 0; col < stepsCount; col += 1) {
+        outRow[col] = normalizePatternCell(srcRow[col]);
+      }
+      return outRow;
+    });
+
+    const ratchets = padStates.map((pad) =>
+      Array.isArray(pad.quarterRatchets)
+        ? pad.quarterRatchets.map((v) => sanitizeRatchet(v)).slice(0, 4)
+        : [1, 1, 1, 1],
+    );
+
+    return {
+      version: 1,
+      bpm,
+      stepsCount,
+      beatSteps,
+      ratchets,
+      pattern: nextPattern,
+      pads,
+    };
+  }
+
+  function saveSamplerPack(name, packData) {
+    const clean = String(name || "").trim();
+    if (!clean) return false;
+    try {
+      window.localStorage.setItem(
+        samplerPackStorageKey(clean),
+        JSON.stringify(packData),
+      );
+    } catch {
+      return false;
+    }
+
+    const names = readSamplerPackIndex();
+    if (!names.includes(clean)) {
+      names.push(clean);
+      names.sort((a, b) => a.localeCompare(b));
+      writeSamplerPackIndex(names);
+    }
+    if (!getDefaultSamplerPackName()) {
+      setDefaultSamplerPackName(clean);
+    }
+    return true;
+  }
+
+  function refreshSamplerPackSelect() {
+    if (!samplerPackSelect) return;
+    const names = readSamplerPackIndex();
+    const selected = String(samplerPackSelect.value || "").trim();
+    const defaultName = String(getDefaultSamplerPackName() || "").trim();
+
+    samplerPackSelect.innerHTML = "";
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = "";
+    emptyOpt.textContent = "—";
+    samplerPackSelect.appendChild(emptyOpt);
+
+    for (const name of names) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name === defaultName ? `${name} (default)` : name;
+      samplerPackSelect.appendChild(opt);
+    }
+
+    if (selected && names.includes(selected)) {
+      samplerPackSelect.value = selected;
+    } else if (defaultName && names.includes(defaultName)) {
+      samplerPackSelect.value = defaultName;
+    } else {
+      samplerPackSelect.value = "";
+    }
+  }
+
+  function clearAllSamplerBuffers() {
     for (let i = 0; i < NUM_PADS; i += 1) {
-      const b64 = window.localStorage.getItem(`sampler_pad_${i}`);
+      buffers[i] = null;
+      padStates[i].isLoaded = false;
+    }
+  }
+
+  async function loadSamplerPack(name) {
+    const clean = String(name || "").trim();
+    if (!clean) return false;
+    const pack = getSamplerPack(clean);
+    if (!pack) return false;
+
+    ensureAudio();
+    clearAllSamplerBuffers();
+
+    const nextRatchets = Array.isArray(pack.ratchets) ? pack.ratchets : [];
+    for (let i = 0; i < NUM_PADS; i += 1) {
+      const srcRatchets = Array.isArray(nextRatchets[i]) ? nextRatchets[i] : [];
+      const normalizedRatchets = [1, 1, 1, 1];
+      for (let q = 0; q < 4; q += 1) {
+        normalizedRatchets[q] = sanitizeRatchet(srcRatchets[q]);
+      }
+      padStates[i].quarterRatchets = normalizedRatchets;
+    }
+
+    setBpm(pack.bpm);
+    setSteps(pack.stepsCount);
+    setBeat(pack.beatSteps);
+
+    const sourcePattern = Array.isArray(pack.pattern) ? pack.pattern : [];
+    pattern = Array.from({ length: NUM_PADS }, (_, row) => {
+      const srcRow = Array.isArray(sourcePattern[row]) ? sourcePattern[row] : [];
+      const outRow = new Array(stepsCount).fill(null);
+      for (let col = 0; col < stepsCount; col += 1) {
+        outRow[col] = normalizePatternCell(srcRow[col]);
+      }
+      return outRow;
+    });
+
+    const pads = Array.isArray(pack.pads) ? pack.pads : [];
+    for (let i = 0; i < NUM_PADS; i += 1) {
+      const b64 = typeof pads[i] === "string" && pads[i].length > 0 ? pads[i] : "";
       if (!b64) continue;
       try {
         const ab = base64ToArrayBuffer(b64);
@@ -234,11 +447,137 @@
         buffers[i] = decoded;
         padStates[i].isLoaded = true;
       } catch {
-        window.localStorage.removeItem(`sampler_pad_${i}`);
+        buffers[i] = null;
+        padStates[i].isLoaded = false;
       }
     }
+
+    if (samplerPackNameInput) samplerPackNameInput.value = clean;
+    refreshSamplerPackSelect();
+    if (samplerPackSelect) samplerPackSelect.value = clean;
+
+    setSelectedPad(selectedPad);
     renderPads();
     renderCompose();
+    return true;
+  }
+
+  function saveCurrentSamplerPack({ allowCreate = true } = {}) {
+    let name = getSamplerPackNameFromUi();
+    if (!name && allowCreate) {
+      name = makeUniqueSamplerPackName("sample pack");
+    }
+    if (!name) return false;
+
+    const data = buildCurrentSamplerPackData();
+    const ok = saveSamplerPack(name, data);
+    if (!ok) return false;
+
+    if (samplerPackNameInput) samplerPackNameInput.value = name;
+    refreshSamplerPackSelect();
+    if (samplerPackSelect) samplerPackSelect.value = name;
+    return true;
+  }
+
+  function migrateLegacySamplerPads() {
+    const existing = readSamplerPackIndex();
+    if (existing.length > 0) return;
+
+    let hasLegacy = false;
+    const pads = new Array(NUM_PADS).fill(null);
+    for (let i = 0; i < NUM_PADS; i += 1) {
+      const b64 = window.localStorage.getItem(`sampler_pad_${i}`);
+      if (!b64) continue;
+      hasLegacy = true;
+      pads[i] = b64;
+    }
+    if (!hasLegacy) return;
+
+    const legacyName = "default";
+    const migrated = {
+      version: 1,
+      bpm,
+      stepsCount,
+      beatSteps,
+      ratchets: Array.from({ length: NUM_PADS }, () => [1, 1, 1, 1]),
+      pattern: Array.from({ length: NUM_PADS }, () =>
+        Array(DEFAULT_STEPS).fill(null),
+      ),
+      pads,
+    };
+
+    if (saveSamplerPack(legacyName, migrated)) {
+      setDefaultSamplerPackName(legacyName);
+    }
+  }
+
+  function clearSamplerAutosaveTimer() {
+    if (samplerAutosaveTimerId == null) return;
+    window.clearInterval(samplerAutosaveTimerId);
+    samplerAutosaveTimerId = null;
+  }
+
+  function syncSamplerAutosaveTimer() {
+    clearSamplerAutosaveTimer();
+    if (!samplerAutosaveEnabled) return;
+    const minutes = clampNumber(
+      Math.round(numberOrFallback(sharedAutosaveIntervalMinutes, 5)),
+      1,
+      60,
+    );
+    samplerAutosaveTimerId = window.setInterval(() => {
+      saveCurrentSamplerPack({ allowCreate: true });
+    }, minutes * 60 * 1000);
+  }
+
+  function setSamplerAutosaveEnabled(nextEnabled) {
+    samplerAutosaveEnabled = Boolean(nextEnabled);
+    try {
+      window.localStorage.setItem(
+        SAMPLER_PACK_AUTOSAVE_KEY,
+        samplerAutosaveEnabled ? "1" : "0",
+      );
+    } catch {
+      // ignore storage errors
+    }
+
+    if (samplerPackAutosaveBtn) {
+      samplerPackAutosaveBtn.setAttribute(
+        "aria-pressed",
+        samplerAutosaveEnabled ? "true" : "false",
+      );
+      samplerPackAutosaveBtn.title = samplerAutosaveEnabled
+        ? "sampler autosave: on"
+        : "sampler autosave: off";
+    }
+
+    syncSamplerAutosaveTimer();
+  }
+
+  function restoreSamplerAutosavePreference() {
+    try {
+      const raw = window.localStorage.getItem(SAMPLER_PACK_AUTOSAVE_KEY);
+      setSamplerAutosaveEnabled(raw === "1");
+    } catch {
+      setSamplerAutosaveEnabled(false);
+    }
+  }
+
+  function savePadToStorage(index) {
+    if (!buffers[index]) return;
+    saveCurrentSamplerPack({ allowCreate: true });
+  }
+
+  async function loadPadsFromStorage() {
+    migrateLegacySamplerPads();
+    refreshSamplerPackSelect();
+
+    const defaultName = getDefaultSamplerPackName();
+    const fallback = readSamplerPackIndex()[0] || "";
+    const target = defaultName || fallback;
+    if (!target) return;
+
+    await loadSamplerPack(target);
   }
 
   function downloadPad(index) {
@@ -270,6 +609,22 @@
     }, durationMs);
   }
 
+  function stopAllPadAudio() {
+    for (const source of Array.from(activeSources)) {
+      try {
+        source.stop(0);
+      } catch {
+        // ignore stop errors
+      }
+      try {
+        source.disconnect();
+      } catch {
+        // ignore disconnect errors
+      }
+      activeSources.delete(source);
+    }
+  }
+
   function playPadWithRatchet(index, ratchetValue) {
     const pad = padStates[index];
     if (!pad) return;
@@ -290,6 +645,11 @@
       const source = audioCtx.createBufferSource();
       source.buffer = buffers[index];
       source.connect(audioCtx.destination);
+      source.onended = () => {
+        activeSources.delete(source);
+        source.onended = null;
+      };
+      activeSources.add(source);
       source.start(audioCtx.currentTime + i * repeatInterval);
     }
 
@@ -384,6 +744,7 @@
       window.clearInterval(timerId);
       timerId = null;
     }
+    stopAllPadAudio();
     if (playFab) {
       playFab.setAttribute("aria-pressed", "false");
       playFab.title = "play";
@@ -1072,6 +1433,51 @@
     });
   }
 
+  if (samplerPackAutosaveBtn) {
+    samplerPackAutosaveBtn.addEventListener("click", () => {
+      setSamplerAutosaveEnabled(!samplerAutosaveEnabled);
+    });
+  }
+
+  if (samplerPackSaveBtn) {
+    samplerPackSaveBtn.addEventListener("click", () => {
+      const requested = String(samplerPackNameInput?.value || "").trim();
+      if (!requested && !String(samplerPackSelect?.value || "").trim()) {
+        if (samplerPackNameInput) {
+          samplerPackNameInput.value = makeUniqueSamplerPackName("sample pack");
+        }
+      }
+      saveCurrentSamplerPack({ allowCreate: true });
+    });
+  }
+
+  if (samplerPackLoadBtn) {
+    samplerPackLoadBtn.addEventListener("click", async () => {
+      const name = getSamplerPackNameFromUi();
+      if (!name) return;
+      await loadSamplerPack(name);
+    });
+  }
+
+  if (samplerPackDefaultBtn) {
+    samplerPackDefaultBtn.addEventListener("click", () => {
+      const name = getSamplerPackNameFromUi();
+      if (!name) return;
+      setDefaultSamplerPackName(name);
+      refreshSamplerPackSelect();
+      if (samplerPackSelect) samplerPackSelect.value = name;
+      if (samplerPackNameInput) samplerPackNameInput.value = name;
+    });
+  }
+
+  if (samplerPackSelect) {
+    samplerPackSelect.addEventListener("change", () => {
+      const selected = String(samplerPackSelect.value || "").trim();
+      if (!selected) return;
+      if (samplerPackNameInput) samplerPackNameInput.value = selected;
+    });
+  }
+
   for (let q = 0; q < padRatchetQuarterInputs.length; q += 1) {
     const selectEl = padRatchetQuarterInputs[q];
     if (!selectEl) continue;
@@ -1133,8 +1539,28 @@
     if (stepsOut && stepsOut.value === "") stepsOut.value = String(stepsCount);
   });
 
+  document.addEventListener("sampler:view-close", () => {
+    stopPlayback();
+    stopAllPadAudio();
+    closeComposeRatchetPicker();
+  });
+
+  document.addEventListener("aelonyori:autosave-config", (event) => {
+    const detail = event && event.detail && typeof event.detail === "object"
+      ? event.detail
+      : {};
+    sharedAutosaveIntervalMinutes = clampNumber(
+      Math.round(numberOrFallback(detail.intervalMinutes, sharedAutosaveIntervalMinutes)),
+      1,
+      60,
+    );
+    syncSamplerAutosaveTimer();
+  });
+
   window.addEventListener("beforeunload", () => {
     stopRecording();
+    stopPlayback();
+    clearSamplerAutosaveTimer();
     if (mediaStream) {
       for (const track of mediaStream.getTracks()) track.stop();
     }
@@ -1157,6 +1583,14 @@
   setPadRatchetPanelOpen(false);
   setActiveTab("pads");
   setSelectedPad(0);
+  migrateLegacySamplerPads();
+  refreshSamplerPackSelect();
+  const initialPackName =
+    getDefaultSamplerPackName() || readSamplerPackIndex()[0] || "";
+  if (samplerPackNameInput && initialPackName) {
+    samplerPackNameInput.value = initialPackName;
+  }
+  restoreSamplerAutosavePreference();
   renderPads();
   renderCompose();
   syncRecordFabPulse();
