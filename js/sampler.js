@@ -7,15 +7,13 @@
 
   const navToDawBtn = document.getElementById("navToDawBtn");
 
-  const samplerPackSelect = document.getElementById("samplerPackSelect");
   const samplerPackNameInput = document.getElementById("samplerPackName");
-  const samplerPackAutosaveBtn = document.getElementById(
-    "samplerPackAutosaveBtn",
+  const samplerPackUploadBtn = document.getElementById("samplerPackUploadBtn");
+  const samplerPackDownloadBtn = document.getElementById(
+    "samplerPackDownloadBtn",
   );
-  const samplerPackSaveBtn = document.getElementById("samplerPackSaveBtn");
-  const samplerPackLoadBtn = document.getElementById("samplerPackLoadBtn");
-  const samplerPackDefaultBtn = document.getElementById(
-    "samplerPackDefaultBtn",
+  const samplerPackUploadInput = document.getElementById(
+    "samplerPackUploadInput",
   );
 
   const bpmInput = document.getElementById("samplerBpm");
@@ -90,16 +88,7 @@
   let composeCellWasLongPress = false;
   let composeCellLongPressAnchorRect = null;
   let padLongPressTimer = null;
-  let padsLoadedFromStorage = false;
-  let samplerAutosaveEnabled = false;
-  let sharedAutosaveIntervalMinutes = 5;
-  let samplerAutosaveTimerId = null;
   const activeSources = new Set();
-
-  const SAMPLER_PACK_INDEX_KEY = "aelonyori.sampler.pack.index";
-  const SAMPLER_PACK_DEFAULT_KEY = "aelonyori.sampler.pack.default";
-  const SAMPLER_PACK_AUTOSAVE_KEY = "aelonyori.sampler.pack.autosave";
-  const SAMPLER_PACK_STORAGE_PREFIX = "aelonyori.sampler.pack.";
 
   function numberOrFallback(value, fallback) {
     const n = Number(value);
@@ -161,10 +150,6 @@
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) throw new Error("Audio unavailable");
       audioCtx = new Ctx();
-      if (!padsLoadedFromStorage) {
-        padsLoadedFromStorage = true;
-        loadPadsFromStorage();
-      }
     }
     if (audioCtx.state === "suspended") {
       audioCtx.resume();
@@ -224,76 +209,19 @@
     return bytes.buffer;
   }
 
-  function samplerPackStorageKey(name) {
-    return `${SAMPLER_PACK_STORAGE_PREFIX}${String(name || "").trim()}`;
-  }
-
-  function readSamplerPackIndex() {
-    try {
-      const raw = window.localStorage.getItem(SAMPLER_PACK_INDEX_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.map((v) => String(v || "").trim()).filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-
-  function writeSamplerPackIndex(names) {
-    try {
-      window.localStorage.setItem(
-        SAMPLER_PACK_INDEX_KEY,
-        JSON.stringify(Array.isArray(names) ? names : []),
-      );
-    } catch {
-      // ignore storage errors
-    }
-  }
-
-  function getDefaultSamplerPackName() {
-    try {
-      return String(window.localStorage.getItem(SAMPLER_PACK_DEFAULT_KEY) || "");
-    } catch {
-      return "";
-    }
-  }
-
-  function setDefaultSamplerPackName(name) {
-    try {
-      window.localStorage.setItem(SAMPLER_PACK_DEFAULT_KEY, String(name || ""));
-    } catch {
-      // ignore storage errors
-    }
-  }
-
-  function getSamplerPack(name) {
-    const clean = String(name || "").trim();
-    if (!clean) return null;
-    try {
-      const raw = window.localStorage.getItem(samplerPackStorageKey(clean));
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function makeUniqueSamplerPackName(base) {
-    const baseName = String(base || "").trim() || "sample pack";
-    const existing = new Set(readSamplerPackIndex());
-    if (!existing.has(baseName)) return baseName;
-    let i = 2;
-    while (existing.has(`${baseName} ${i}`)) i += 1;
-    return `${baseName} ${i}`;
-  }
-
   function getSamplerPackNameFromUi() {
-    const requested = String(samplerPackNameInput?.value || "").trim();
-    const selected = String(samplerPackSelect?.value || "").trim();
-    const defaultName = String(getDefaultSamplerPackName() || "").trim();
-    return requested || selected || defaultName || "";
+    return String(samplerPackNameInput?.value || "").trim();
+  }
+
+  function fileSafeStem(value, fallback = "sample-pack") {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
   }
 
   function normalizePatternCell(cell) {
@@ -345,58 +273,6 @@
     };
   }
 
-  function saveSamplerPack(name, packData) {
-    const clean = String(name || "").trim();
-    if (!clean) return false;
-    try {
-      window.localStorage.setItem(
-        samplerPackStorageKey(clean),
-        JSON.stringify(packData),
-      );
-    } catch {
-      return false;
-    }
-
-    const names = readSamplerPackIndex();
-    if (!names.includes(clean)) {
-      names.push(clean);
-      names.sort((a, b) => a.localeCompare(b));
-      writeSamplerPackIndex(names);
-    }
-    if (!getDefaultSamplerPackName()) {
-      setDefaultSamplerPackName(clean);
-    }
-    return true;
-  }
-
-  function refreshSamplerPackSelect() {
-    if (!samplerPackSelect) return;
-    const names = readSamplerPackIndex();
-    const selected = String(samplerPackSelect.value || "").trim();
-    const defaultName = String(getDefaultSamplerPackName() || "").trim();
-
-    samplerPackSelect.innerHTML = "";
-    const emptyOpt = document.createElement("option");
-    emptyOpt.value = "";
-    emptyOpt.textContent = "—";
-    samplerPackSelect.appendChild(emptyOpt);
-
-    for (const name of names) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name === defaultName ? `${name} (default)` : name;
-      samplerPackSelect.appendChild(opt);
-    }
-
-    if (selected && names.includes(selected)) {
-      samplerPackSelect.value = selected;
-    } else if (defaultName && names.includes(defaultName)) {
-      samplerPackSelect.value = defaultName;
-    } else {
-      samplerPackSelect.value = "";
-    }
-  }
-
   function clearAllSamplerBuffers() {
     for (let i = 0; i < NUM_PADS; i += 1) {
       buffers[i] = null;
@@ -404,12 +280,8 @@
     }
   }
 
-  async function loadSamplerPack(name) {
-    const clean = String(name || "").trim();
-    if (!clean) return false;
-    const pack = getSamplerPack(clean);
-    if (!pack) return false;
-
+  async function applySamplerPackData(pack) {
+    if (!pack || typeof pack !== "object") return false;
     ensureAudio();
     clearAllSamplerBuffers();
 
@@ -452,132 +324,72 @@
       }
     }
 
-    if (samplerPackNameInput) samplerPackNameInput.value = clean;
-    refreshSamplerPackSelect();
-    if (samplerPackSelect) samplerPackSelect.value = clean;
-
     setSelectedPad(selectedPad);
     renderPads();
     renderCompose();
     return true;
   }
 
-  function saveCurrentSamplerPack({ allowCreate = true } = {}) {
-    let name = getSamplerPackNameFromUi();
-    if (!name && allowCreate) {
-      name = makeUniqueSamplerPackName("sample pack");
-    }
-    if (!name) return false;
-
+  function buildCurrentSamplerPackJson() {
     const data = buildCurrentSamplerPackData();
-    const ok = saveSamplerPack(name, data);
-    if (!ok) return false;
-
-    if (samplerPackNameInput) samplerPackNameInput.value = name;
-    refreshSamplerPackSelect();
-    if (samplerPackSelect) samplerPackSelect.value = name;
-    return true;
+    return JSON.stringify(data, null, 2);
   }
 
-  function migrateLegacySamplerPads() {
-    const existing = readSamplerPackIndex();
-    if (existing.length > 0) return;
-
-    let hasLegacy = false;
-    const pads = new Array(NUM_PADS).fill(null);
-    for (let i = 0; i < NUM_PADS; i += 1) {
-      const b64 = window.localStorage.getItem(`sampler_pad_${i}`);
-      if (!b64) continue;
-      hasLegacy = true;
-      pads[i] = b64;
+  function downloadCurrentSamplerPack() {
+    const hasAnyLoadedSample = buffers.some((buf) => Boolean(buf));
+    if (!hasAnyLoadedSample) {
+      window.alert("No samples loaded to download.");
+      return;
     }
-    if (!hasLegacy) return;
 
-    const legacyName = "default";
-    const migrated = {
-      version: 1,
-      bpm,
-      stepsCount,
-      beatSteps,
-      ratchets: Array.from({ length: NUM_PADS }, () => [1, 1, 1, 1]),
-      pattern: Array.from({ length: NUM_PADS }, () =>
-        Array(DEFAULT_STEPS).fill(null),
-      ),
-      pads,
-    };
-
-    if (saveSamplerPack(legacyName, migrated)) {
-      setDefaultSamplerPackName(legacyName);
-    }
+    const name = getSamplerPackNameFromUi();
+    const stem = fileSafeStem(name || "sample-pack", "sample-pack");
+    const text = buildCurrentSamplerPackJson();
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${stem}.aelonyori-pack.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
-  function clearSamplerAutosaveTimer() {
-    if (samplerAutosaveTimerId == null) return;
-    window.clearInterval(samplerAutosaveTimerId);
-    samplerAutosaveTimerId = null;
+  function requestSamplerPackUpload() {
+    if (!samplerPackUploadInput) return;
+    samplerPackUploadInput.value = "";
+    samplerPackUploadInput.click();
   }
 
-  function syncSamplerAutosaveTimer() {
-    clearSamplerAutosaveTimer();
-    if (!samplerAutosaveEnabled) return;
-    const minutes = clampNumber(
-      Math.round(numberOrFallback(sharedAutosaveIntervalMinutes, 5)),
-      1,
-      60,
-    );
-    samplerAutosaveTimerId = window.setInterval(() => {
-      saveCurrentSamplerPack({ allowCreate: true });
-    }, minutes * 60 * 1000);
-  }
+  async function handleSamplerPackUploadInput() {
+    if (!samplerPackUploadInput) return;
+    const file =
+      samplerPackUploadInput.files && samplerPackUploadInput.files[0]
+        ? samplerPackUploadInput.files[0]
+        : null;
+    if (!file) return;
 
-  function setSamplerAutosaveEnabled(nextEnabled) {
-    samplerAutosaveEnabled = Boolean(nextEnabled);
     try {
-      window.localStorage.setItem(
-        SAMPLER_PACK_AUTOSAVE_KEY,
-        samplerAutosaveEnabled ? "1" : "0",
-      );
-    } catch {
-      // ignore storage errors
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const ok = await applySamplerPackData(parsed);
+      if (!ok) {
+        window.alert("Invalid sample pack file.");
+        return;
+      }
+
+      const inferredName = String(file.name || "")
+        .replace(/\.aelonyori-pack\.json$/i, "")
+        .replace(/\.json$/i, "")
+        .trim();
+      if (samplerPackNameInput) {
+        samplerPackNameInput.value = inferredName || getSamplerPackNameFromUi();
+      }
+    } catch (error) {
+      console.warn("Unable to import sample pack", error);
+      window.alert("Unable to import sample pack.");
     }
-
-    if (samplerPackAutosaveBtn) {
-      samplerPackAutosaveBtn.setAttribute(
-        "aria-pressed",
-        samplerAutosaveEnabled ? "true" : "false",
-      );
-      samplerPackAutosaveBtn.title = samplerAutosaveEnabled
-        ? "sampler autosave: on"
-        : "sampler autosave: off";
-    }
-
-    syncSamplerAutosaveTimer();
-  }
-
-  function restoreSamplerAutosavePreference() {
-    try {
-      const raw = window.localStorage.getItem(SAMPLER_PACK_AUTOSAVE_KEY);
-      setSamplerAutosaveEnabled(raw === "1");
-    } catch {
-      setSamplerAutosaveEnabled(false);
-    }
-  }
-
-  function savePadToStorage(index) {
-    if (!buffers[index]) return;
-    saveCurrentSamplerPack({ allowCreate: true });
-  }
-
-  async function loadPadsFromStorage() {
-    migrateLegacySamplerPads();
-    refreshSamplerPackSelect();
-
-    const defaultName = getDefaultSamplerPackName();
-    const fallback = readSamplerPackIndex()[0] || "";
-    const target = defaultName || fallback;
-    if (!target) return;
-
-    await loadSamplerPack(target);
   }
 
   function downloadPad(index) {
@@ -690,7 +502,6 @@
           const decoded = await audioCtx.decodeAudioData(data);
           buffers[recordingPadIndex] = decoded;
           padStates[recordingPadIndex].isLoaded = true;
-          savePadToStorage(recordingPadIndex);
         } catch {
           // ignore failed decode
         }
@@ -1433,48 +1244,21 @@
     });
   }
 
-  if (samplerPackAutosaveBtn) {
-    samplerPackAutosaveBtn.addEventListener("click", () => {
-      setSamplerAutosaveEnabled(!samplerAutosaveEnabled);
+  if (samplerPackDownloadBtn) {
+    samplerPackDownloadBtn.addEventListener("click", () => {
+      downloadCurrentSamplerPack();
     });
   }
 
-  if (samplerPackSaveBtn) {
-    samplerPackSaveBtn.addEventListener("click", () => {
-      const requested = String(samplerPackNameInput?.value || "").trim();
-      if (!requested && !String(samplerPackSelect?.value || "").trim()) {
-        if (samplerPackNameInput) {
-          samplerPackNameInput.value = makeUniqueSamplerPackName("sample pack");
-        }
-      }
-      saveCurrentSamplerPack({ allowCreate: true });
+  if (samplerPackUploadBtn) {
+    samplerPackUploadBtn.addEventListener("click", () => {
+      requestSamplerPackUpload();
     });
   }
 
-  if (samplerPackLoadBtn) {
-    samplerPackLoadBtn.addEventListener("click", async () => {
-      const name = getSamplerPackNameFromUi();
-      if (!name) return;
-      await loadSamplerPack(name);
-    });
-  }
-
-  if (samplerPackDefaultBtn) {
-    samplerPackDefaultBtn.addEventListener("click", () => {
-      const name = getSamplerPackNameFromUi();
-      if (!name) return;
-      setDefaultSamplerPackName(name);
-      refreshSamplerPackSelect();
-      if (samplerPackSelect) samplerPackSelect.value = name;
-      if (samplerPackNameInput) samplerPackNameInput.value = name;
-    });
-  }
-
-  if (samplerPackSelect) {
-    samplerPackSelect.addEventListener("change", () => {
-      const selected = String(samplerPackSelect.value || "").trim();
-      if (!selected) return;
-      if (samplerPackNameInput) samplerPackNameInput.value = selected;
+  if (samplerPackUploadInput) {
+    samplerPackUploadInput.addEventListener("change", () => {
+      handleSamplerPackUploadInput();
     });
   }
 
@@ -1545,22 +1329,9 @@
     closeComposeRatchetPicker();
   });
 
-  document.addEventListener("aelonyori:autosave-config", (event) => {
-    const detail = event && event.detail && typeof event.detail === "object"
-      ? event.detail
-      : {};
-    sharedAutosaveIntervalMinutes = clampNumber(
-      Math.round(numberOrFallback(detail.intervalMinutes, sharedAutosaveIntervalMinutes)),
-      1,
-      60,
-    );
-    syncSamplerAutosaveTimer();
-  });
-
   window.addEventListener("beforeunload", () => {
     stopRecording();
     stopPlayback();
-    clearSamplerAutosaveTimer();
     if (mediaStream) {
       for (const track of mediaStream.getTracks()) track.stop();
     }
@@ -1583,14 +1354,9 @@
   setPadRatchetPanelOpen(false);
   setActiveTab("pads");
   setSelectedPad(0);
-  migrateLegacySamplerPads();
-  refreshSamplerPackSelect();
-  const initialPackName =
-    getDefaultSamplerPackName() || readSamplerPackIndex()[0] || "";
-  if (samplerPackNameInput && initialPackName) {
-    samplerPackNameInput.value = initialPackName;
+  if (samplerPackNameInput && !samplerPackNameInput.value.trim()) {
+    samplerPackNameInput.value = "sample pack";
   }
-  restoreSamplerAutosavePreference();
   renderPads();
   renderCompose();
   syncRecordFabPulse();

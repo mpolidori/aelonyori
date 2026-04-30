@@ -126,11 +126,15 @@
   const presetStatus = document.getElementById("presetStatus");
   const autosaveToggleBtn = document.getElementById("autosaveToggleBtn");
   const autosaveIntervalSelect = document.getElementById("autosaveInterval");
+  const presetNewBtn = document.getElementById("presetNewBtn");
   const presetSaveBtn = document.getElementById("presetSaveBtn");
   const presetLoadBtn = document.getElementById("presetLoadBtn");
   const presetDefaultBtn = document.getElementById("presetDefaultBtn");
-  const presetExportBtn = document.getElementById("presetExportBtn");
-  const presetImportBtn = document.getElementById("presetImportBtn");
+  const songJsonCopyBtn = document.getElementById("songJsonCopyBtn");
+  const songJsonApplyBtn = document.getElementById("songJsonApplyBtn");
+  const songJsonDownloadBtn = document.getElementById("songJsonDownloadBtn");
+  const songJsonUploadBtn = document.getElementById("songJsonUploadBtn");
+  const songJsonUploadInput = document.getElementById("songJsonUploadInput");
   const autosaveStatus = document.getElementById("autosaveStatus");
   const songIo = document.getElementById("songIo");
   const songJson = document.getElementById("songJson");
@@ -286,6 +290,36 @@
   let themeColorThrottleTimerId = null;
   let queuedThemeColorA = null;
   let queuedThemeColorB = null;
+
+  const INITIAL_GLOBALS = Object.freeze({
+    tempo,
+    globalSwing,
+    globalVolume,
+    stepsCount,
+    beatSteps,
+  });
+
+  const INITIAL_UI = Object.freeze({
+    autoExpandEnabled,
+    autoExpandSpeed,
+    samplePadEnabled,
+    samplePadTransportMode,
+    samplePadRollLength,
+    samplePadRollBeatSteps,
+    wordPlayEnabled,
+    wordPlaySpeed,
+    autosaveEnabled,
+    autosaveIntervalMinutes,
+    autoscrollEnabled,
+    themeEnabled,
+    bumpEnabled,
+    bumpHeight,
+    bumpIntensity,
+    bumpBounce,
+    starBounceEnabled,
+    themeA,
+    themeB,
+  });
 
   let isSyncingGridScroll = false;
 
@@ -591,6 +625,17 @@
     }
   }
 
+  function fileSafeStem(value, fallback = "song") {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  }
+
   function presetStorageKey(name) {
     return `${PRESET_STORAGE_PREFIX}${name}`;
   }
@@ -648,11 +693,13 @@
     if (!cleanName) return false;
 
     try {
+      clearLastPresetSaveError();
       window.localStorage.setItem(
         presetStorageKey(cleanName),
         JSON.stringify(song),
       );
-    } catch {
+    } catch (error) {
+      setLastPresetSaveError(error);
       return false;
     }
 
@@ -726,6 +773,32 @@
 
   let presetStatusTimer = null;
   let presetStatusBusySince = null;
+  let lastPresetSaveErrorMessage = "";
+
+  function isQuotaExceededError(error) {
+    if (!error) return false;
+    const code = Number(error.code);
+    const name = String(error.name || "");
+    return (
+      name === "QuotaExceededError" ||
+      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      code === 22 ||
+      code === 1014
+    );
+  }
+
+  function setLastPresetSaveError(error) {
+    if (isQuotaExceededError(error)) {
+      lastPresetSaveErrorMessage = "save failed: storage full";
+      return;
+    }
+    lastPresetSaveErrorMessage = "save failed";
+  }
+
+  function clearLastPresetSaveError() {
+    lastPresetSaveErrorMessage = "";
+  }
+
   function setPresetStatus(message, { busy = false, ok = true } = {}) {
     if (!presetStatus) return;
 
@@ -739,7 +812,8 @@
         ? performance.now()
         : Date.now();
 
-    presetStatus.textContent = "";
+    const label = String(message || "").trim();
+    presetStatus.textContent = label;
     presetStatus.title = !ok && message ? String(message || "") : "";
     presetStatus.classList.toggle("is-ok", Boolean(ok) && !busy);
     presetStatus.classList.toggle("is-error", !ok && !busy);
@@ -758,13 +832,15 @@
     const minBusyMs = 520;
     const elapsed = now - presetStatusBusySince;
     const remaining = Math.max(0, minBusyMs - elapsed);
+    const holdMs = ok ? 1700 : 3200;
 
     presetStatusTimer = setTimeout(() => {
       presetStatus.classList.remove("is-busy", "is-ok", "is-error");
+      presetStatus.textContent = "";
       presetStatus.title = "";
       presetStatusBusySince = null;
       presetStatusTimer = null;
-    }, remaining);
+    }, remaining + holdMs);
   }
 
   function normalizeAutosaveInterval(value) {
@@ -835,7 +911,10 @@
 
     const ok = savePreset(name, song);
     if (!ok) {
-      if (showPresetStatus) setPresetStatus("save failed", { ok: false });
+      if (showPresetStatus) {
+        const message = lastPresetSaveErrorMessage || "save failed";
+        setPresetStatus(message, { ok: false });
+      }
       return false;
     }
 
@@ -1272,6 +1351,83 @@
     } else {
       presetSelect.value = "";
     }
+  }
+
+  function resetToFreshLanding() {
+    stop();
+    clearAllTracks();
+    states.clear();
+
+    applyStepsCount(INITIAL_GLOBALS.stepsCount);
+    applyBeatSteps(INITIAL_GLOBALS.beatSteps);
+
+    if (rangeFromInput && rangeToInput) {
+      rangeFromInput.value = "1";
+      rangeToInput.value = String(stepsCount);
+      normalizeRangeInputs();
+      updateRangeButtons();
+    }
+
+    setLoopEnabled(false);
+
+    samplePadConfigs = Object.create(null);
+    samplePadRollPattern = [];
+    setSamplePadRollLength(INITIAL_UI.samplePadRollLength);
+    setSamplePadRollBeatSteps(INITIAL_UI.samplePadRollBeatSteps);
+    setSamplePadEnabled(false);
+    setSamplePadTransportMode(false);
+    setSamplePadEditEnabled(false);
+
+    setWordPlaySpeed(INITIAL_UI.wordPlaySpeed);
+    setWordPlayEnabled(false);
+    setAutoExpandSpeed(INITIAL_UI.autoExpandSpeed);
+    setAutoExpandEnabled(false);
+    setAutoscrollEnabled(INITIAL_UI.autoscrollEnabled);
+    setStarBounceEnabled(false);
+    setBumpHeight(INITIAL_UI.bumpHeight);
+    setBumpBounce(INITIAL_UI.bumpBounce);
+    setBumpIntensity(INITIAL_UI.bumpIntensity);
+    setBumpEnabled(false);
+
+    setThemeColors(DEFAULT_THEME_A, DEFAULT_THEME_B);
+    setThemeEnabled(false);
+
+    setAutosaveInterval(INITIAL_UI.autosaveIntervalMinutes);
+    setAutosaveEnabled(false);
+
+    tempo = INITIAL_GLOBALS.tempo;
+    tempoInput.value = String(tempo);
+    tempoOut.value = String(tempo);
+
+    globalSwing = INITIAL_GLOBALS.globalSwing;
+    globalSwingInput.value = String(globalSwing);
+    globalSwingOut.value = String(globalSwing);
+
+    globalVolume = INITIAL_GLOBALS.globalVolume;
+    globalVolumeInput.value = String(globalVolume);
+    globalVolumeOut.value = String(globalVolume);
+    if (master && audio) {
+      master.gain.setTargetAtTime(
+        clampNumber(globalVolume / 127, 0, 1),
+        audio.currentTime,
+        0.01,
+      );
+    }
+
+    if (presetNameInput) presetNameInput.value = "";
+    refreshPresetSelect();
+    if (presetSelect) presetSelect.value = "";
+    if (songJson) {
+      songJson.value = "";
+      updateSongJsonHighlight();
+    }
+    setPresetStatus("new");
+
+    if (themeStarBtn) {
+      themeStarBtn.classList.remove("is-star-daw-intro", "is-star-bounce-intro");
+    }
+    starDawIntroPlayed = false;
+    updateDawVisibility();
   }
 
   function getOrInitState(key) {
@@ -7042,7 +7198,7 @@
     songJson.addEventListener("scroll", syncSongJsonScroll);
   }
 
-  presetExportBtn.addEventListener("click", async (event) => {
+  async function copySongJsonToClipboard(event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -7060,13 +7216,13 @@
         await navigator.clipboard.writeText(text);
       }
     } catch {
-      // ignore
+      // ignore clipboard failures
     }
 
-    setPresetStatus("exported");
-  });
+    setPresetStatus("copied json");
+  }
 
-  presetImportBtn.addEventListener("click", (event) => {
+  function applySongJsonFromEditor(event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -7087,29 +7243,100 @@
       return;
     }
 
-    const nameFromInput = String(presetNameInput.value || "").trim();
     const nameFromSong =
       parsed.value && typeof parsed.value === "object"
         ? String(parsed.value.name || "").trim()
         : "";
-
-    const requestedName = nameFromInput || nameFromSong;
-    const name = nameFromInput
-      ? nameFromInput
-      : requestedName
-        ? makeUniquePresetName(requestedName)
-        : "";
-
-    if (name) {
-      presetNameInput.value = name;
-      const normalized = getSongObject();
-      savePreset(name, normalized);
-      refreshPresetSelect();
-      presetSelect.value = name;
+    if (nameFromSong) {
+      presetNameInput.value = nameFromSong;
     }
+    refreshPresetSelect();
+    setPresetStatus("applied json");
+  }
 
-    setPresetStatus("imported");
-  });
+  function downloadSongJsonFile(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    setPresetStatus("", { busy: true });
+    const song = getSongObject();
+    if (!song || !Array.isArray(song.tracks) || song.tracks.length === 0) {
+      setPresetStatus("nothing to download", { ok: false });
+      return;
+    }
+    const text = JSON.stringify(song, null, 2);
+    showSongIo();
+    songJson.value = text;
+    updateSongJsonHighlight();
+
+    const sourceName = String(presetNameInput.value || song.name || "song");
+    const filename = `${fileSafeStem(sourceName, "song")}.aelonyori-song.json`;
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setPresetStatus("downloaded json");
+  }
+
+  function requestSongJsonUpload(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!songJsonUploadInput) return;
+    songJsonUploadInput.value = "";
+    songJsonUploadInput.click();
+  }
+
+  async function handleSongJsonUploadInput() {
+    if (!songJsonUploadInput) return;
+    const file =
+      songJsonUploadInput.files && songJsonUploadInput.files[0]
+        ? songJsonUploadInput.files[0]
+        : null;
+    if (!file) return;
+
+    setPresetStatus("", { busy: true });
+    try {
+      const text = await file.text();
+      showSongIo();
+      songJson.value = text;
+      updateSongJsonHighlight();
+      applySongJsonFromEditor();
+      setPresetStatus("uploaded json");
+    } catch (error) {
+      console.warn("Unable to read uploaded JSON", error);
+      setPresetStatus("upload failed", { ok: false });
+    }
+  }
+
+  if (songJsonCopyBtn) {
+    songJsonCopyBtn.addEventListener("click", copySongJsonToClipboard);
+  }
+
+  if (songJsonApplyBtn) {
+    songJsonApplyBtn.addEventListener("click", applySongJsonFromEditor);
+  }
+
+  if (songJsonDownloadBtn) {
+    songJsonDownloadBtn.addEventListener("click", downloadSongJsonFile);
+  }
+
+  if (songJsonUploadBtn) {
+    songJsonUploadBtn.addEventListener("click", requestSongJsonUpload);
+  }
+
+  if (songJsonUploadInput) {
+    songJsonUploadInput.addEventListener("change", () => {
+      handleSongJsonUploadInput();
+    });
+  }
 
   if (autosaveToggleBtn) {
     autosaveToggleBtn.addEventListener("click", () => {
@@ -7126,6 +7353,12 @@
   presetSaveBtn.addEventListener("click", () => {
     saveCurrentSongPreset({ statusLabel: "saved", showPresetStatus: true });
   });
+
+  if (presetNewBtn) {
+    presetNewBtn.addEventListener("click", () => {
+      resetToFreshLanding();
+    });
+  }
 
   presetSelect.addEventListener("change", () => {
     const name = String(presetSelect.value || "").trim();

@@ -77,24 +77,14 @@
             <div class="samplerPackBar" aria-label="sampler sample packs">
                 <label class="field samplerPackField">
                     <span class="fieldLabel">pack</span>
-                    <select id="samplerPackSelect" aria-label="sampler pack select"></select>
-                </label>
-
-                <label class="field samplerPackField">
-                    <span class="fieldLabel">name</span>
                     <input id="samplerPackName" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="sample pack" aria-label="sampler pack name" />
                 </label>
 
-                <label class="field samplerPackAutoField">
-                    <span class="fieldLabel">autosave</span>
-                    <button type="button" class="switchToggle" id="samplerPackAutosaveBtn" aria-label="sampler autosave" aria-pressed="false"></button>
-                </label>
-
                 <div class="controls samplerPackActions" aria-label="sampler pack actions">
-                    <button type="button" class="btn" id="samplerPackSaveBtn">save</button>
-                    <button type="button" class="btn" id="samplerPackLoadBtn">load</button>
-                    <button type="button" class="btn" id="samplerPackDefaultBtn">default</button>
+                    <button type="button" class="btn" id="samplerPackUploadBtn">upload pack</button>
+                    <button type="button" class="btn" id="samplerPackDownloadBtn">download pack</button>
                 </div>
+                <input id="samplerPackUploadInput" type="file" accept="application/json,.json" hidden />
             </div>
 
             <nav class="samplerTabs" aria-label="sampler views">
@@ -230,6 +220,7 @@
                 </label>
 
                 <div class="controls settingsRow" aria-label="preset actions">
+                    <button type="button" class="btn" id="presetNewBtn">new</button>
                     <button type="button" class="btn" id="presetSaveBtn">save</button>
                     <button type="button" class="btn" id="presetLoadBtn">load</button>
                     <button type="button" class="btn" id="presetDefaultBtn">default</button>
@@ -237,8 +228,11 @@
 
                 <details class="songIo settingsSongIo" id="songIo">
                     <summary class="songIoSummary" aria-label="toggle song JSON">
-                        <button type="button" class="btn" id="presetExportBtn">export</button>
-                        <button type="button" class="btn" id="presetImportBtn">import</button>
+                        <button type="button" class="btn" id="songJsonCopyBtn">copy json</button>
+                        <button type="button" class="btn" id="songJsonApplyBtn">apply json</button>
+                        <button type="button" class="btn" id="songJsonDownloadBtn">download json</button>
+                        <button type="button" class="btn" id="songJsonUploadBtn">upload json</button>
+                        <input id="songJsonUploadInput" type="file" accept="application/json,.json" hidden />
                         <span class="btn songIoToggle">JSON</span>
                     </summary>
                     <div class="songIoBody">

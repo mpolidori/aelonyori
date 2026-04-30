@@ -91,7 +91,10 @@ body {
   line-height: 1;
   cursor: pointer;
   opacity: 0.36;
-  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -240,7 +243,9 @@ html.is-theme .btn:active:not(:disabled) {
   background: var(--t-8, rgba(255, 255, 255, 0.08));
 }
 
-html.is-theme .track.is-muted .btn-toggle[data-action="mute"][aria-pressed="true"] {
+html.is-theme
+  .track.is-muted
+  .btn-toggle[data-action="mute"][aria-pressed="true"] {
   border-color: var(--t-82, rgba(255, 255, 255, 0.82));
   color: var(--t-82, rgba(255, 255, 255, 0.82));
 }
@@ -293,7 +298,10 @@ html.is-theme .field input[type="range"]::-moz-range-thumb {
   border-color: var(--t-28, rgba(255, 255, 255, 0.28));
 }
 
-html.is-theme .global .field input[type="range"]::-webkit-slider-runnable-track {
+html.is-theme
+  .global
+  .field
+  input[type="range"]::-webkit-slider-runnable-track {
   background: var(--t-18, rgba(255, 255, 255, 0.18));
 }
 
@@ -338,8 +346,16 @@ html.is-theme .transportBar {
   border-color: var(--t-18, rgba(255, 255, 255, 0.18));
   color: var(--t-fg, rgba(255, 255, 255, 0.92));
   --transportIcon: var(--t-96, rgba(255, 255, 255, 0.96));
-  --transportTickStep: color-mix(in srgb, var(--t-fg, #ffffff) 16%, transparent);
-  --transportTickBeat: color-mix(in srgb, var(--t-fg, #ffffff) 26%, transparent);
+  --transportTickStep: color-mix(
+    in srgb,
+    var(--t-fg, #ffffff) 16%,
+    transparent
+  );
+  --transportTickBeat: color-mix(
+    in srgb,
+    var(--t-fg, #ffffff) 26%,
+    transparent
+  );
   --transportBeatNum: var(--transportIcon);
 }
 
@@ -352,8 +368,8 @@ html.is-theme .transportBar[data-loop="1"] .transportSeekBtn::before {
     to right,
     var(--t-28, rgba(255, 255, 255, 0.26)) 0%,
     var(--t-28, rgba(255, 255, 255, 0.26)) var(--ls),
-    var(--t-40, rgba(255, 255, 255, 0.40)) var(--ls),
-    var(--t-40, rgba(255, 255, 255, 0.40)) var(--le),
+    var(--t-40, rgba(255, 255, 255, 0.4)) var(--ls),
+    var(--t-40, rgba(255, 255, 255, 0.4)) var(--le),
     var(--t-28, rgba(255, 255, 255, 0.26)) var(--le),
     var(--t-28, rgba(255, 255, 255, 0.26)) 100%
   );
@@ -380,7 +396,9 @@ html.is-theme .transportSeekBtn:focus-visible {
   position: relative;
   width: min(900px, calc(100% - 2rem));
   margin: 0 auto;
-  padding-top: calc(var(--logo-y) + (var(--logo-size) * 0.5) + var(--logo-gap-below));
+  padding-top: calc(
+    var(--logo-y) + (var(--logo-size) * 0.5) + var(--logo-gap-below)
+  );
   padding-bottom: calc(1.5rem + var(--floatingClearanceBottom));
 }
 
@@ -447,7 +465,8 @@ html.is-theme .transportSeekBtn:focus-visible {
   max-height: min(44vh, 360px);
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--samplePadNum) 32%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--samplePadNum) 32%, transparent)
+    transparent;
 }
 
 .samplePadRollGrid > * {
@@ -524,7 +543,8 @@ html.is-theme .transportSeekBtn:focus-visible {
   align-items: center;
   appearance: none;
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--samplePadNum) 16%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--samplePadNum) 16%, transparent);
   background: transparent;
   color: var(--samplePadNum);
   font: inherit;
@@ -540,7 +560,11 @@ html.is-theme .transportSeekBtn:focus-visible {
 }
 
 .samplePadRollPadBtn:active {
-  background: color-mix(in srgb, var(--samplePadBg) 88%, var(--samplePadNum) 12%);
+  background: color-mix(
+    in srgb,
+    var(--samplePadBg) 88%,
+    var(--samplePadNum) 12%
+  );
 }
 
 html.is-theme .samplePadRollPadBtn {
@@ -566,7 +590,9 @@ html.is-theme .samplePadRollPadBtn {
   position: relative;
   touch-action: manipulation;
   -webkit-touch-callout: none;
-  transition: background-color 0.08s ease, border-color 0.08s ease;
+  transition:
+    background-color 0.08s ease,
+    border-color 0.08s ease;
   border-radius: 0;
 }
 
@@ -590,7 +616,11 @@ html.is-theme .samplePadRollPadBtn {
 
 .samplePadRollWrap .field input[type="range"]::-webkit-slider-thumb {
   background: var(--samplePadNum);
-  border-color: color-mix(in srgb, var(--samplePadBg) 70%, var(--samplePadNum) 30%);
+  border-color: color-mix(
+    in srgb,
+    var(--samplePadBg) 70%,
+    var(--samplePadNum) 30%
+  );
 }
 
 .samplePadRollWrap .field input[type="range"]::-moz-range-track,
@@ -600,7 +630,11 @@ html.is-theme .samplePadRollPadBtn {
 
 .samplePadRollWrap .field input[type="range"]::-moz-range-thumb {
   background: var(--samplePadNum);
-  border-color: color-mix(in srgb, var(--samplePadBg) 70%, var(--samplePadNum) 30%);
+  border-color: color-mix(
+    in srgb,
+    var(--samplePadBg) 70%,
+    var(--samplePadNum) 30%
+  );
 }
 
 .samplePadRollCellRatchet {
@@ -685,7 +719,10 @@ html.is-theme .samplePadWrap {
   color: var(--samplePadNum);
   position: relative;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -714,7 +751,11 @@ html.is-theme .samplePadWrap {
 }
 
 .samplePadBtn:active {
-  background: color-mix(in srgb, var(--samplePadBg) 92%, var(--samplePadNum) 8%);
+  background: color-mix(
+    in srgb,
+    var(--samplePadBg) 92%,
+    var(--samplePadNum) 8%
+  );
 }
 
 .samplePadBtn:disabled:active,
@@ -723,8 +764,16 @@ html.is-theme .samplePadWrap {
 }
 
 .samplePadWrap.is-editing .samplePadBtn {
-  border-color: color-mix(in srgb, var(--samplePadNum) 44%, var(--samplePadBorder) 56%);
-  background: color-mix(in srgb, var(--samplePadBg) 94%, var(--samplePadNum) 6%);
+  border-color: color-mix(
+    in srgb,
+    var(--samplePadNum) 44%,
+    var(--samplePadBorder) 56%
+  );
+  background: color-mix(
+    in srgb,
+    var(--samplePadBg) 94%,
+    var(--samplePadNum) 6%
+  );
 }
 
 .samplePadBtn.is-selected {
@@ -733,7 +782,11 @@ html.is-theme .samplePadWrap {
 }
 
 .samplePadBtn.is-hit {
-  background: color-mix(in srgb, var(--samplePadBg) 84%, var(--samplePadNum) 16%);
+  background: color-mix(
+    in srgb,
+    var(--samplePadBg) 84%,
+    var(--samplePadNum) 16%
+  );
 }
 
 .samplePadBeatNum {
@@ -985,6 +1038,10 @@ html.is-theme .samplePadModeToolbar {
   top: 26%;
   transform: translate3d(var(--star-x-offset), -50%, 0);
   isolation: isolate;
+  border-radius: 999px;
+  transition:
+    color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .logoStar[aria-expanded="true"] {
@@ -992,19 +1049,39 @@ html.is-theme .samplePadModeToolbar {
   border-radius: 999px;
 }
 
+.logoStar:not([aria-expanded="true"]):hover,
+.logoStar:not([aria-expanded="true"]):focus-visible {
+  color: rgba(0, 0, 0, 0.58);
+  box-shadow: inset 0 0 0 1.2px currentColor;
+}
+
+html.is-theme .logoStar:not([aria-expanded="true"]):hover,
+html.is-theme .logoStar:not([aria-expanded="true"]):focus-visible {
+  color: var(--t-50, #808080);
+  box-shadow: inset 0 0 0 1.2px currentColor;
+}
+
+html:not(.is-theme) .logoStar[aria-expanded="true"] {
+  color: #000000;
+}
+
 .logoStar::before {
   content: "";
   position: absolute;
   inset: 0;
   background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='18' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 
 .logoStar[aria-expanded="true"]::before {
   opacity: 0.72;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black' stroke-width='11' stroke-linecap='round'%3E%3Cpath d='M50 16V84M22 34L78 66M78 34L22 66'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 
 @keyframes starBounce {
@@ -1031,19 +1108,17 @@ html.is-star-bouncing .logoStar {
 
 @keyframes starDawRollIn {
   0% {
-    transform: translate3d(
-      60vw,
-      calc(-50% + var(--star-floor-offset)),
-      0
-    ) rotate(0turn);
+    transform: translate3d(60vw, calc(-50% + var(--star-floor-offset)), 0)
+      rotate(0turn);
     animation-timing-function: cubic-bezier(0.18, 0.82, 0.24, 1);
   }
   82% {
     transform: translate3d(
-      calc(var(--star-x-offset) + 0.04ch),
-      calc(-50% + var(--star-floor-offset)),
-      0
-    ) rotate(-2.45turn);
+        calc(var(--star-x-offset) + 0.04ch),
+        calc(-50% + var(--star-floor-offset)),
+        0
+      )
+      rotate(-2.45turn);
     animation-timing-function: cubic-bezier(0.2, 0.9, 0.28, 1);
   }
   100% {
@@ -1097,6 +1172,24 @@ html.is-theme .logoStar:focus-visible {
   background: #808080;
   max-width: calc(100vw - 2rem);
   --accent: #000000;
+}
+
+#themeEnableModal .themePickerBox {
+  background: #ffffff;
+  color: rgba(0, 0, 0, 0.86);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  --accent: #000000;
+}
+
+#themeEnableModal .btn {
+  background: #ffffff;
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.32);
+}
+
+#themeEnableModal .btn:hover:not(:disabled),
+#themeEnableModal .btn:focus-visible {
+  border-color: rgba(0, 0, 0, 0.52);
 }
 
 .themePickerRow {
@@ -1158,7 +1251,7 @@ html.is-theme .themeSwatch {
 }
 
 .switchToggle::before {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 1;
   left: 0;
@@ -1168,11 +1261,14 @@ html.is-theme .themeSwatch {
   background: rgba(0, 0, 0, 0.72);
   border: 1px solid rgba(0, 0, 0, 0.28);
   transform: translate(0, -50%);
-  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .switchToggle::after {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 0;
   left: 0;
@@ -1242,7 +1338,11 @@ html.is-theme .switchToggle:focus-visible {
   background-position: 0 100%;
   background-size: 0% 2px;
 
-  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease, transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
+  transition:
+    color 0.12s ease,
+    text-shadow 0.12s ease,
+    background-size 0.12s ease,
+    transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
 }
 
 .logo .letter::before {
@@ -1254,7 +1354,9 @@ html.is-theme .switchToggle:focus-visible {
   transform: translate(0, 0);
   pointer-events: none;
   z-index: -1;
-  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .logoPlus {
@@ -1298,7 +1400,12 @@ html.is-theme .switchToggle:focus-visible {
     0 1px 0 var(--accent),
     1px 1px 0 var(--accent);
 
-  transition: color 0.12s ease, text-shadow 0.12s ease, background-size 0.12s ease, opacity 0.12s ease, transform 0.08s ease;
+  transition:
+    color 0.12s ease,
+    text-shadow 0.12s ease,
+    background-size 0.12s ease,
+    opacity 0.12s ease,
+    transform 0.08s ease;
 }
 
 .logoPlus:active:not(:disabled) {
@@ -1337,15 +1444,7 @@ html.is-theme .switchToggle:focus-visible {
 .logo .letter:hover:not(.is-selected),
 .logo .letter:focus-visible:not(.is-selected) {
   color: var(--accent);
-  text-shadow:
-    -1px -1px 0 var(--accent),
-    0 -1px 0 var(--accent),
-    1px -1px 0 var(--accent),
-    -1px 0 0 var(--accent),
-    1px 0 0 var(--accent),
-    -1px 1px 0 var(--accent),
-    0 1px 0 var(--accent),
-    1px 1px 0 var(--accent);
+  text-shadow: none;
 }
 
 .logo .letter:hover:not(.is-selected)::before,
@@ -1365,6 +1464,11 @@ html.is-theme .logo .letter:focus-visible {
 .logo .letter.is-selected {
   color: var(--accent);
   text-shadow: none;
+}
+
+html:not(.is-theme) .logo .letter.is-selected:hover,
+html:not(.is-theme) .logo .letter.is-selected:focus-visible {
+  -webkit-text-stroke: 2px color-mix(in srgb, var(--accent) 62%, #000000);
 }
 
 .logo .letter.is-selected::before {
@@ -1429,7 +1533,10 @@ html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible {
 }
 
 html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:hover::before,
-html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible::before {
+html.is-theme
+  body.has-daw:not(.is-bump-letters)
+  .logo
+  .letter:focus-visible::before {
   color: var(--hit);
   opacity: 1;
   transform: translate(3px, 3px);
@@ -1444,14 +1551,18 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
   opacity: var(--bump-letter-ghost-opacity, 0.34);
   transform: translate(0, var(--bump-letter-lift, 3px));
   text-shadow:
-    calc(-1 * var(--bump-letter-shadow-spread, 2px)) calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
+    calc(-1 * var(--bump-letter-shadow-spread, 2px))
+      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
     0 calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
-    var(--bump-letter-shadow-spread, 2px) calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
+    var(--bump-letter-shadow-spread, 2px)
+      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
     calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 0 var(--hit),
     var(--bump-letter-shadow-spread, 2px) 0 0 var(--hit),
-    calc(-1 * var(--bump-letter-shadow-spread, 2px)) var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
+    calc(-1 * var(--bump-letter-shadow-spread, 2px))
+      var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
     0 var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
-    var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px) 0 var(--hit);
+    var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px)
+      0 var(--hit);
 }
 
 .logo .letter.is-muted {
@@ -1467,32 +1578,132 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
   background-size: 100% 2px;
 }
 
-.logo .letter:nth-child(1) {
-  --accent: #ff003c;
+/* ==========================================================================
+   1. ANIMATION ENGINE
+   ========================================================================== */
+
+/* We must declare this variable as a <number> using @property. 
+  If we do not do this, CSS thinks the variable is just a string of text 
+  and cannot mathematically animate it from 5 to 365.
+*/
+@property --base-hue {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 38; /* Set to your perfect red */
 }
-.logo .letter:nth-child(2) {
-  --accent: #00f0ff;
+
+/* Spins the base hue exactly 360 degrees. 
+  Because the color wheel is a circle, 365 looks mathematically 
+  identical to 5, creating a completely invisible, seamless loop. 
+*/
+@keyframes rainbow-wave {
+  from { --base-hue: 38; }
+  to { --base-hue: 398; } /* 38 + 360 = 398 */
 }
-.logo .letter:nth-child(3) {
-  --accent: #abff00;
+
+/* ==========================================================================
+   2. GLOBAL PALETTE SETTINGS
+   ========================================================================== */
+
+.logo {
+  /* LIGHTNESS (0% to 100%)
+    Unlike HSL, OKLCH Lightness is literal, physical brightness.
+    - 0% is pure black.
+    - 100% is pure white.
+    - 60% to 75% is usually the sweet spot for vibrant neon web colors.
+    WARNING: At your current 95%, you are dangerously close to pure white. 
+    Many colors will physically not be able to render at 95% lightness 
+    and will turn into a pale, washed-out pastel.
+  */
+  --base-light: 95%; 
+
+  /* CHROMA (0.0 to ~0.4)
+    This is the OKLCH equivalent of Saturation.
+    - 0.0 is grayscale (black/white/gray).
+    - 0.1 is muted/pastel.
+    - 0.25 to 0.3 is high-saturation neon.
+    WARNING: 0.4 is massive. Modern computer monitors (sRGB gamut) physically 
+    cannot display a Chroma of 0.4 at most lightness levels. The browser 
+    will automatically desaturate it until it fits on the screen.
+  */
+  --base-chroma: 0.4; 
+
+  /* HUE (0 to 360)
+    The starting point on the color wheel. 
+    (This gets overridden by the animation, but acts as a fallback).
+    - 0/360 = Red/Pink
+    - 90 = Yellow/Green
+    - 180 = Cyan/Teal
+    - 270 = Deep Blue/Purple
+  */
+  --base-hue: 38;
+
+  /* STEP SIZE (The "Width" of the gradient)
+    This dictates how many degrees of the color wheel separate each letter.
+    - 40 = A full rainbow squeezed into 9 letters (sharp jumps).
+    - 15 = A smooth, tight slice of the color wheel (smooth gradient).
+    - 5  = Almost indistinguishable shifts.
+    Tweak this number to widen or tighten your gradient!
+  */
+  --hue-step: 20;
+
+  /* The actual animation driver. Change '40s' to adjust speed. */
+  animation: rainbow-wave 120s linear infinite;
 }
-.logo .letter:nth-child(4) {
-  --accent: #ff00ff;
+
+/* ==========================================================================
+   3. LETTER DISTRIBUTION LOGIC
+   ========================================================================== */
+
+/* Instead of hardcoding +40, +80, we multiply the --hue-step by the letter's index.
+  This allows you to change the step size in ONE place (above) and the entire 
+  word instantly recalculates its spacing.
+*/
+.logo .letter:nth-child(1) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 0))); }
+.logo .letter:nth-child(2) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 1))); }
+.logo .letter:nth-child(3) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 2))); }
+.logo .letter:nth-child(4) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 3))); }
+.logo .letter:nth-child(5) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 4))); }
+.logo .letter:nth-child(6) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 5))); }
+.logo .letter:nth-child(7) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 6))); }
+.logo .letter:nth-child(8) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 7))); }
+.logo .letter:nth-child(9) { --accent: oklch(var(--base-light) var(--base-chroma) calc(var(--base-hue) + (var(--hue-step) * 8))); }
+
+/* ==========================================================================
+   1. STAR ANIMATION ENGINE (Indigo / Magenta Pulse)
+   ========================================================================== */
+
+@property --star-hue {
+  syntax: '<number>';
+  inherits: true; 
+  /* Start at Indigo */
+  initial-value: 275; 
 }
-.logo .letter:nth-child(5) {
-  --accent: #fdf500;
+
+@keyframes star-pulse {
+  /* Indigo */
+  from { --star-hue: 275; }
+  /* Magenta */
+  to { --star-hue: 330; }
 }
-.logo .letter:nth-child(6) {
-  --accent: #7209b7;
+
+html:not(.is-theme) {
+  /* 6 seconds makes it feel like a slow, breathing pulse */
+  animation: star-pulse 8s ease-in-out infinite alternate;
 }
-.logo .letter:nth-child(7) {
-  --accent: #ff8c00;
-}
-.logo .letter:nth-child(8) {
-  --accent: #0072ff;
-}
-.logo .letter:nth-child(9) {
-  --accent: #39ff14;
+
+/* ==========================================================================
+   2. TARGETED LOGOSTAR GRADIENT
+   ========================================================================== */
+
+html:not(.is-theme) .logoStar {
+  /* We drop the lightness to 60% and chroma to 0.32. 
+     This forces the Indigo to look deep and rich, 
+     while keeping the Magenta bright and electric. */
+  --star-chroma: 0.32;
+  --star-light: 60%;
+
+  color: oklch(var(--star-light) var(--star-chroma) var(--star-hue));
 }
 
 .daw {
@@ -1512,7 +1723,7 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
   --pe: 0%;
   --transportSeekPad: 8px;
   --transportIcon: rgba(0, 0, 0, 0.92);
-  --transportTickStep: rgba(0, 0, 0, 0.10);
+  --transportTickStep: rgba(0, 0, 0, 0.1);
   --transportTickBeat: rgba(0, 0, 0, 0.18);
   --transportBeatNum: var(--transportIcon);
 
@@ -1605,7 +1816,7 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
 
 .transportPlayIcon::before,
 .transportPlayIcon::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1643,7 +1854,7 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
 
 .transportSeekBtn::before,
 .transportSeekBtn::after {
-  content: '';
+  content: "";
   position: absolute;
   left: var(--transportSeekPad);
   right: var(--transportSeekPad);
@@ -1662,8 +1873,8 @@ html.is-theme body.is-bump-letters .logo .letter.is-hit::before {
     to right,
     rgba(0, 0, 0, 0.26) 0%,
     rgba(0, 0, 0, 0.26) var(--ls),
-    rgba(0, 0, 0, 0.40) var(--ls),
-    rgba(0, 0, 0, 0.40) var(--le),
+    rgba(0, 0, 0, 0.4) var(--ls),
+    rgba(0, 0, 0, 0.4) var(--le),
     rgba(0, 0, 0, 0.26) var(--le),
     rgba(0, 0, 0, 0.26) 100%
   );
@@ -2078,7 +2289,11 @@ html.is-theme .settingsDivider {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
-  transition: max-height 0.38s ease, opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0s;
+  transition:
+    max-height 0.38s ease,
+    opacity 0.26s ease,
+    transform 0.26s ease,
+    visibility 0s linear 0s;
 }
 
 .global.is-collapsed .globalHeaderRight .globalHoverExpandBtn {
@@ -2091,7 +2306,11 @@ html.is-theme .settingsDivider {
   transform: translateY(-6px);
   pointer-events: none;
   visibility: hidden;
-  transition: max-height 0.38s ease, opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.38s;
+  transition:
+    max-height 0.38s ease,
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0s linear 0.38s;
 }
 
 .global.is-collapsed.is-hover-peek .globalBody {
@@ -2100,7 +2319,11 @@ html.is-theme .settingsDivider {
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
-  transition: max-height 0.58s ease, opacity 0.34s ease, transform 0.34s ease, visibility 0s linear 0s;
+  transition:
+    max-height 0.58s ease,
+    opacity 0.34s ease,
+    transform 0.34s ease,
+    visibility 0s linear 0s;
 }
 
 .globalBody .globalRow {
@@ -2286,7 +2509,11 @@ html.is-theme .settingsDivider {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
-  transition: max-height 0.38s ease, opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0s;
+  transition:
+    max-height 0.38s ease,
+    opacity 0.26s ease,
+    transform 0.26s ease,
+    visibility 0s linear 0s;
 }
 
 .globalCol {
@@ -2353,11 +2580,15 @@ html.is-theme .settingsDivider {
   flex-direction: column;
   gap: 0.55rem;
 
-  transition: border-color 0.14s ease, gap 0.18s ease, padding-bottom 0.18s ease, transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
+  transition:
+    border-color 0.14s ease,
+    gap 0.18s ease,
+    padding-bottom 0.18s ease,
+    transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
 }
 
 .track::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: var(--accent);
@@ -2367,7 +2598,7 @@ html.is-theme .settingsDivider {
 }
 
 .track::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border: 1px solid transparent;
@@ -2375,7 +2606,9 @@ html.is-theme .settingsDivider {
   transform: translate(0, 0);
   pointer-events: none;
   z-index: 0;
-  transition: opacity var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease), transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
+  transition:
+    opacity var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease),
+    transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease);
 }
 
 .track > * {
@@ -2416,7 +2649,11 @@ html.is-theme .settingsDivider {
   transform: translateY(-6px);
   pointer-events: none;
   visibility: hidden;
-  transition: max-height var(--trackGridCollapseHeightDur, 0.38s) ease, opacity var(--trackGridCollapseFadeDur, 0.22s) ease, transform var(--trackGridCollapseFadeDur, 0.22s) ease, visibility 0s linear var(--trackGridCollapseDelay, 0.38s);
+  transition:
+    max-height var(--trackGridCollapseHeightDur, 0.38s) ease,
+    opacity var(--trackGridCollapseFadeDur, 0.22s) ease,
+    transform var(--trackGridCollapseFadeDur, 0.22s) ease,
+    visibility 0s linear var(--trackGridCollapseDelay, 0.38s);
 }
 
 .track.is-collapsed.is-hover-peek {
@@ -2430,7 +2667,11 @@ html.is-theme .settingsDivider {
   transform: translateY(0);
   pointer-events: auto;
   visibility: visible;
-  transition: max-height var(--trackGridPeekHeightDur, 0.58s) ease, opacity var(--trackGridPeekFadeDur, 0.34s) ease, transform var(--trackGridPeekFadeDur, 0.34s) ease, visibility 0s linear 0s;
+  transition:
+    max-height var(--trackGridPeekHeightDur, 0.58s) ease,
+    opacity var(--trackGridPeekFadeDur, 0.34s) ease,
+    transform var(--trackGridPeekFadeDur, 0.34s) ease,
+    visibility 0s linear 0s;
 }
 
 .track.is-grid-collapsed {
@@ -2470,11 +2711,11 @@ html.is-theme .settingsDivider {
 }
 
 .trackTopBar::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: var(--accent);
-  opacity: 0.010;
+  opacity: 0.01;
   pointer-events: none;
   z-index: 0;
 }
@@ -2540,7 +2781,7 @@ html.is-theme .trackInstrumentSelect {
 }
 
 .trackMainControls::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
@@ -2562,7 +2803,6 @@ html.is-theme .trackMainControls::before {
   padding-bottom: 0;
   border-bottom: 0;
 }
-
 
 .trackMainControls .volumeField input[type="range"],
 .trackMainControls .panField input[type="range"] {
@@ -2620,17 +2860,21 @@ html.is-theme .trackMainControls::before {
 
 .trackLetter {
   color: var(--accent);
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.02em;
   vertical-align: middle;
   padding-right: 0.15rem;
+  text-shadow: 1px 1px 0 var(--trackLetterShadowColor, rgba(0, 0, 0, 0.86));
 }
 
 html:not(.is-theme) .trackLetter {
-  -webkit-text-stroke: 0.7px rgba(0, 0, 0, 0.65);
-  paint-order: stroke fill;
+  --trackLetterShadowColor: rgba(0, 0, 0, 0.86);
+}
+
+html.is-theme .trackLetter {
+  --trackLetterShadowColor: var(--hit, var(--t-50, #808080));
 }
 
 .trackSound {
@@ -2648,7 +2892,11 @@ html:not(.is-theme) .trackLetter {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
-  transition: max-height var(--trackGridExpandHeightDur, 0.38s) ease, opacity var(--trackGridExpandFadeDur, 0.26s) ease, transform var(--trackGridExpandFadeDur, 0.26s) ease, visibility 0s linear 0s;
+  transition:
+    max-height var(--trackGridExpandHeightDur, 0.38s) ease,
+    opacity var(--trackGridExpandFadeDur, 0.26s) ease,
+    transform var(--trackGridExpandFadeDur, 0.26s) ease,
+    visibility 0s linear 0s;
 }
 
 .track:not(.is-collapsed) .trackSliderGrid {
@@ -2808,7 +3056,7 @@ html.is-theme .btn-toggle[aria-pressed="true"] {
 
 .playToggleBtn::before,
 .playToggleBtn::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -2886,7 +3134,7 @@ html.is-auto-expand .lockToggle {
 }
 
 .lockToggle::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -2900,7 +3148,7 @@ html.is-auto-expand .lockToggle {
 }
 
 .lockToggle::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -2948,7 +3196,7 @@ html.is-auto-expand .lockToggle {
 }
 
 .status::before {
-  content: '';
+  content: "";
   width: 0.85em;
   height: 0.85em;
   border: 2px solid rgba(0, 0, 0, 0.22);
@@ -3075,7 +3323,6 @@ html.is-theme .autosaveStatus::before {
   -webkit-appearance: none;
   margin: 0;
 }
-
 
 .field input[type="range"] {
   accent-color: var(--accent);
@@ -3212,7 +3459,7 @@ html.is-theme .trackInstrumentSelect:focus-visible {
 }
 
 .songIo > summary::marker {
-  content: '';
+  content: "";
 }
 
 .songIoSummary {
@@ -3235,12 +3482,12 @@ html.is-theme .trackInstrumentSelect:focus-visible {
 }
 
 .songIoToggle::after {
-  content: '▹';
+  content: "▹";
   font-weight: 800;
 }
 
 .songIo[open] .songIoToggle::after {
-  content: '▿';
+  content: "▿";
 }
 
 .songIoBody {
@@ -3464,7 +3711,10 @@ html.is-theme .trackBeatHeaderNum {
   width: var(--cell);
   height: var(--cell);
 
-  transition: background-color 0.12s ease, border-color 0.12s ease, outline-color 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    outline-color 0.12s ease;
 }
 
 .step[data-beat]::after {
@@ -3480,4 +3730,3 @@ html.is-theme .trackBeatHeaderNum {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-
