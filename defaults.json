@@ -14,14 +14,14 @@
     "samplePadRollLength": 16,
     "samplePadRollBeatSteps": 4,
     "subtitlesEnabled": false,
-    "subtitlesSpeed": 100,
+    "subtitlesSpeed": 50,
     "autosaveEnabled": false,
     "autosaveIntervalMinutes": 5,
     "autoscrollEnabled": true,
     "gradientAnimationEnabled": true,
     "themeEnabled": false,
     "bumpEnabled": true,
-    "bumpHeight": 0,
+    "bumpHeight": 50,
     "bumpIntensity": 50,
     "bumpBounce": 50,
     "starBounceEnabled": true,
@@ -134,7 +134,7 @@
       "seqMode": "roll",
       "gridCollapsed": false
     },
-    "dualosc": {
+    "dualoscillator": {
       "attack": 4,
       "hold": 10,
       "decay": 20,

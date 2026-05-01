@@ -164,7 +164,7 @@
   const NOTE_ROWS = 24; // 2 octaves (semitones)
   const NOTE_MASK_ALL = Math.pow(2, NOTE_ROWS) - 1;
 
-  const DUAL_OSC_SOUND = "dualosc";
+  const DUAL_OSC_SOUND = "dualoscillator";
 
   const SOUND_OPTIONS = [
     { value: "kick", label: "kick", tonal: false },
@@ -409,7 +409,7 @@
         seqMode: "roll",
         gridCollapsed: false,
       }),
-      dualosc: Object.freeze({
+      dualoscillator: Object.freeze({
         attack: 4,
         hold: 10,
         decay: 20,
@@ -888,10 +888,15 @@
   let transportSubtitleChunkCount = 0;
   let subtitleTimerId = null;
   let subtitleCycleActive = false;
+  let subtitleCycleToken = 0;
   let subtitleEntriesSinceMusic = 0;
   let subtitleNextMusicAfter = appConfig.subtitles.musicIntervalMin + Math.floor(Math.random() * (appConfig.subtitles.musicIntervalMax - appConfig.subtitles.musicIntervalMin + 1));
   let subtitleLastTake = null;
   let subtitleLastTier = "short";
+  let subtitleCursorIndex = 0;
+  let subtitleCursorStride = 1;
+  let subtitleCursorChunkCount = 0;
+  let subtitleLastText = "";
   let autosaveTimerId = null;
   let autosaveStatusTimer = null;
   const samplePadHoldStates = new Map();
@@ -3970,6 +3975,59 @@
     return a + Math.random() * Math.max(0, b - a);
   }
 
+  function randomBetweenPreferSlow(min, max) {
+    const a = numberOrFallback(min, 0);
+    const b = numberOrFallback(max, a);
+    const span = Math.max(0, b - a);
+    if (span <= 0) return a;
+    // Bias toward higher values so subtitle pacing errs on slower/longer holds.
+    const t = 1 - Math.pow(Math.random(), 2);
+    return a + span * t;
+  }
+
+  function gcd(a, b) {
+    let x = Math.abs(Math.round(numberOrFallback(a, 0)));
+    let y = Math.abs(Math.round(numberOrFallback(b, 0)));
+    while (y !== 0) {
+      const t = y;
+      y = x % y;
+      x = t;
+    }
+    return x || 1;
+  }
+
+  function pickSubtitleStride(chunkCount) {
+    const count = Math.max(1, Math.round(numberOrFallback(chunkCount, 1)));
+    if (count <= 2) return 1;
+    const base = Math.max(2, Math.round(count / 3));
+    for (let i = 0; i < count; i += 1) {
+      const candidate = ((base + i - 1) % count) + 1;
+      if (candidate < count && gcd(candidate, count) === 1) return candidate;
+    }
+    return 1;
+  }
+
+  function ensureSubtitleCursor(chunkCount, { reset = false } = {}) {
+    const count = Math.max(1, Math.round(numberOrFallback(chunkCount, 1)));
+    const shouldReset =
+      reset ||
+      subtitleCursorChunkCount !== count ||
+      subtitleCursorIndex < 0 ||
+      subtitleCursorIndex >= count;
+
+    if (!shouldReset) return;
+
+    subtitleCursorChunkCount = count;
+    subtitleCursorStride = pickSubtitleStride(count);
+    subtitleCursorIndex = Math.floor(Math.random() * count);
+  }
+
+  function advanceSubtitleCursor() {
+    if (subtitleCursorChunkCount <= 0) return;
+    subtitleCursorIndex =
+      (subtitleCursorIndex + subtitleCursorStride) % subtitleCursorChunkCount;
+  }
+
   function clearSubtitleTimer() {
     if (subtitleTimerId == null) return;
     window.clearTimeout(subtitleTimerId);
@@ -4009,6 +4067,7 @@
     subtitleNextMusicAfter = cfg.musicIntervalMin + Math.floor(Math.random() * (cfg.musicIntervalMax - cfg.musicIntervalMin + 1));
     subtitleLastTake = null;
     subtitleLastTier = "short";
+    subtitleLastText = "";
   }
 
   function pickSubtitleTake(maxTake) {
@@ -4065,30 +4124,26 @@
   }
 
   function getSubtitleTiming() {
-    const beatMs = clampNumber(
-      (60 / clampNumber(numberOrFallback(tempo, 120), 20, 360)) * 1000,
-      166,
-      3000,
-    );
+    const virtualBeatMs = 500;
     const speed = clampNumber(numberOrFallback(subtitlesSpeed, 100), 20, 200);
     const cfg = appConfig.subtitles;
     const speedFactor = clampNumber(100 / speed, cfg.speedFactorMin, cfg.speedFactorMax);
 
     return {
       leadDelayMs:
-        randomBetween(
-          clampNumber(beatMs * cfg.leadDelayLoFactor, cfg.leadDelayLoMin, cfg.leadDelayLoMax),
-          clampNumber(beatMs * cfg.leadDelayHiFactor, cfg.leadDelayHiMin, cfg.leadDelayHiMax),
+        randomBetweenPreferSlow(
+          clampNumber(virtualBeatMs * cfg.leadDelayLoFactor, cfg.leadDelayLoMin, cfg.leadDelayLoMax),
+          clampNumber(virtualBeatMs * cfg.leadDelayHiFactor, cfg.leadDelayHiMin, cfg.leadDelayHiMax),
         ) * speedFactor,
       holdDelayMs:
-        randomBetween(
-          clampNumber(beatMs * cfg.holdDelayLoFactor, cfg.holdDelayLoMin, cfg.holdDelayLoMax),
-          clampNumber(beatMs * cfg.holdDelayHiFactor, cfg.holdDelayHiMin, cfg.holdDelayHiMax),
+        randomBetweenPreferSlow(
+          clampNumber(virtualBeatMs * cfg.holdDelayLoFactor, cfg.holdDelayLoMin, cfg.holdDelayLoMax),
+          clampNumber(virtualBeatMs * cfg.holdDelayHiFactor, cfg.holdDelayHiMin, cfg.holdDelayHiMax),
         ) * speedFactor,
       gapDelayMs:
-        randomBetween(
-          clampNumber(beatMs * cfg.gapDelayLoFactor, cfg.gapDelayLoMin, cfg.gapDelayLoMax),
-          clampNumber(beatMs * cfg.gapDelayHiFactor, cfg.gapDelayHiMin, cfg.gapDelayHiMax),
+        randomBetweenPreferSlow(
+          clampNumber(virtualBeatMs * cfg.gapDelayLoFactor, cfg.gapDelayLoMin, cfg.gapDelayLoMax),
+          clampNumber(virtualBeatMs * cfg.gapDelayHiFactor, cfg.gapDelayHiMin, cfg.gapDelayHiMax),
         ) * speedFactor,
     };
   }
@@ -4102,22 +4157,35 @@
     if (!chunks.length) return "";
 
     const chunkCount = chunks.length;
-    const cursorBase = isPlaying && uiStep >= 0 ? uiStep : currentStep;
-    const cursor = Math.max(0, Math.round(numberOrFallback(cursorBase, 0)));
-    const startIndex =
-      (((cursor + Math.round(numberOrFallback(advanceChunks, 0))) %
-        chunkCount) +
-        chunkCount) %
-      chunkCount;
-    const desiredTake = pickSubtitleTake(chunkCount - startIndex);
-    const take = Math.max(1, Math.min(desiredTake, chunkCount - startIndex));
-    const labels = [];
-    for (let i = 0; i < take; i += 1) {
-      const chunk = chunks[startIndex + i];
-      if (!chunk || !chunk.label) continue;
-      labels.push(String(chunk.label));
+    ensureSubtitleCursor(chunkCount);
+
+    const advance = Math.round(numberOrFallback(advanceChunks, 0));
+    const desiredTake = pickSubtitleTake(chunkCount);
+    const take = Math.max(1, Math.min(desiredTake, chunkCount));
+
+    const buildTextAt = (baseIndex) => {
+      const labels = [];
+      for (let i = 0; i < take; i += 1) {
+        const idx = ((baseIndex + i) % chunkCount + chunkCount) % chunkCount;
+        const chunk = chunks[idx];
+        if (!chunk || !chunk.label) continue;
+        labels.push(String(chunk.label));
+      }
+      return labels.join(" ");
+    };
+
+    let baseIndex =
+      ((subtitleCursorIndex + advance) % chunkCount + chunkCount) % chunkCount;
+    let text = buildTextAt(baseIndex);
+
+    if (chunkCount > 1) {
+      let attempts = 0;
+      while (attempts < 3 && text && text === subtitleLastText) {
+        attempts += 1;
+        baseIndex = (baseIndex + subtitleCursorStride) % chunkCount;
+        text = buildTextAt(baseIndex);
+      }
     }
-    const text = labels.join(" ");
 
     const shouldUseMusic =
       allowMusic &&
@@ -4130,10 +4198,12 @@
     }
 
     subtitleEntriesSinceMusic += 1;
+    subtitleLastText = text;
     return text;
   }
 
-  function runSubtitleCycle() {
+  function runSubtitleCycle(cycleToken = subtitleCycleToken) {
+    if (cycleToken !== subtitleCycleToken) return;
     if (!shouldRunSubtitleCycle()) {
       stopSubtitleCycle();
       return;
@@ -4150,6 +4220,7 @@
     const { leadDelayMs, holdDelayMs, gapDelayMs } =
       getSubtitleTiming();
     subtitleTimerId = window.setTimeout(() => {
+      if (cycleToken !== subtitleCycleToken) return;
       subtitleTimerId = null;
       if (!shouldRunSubtitleCycle()) {
         stopSubtitleCycle();
@@ -4157,18 +4228,26 @@
       }
 
       const secondAdvance = Math.round(randomBetween(appConfig.subtitles.secondAdvanceMin, appConfig.subtitles.secondAdvanceMax));
-      const second = sampleSubtitleText(secondAdvance, {
+      let second = sampleSubtitleText(secondAdvance, {
         allowMusic: first !== "(music)",
       });
-      setSubtitleLines(first, second || first);
+      if (second && second === first) {
+        second = sampleSubtitleText(secondAdvance + subtitleCursorStride, {
+          allowMusic: false,
+        });
+      }
+      setSubtitleLines(first, second || "");
 
       subtitleTimerId = window.setTimeout(() => {
+        if (cycleToken !== subtitleCycleToken) return;
         subtitleTimerId = null;
         setSubtitleLines("", "");
+        advanceSubtitleCursor();
 
         subtitleTimerId = window.setTimeout(() => {
+          if (cycleToken !== subtitleCycleToken) return;
           subtitleTimerId = null;
-          runSubtitleCycle();
+          runSubtitleCycle(cycleToken);
         }, gapDelayMs);
       }, holdDelayMs);
     }, leadDelayMs);
@@ -4181,11 +4260,15 @@
     }
     if (subtitleCycleActive) return;
     subtitleCycleActive = true;
-    runSubtitleCycle();
+    subtitleCycleToken += 1;
+    const model = getSubtitlesModel();
+    ensureSubtitleCursor(model.chunks.length, { reset: true });
+    runSubtitleCycle(subtitleCycleToken);
   }
 
   function stopSubtitleCycle() {
     subtitleCycleActive = false;
+    subtitleCycleToken += 1;
     clearSubtitleTimer();
     resetSubtitleMusicSpacing();
     setSubtitleLines("", "");
@@ -4214,6 +4297,9 @@
       .join("|");
     transportSubtitleChunkCount = Math.max(1, model.chunks.length);
     updateTransportSubtitleActive(isPlaying ? uiStep : currentStep);
+    ensureSubtitleCursor(model.chunks.length, { reset: true });
+    subtitleCycleToken += 1;
+    clearSubtitleTimer();
     subtitleCycleActive = false;
     resetSubtitleMusicSpacing();
     syncSubtitlesUiVisibility();
@@ -8971,6 +9057,11 @@
     );
     if (subtitlesSpeedInput) subtitlesSpeedInput.value = String(subtitlesSpeed);
     if (subtitlesSpeedOut) subtitlesSpeedOut.value = String(subtitlesSpeed);
+    if (subtitleCycleActive) {
+      subtitleCycleToken += 1;
+      clearSubtitleTimer();
+      runSubtitleCycle(subtitleCycleToken);
+    }
   }
 
   function setAutoExpandEnabled(nextEnabled) {

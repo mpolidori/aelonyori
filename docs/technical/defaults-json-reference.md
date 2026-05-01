@@ -83,7 +83,7 @@ Current built-in sound families:
 - hat
 - blip
 - bass
-- dualosc
+- dualoscillator
 
 ## 7. Relationship to Presets
 
