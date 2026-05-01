@@ -62,6 +62,10 @@
   const themeColorBInput = document.getElementById("themeColorB");
   const themeSwapBtn = document.getElementById("themeSwapBtn");
   const themeResetBtn = document.getElementById("themeResetBtn");
+  const gradientAnimationRow = document.getElementById("gradientAnimationRow");
+  const gradientAnimationToggleBtn = document.getElementById(
+    "gradientAnimationToggleBtn",
+  );
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
   const starBounceAlwaysToggleBtn = document.getElementById(
@@ -81,18 +85,18 @@
   const autoExpandSpeedInput = document.getElementById("autoExpandSpeed");
   const autoExpandSpeedOut = document.getElementById("autoExpandSpeedOut");
   const samplePadToggleBtn = document.getElementById("samplePadToggleBtn");
-  const wordPlayToggleBtn = document.getElementById("wordPlayToggleBtn");
-  const wordPlaySpeedRow = document.getElementById("wordPlaySpeedRow");
-  const wordPlaySpeedInput = document.getElementById("wordPlaySpeed");
-  const wordPlaySpeedOut = document.getElementById("wordPlaySpeedOut");
-  const wordPlaySubtitleStack = document.getElementById(
-    "wordPlaySubtitleStack",
+  const subtitlesToggleBtn = document.getElementById("subtitlesToggleBtn");
+  const subtitlesSpeedRow = document.getElementById("subtitlesSpeedRow");
+  const subtitlesSpeedInput = document.getElementById("subtitlesSpeed");
+  const subtitlesSpeedOut = document.getElementById("subtitlesSpeedOut");
+  const subtitleStack = document.getElementById(
+    "subtitleStack",
   );
-  const wordPlaySubtitleLower = document.getElementById(
-    "wordPlaySubtitleLower",
+  const subtitleLower = document.getElementById(
+    "subtitleLower",
   );
-  const wordPlaySubtitleUpper = document.getElementById(
-    "wordPlaySubtitleUpper",
+  const subtitleUpper = document.getElementById(
+    "subtitleUpper",
   );
   const autoscrollToggleBtn = document.getElementById("autoscrollToggleBtn");
 
@@ -149,15 +153,18 @@
   const transportRestartBtn = document.getElementById("transportRestartBtn");
   const transportSeekBtn = document.getElementById("transportSeekBtn");
   const transportTicks = document.getElementById("transportTicks");
-  const transportWordPlay = document.getElementById("transportWordPlay");
+  const transportSubtitle = document.getElementById("transportSubtitle");
   const padPlaybackChip = document.getElementById("padPlaybackChip");
 
   const lookaheadMs = 25;
   const scheduleAheadTime = 0.12;
   const MAX_STEPS = 256;
+  const NOTE_DRAG_LONG_HOLD_MS = 420;
 
   const NOTE_ROWS = 24; // 2 octaves (semitones)
   const NOTE_MASK_ALL = Math.pow(2, NOTE_ROWS) - 1;
+
+  const DUAL_OSC_SOUND = "dualosc";
 
   const SOUND_OPTIONS = [
     { value: "kick", label: "kick", tonal: false },
@@ -165,7 +172,10 @@
     { value: "hat", label: "hat", tonal: false },
     { value: "blip", label: "blip", tonal: true },
     { value: "bass", label: "bass", tonal: true },
+    { value: DUAL_OSC_SOUND, label: "dual oscillator", tonal: true },
   ];
+
+  const OSC_WAVE_OPTIONS = ["sine", "triangle", "square", "sawtooth"];
 
   const NOTE_NAMES = [
     "C",
@@ -189,6 +199,80 @@
   );
 
   const DEFAULTS_PATH = "defaults.json";
+  const CONFIG_PATH = "config.json";
+
+  const DEFAULT_CONFIG = Object.freeze({
+    subtitles: Object.freeze({
+      musicIntervalMin: 4,
+      musicIntervalMax: 6,
+      shortChunkMin: 2,
+      shortChunkMax: 6,
+      mediumChunkMin: 7,
+      mediumChunkMax: 9,
+      longChunkMin: 10,
+      longChunkMax: 12,
+      longChunkProb: 0.1,
+      longAfterLongChunkProb: 0.04,
+      mediumChunkProb: 0.3,
+      secondAdvanceMin: 2,
+      secondAdvanceMax: 6,
+      leadDelayLoFactor: 1.1,
+      leadDelayLoMin: 420,
+      leadDelayLoMax: 950,
+      leadDelayHiFactor: 1.8,
+      leadDelayHiMin: 650,
+      leadDelayHiMax: 1400,
+      holdDelayLoFactor: 3.2,
+      holdDelayLoMin: 1800,
+      holdDelayLoMax: 3200,
+      holdDelayHiFactor: 5.4,
+      holdDelayHiMin: 2500,
+      holdDelayHiMax: 4700,
+      gapDelayLoFactor: 0.9,
+      gapDelayLoMin: 350,
+      gapDelayLoMax: 700,
+      gapDelayHiFactor: 1.6,
+      gapDelayHiMin: 520,
+      gapDelayHiMax: 980,
+      speedFactorMin: 0.5,
+      speedFactorMax: 5.0,
+    }),
+    bump: Object.freeze({
+      underlineLength: 100,
+      underlineHoldMultiplier: 1.6,
+      underlineHoldMinMs: 80,
+      ghostHoldMultiplier: 2.25,
+      ghostHoldMinMs: 140,
+      ghostOpacityScaleTheme: 1.0,
+      ghostOpacityScaleNonTheme: 1.0,
+    }),
+  });
+
+  async function loadConfig() {
+    try {
+      const response = await fetch(CONFIG_PATH, { cache: "no-store" });
+      if (!response.ok) {
+        return {
+          subtitles: { ...DEFAULT_CONFIG.subtitles },
+          bump: { ...DEFAULT_CONFIG.bump },
+        };
+      }
+      const parsed = await response.json();
+      return {
+        subtitles: mergeDefaultSection(
+          DEFAULT_CONFIG.subtitles,
+          parsed && parsed.subtitles,
+        ),
+        bump: mergeDefaultSection(DEFAULT_CONFIG.bump, parsed && parsed.bump),
+      };
+    } catch {
+      return {
+        subtitles: { ...DEFAULT_CONFIG.subtitles },
+        bump: { ...DEFAULT_CONFIG.bump },
+      };
+    }
+  }
+
   const DEFAULT_APP_DEFAULTS = Object.freeze({
     globals: Object.freeze({
       tempo: Number(tempoInput?.value || 120),
@@ -204,11 +288,12 @@
       samplePadTransportMode: false,
       samplePadRollLength: 16,
       samplePadRollBeatSteps: 4,
-      wordPlayEnabled: false,
-      wordPlaySpeed: 100,
+      subtitlesEnabled: false,
+      subtitlesSpeed: 100,
       autosaveEnabled: false,
       autosaveIntervalMinutes: 5,
       autoscrollEnabled: true,
+      gradientAnimationEnabled: true,
       themeEnabled: false,
       bumpEnabled: false,
       bumpHeight: 0,
@@ -234,11 +319,123 @@
       gridCollapsed: false,
     }),
     envDefaultsBySound: Object.freeze({
-      kick: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 }),
-      snare: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 60, release: 25 }),
-      hat: Object.freeze({ attack: 4, hold: 8, decay: 16, sustain: 36, release: 20 }),
-      blip: Object.freeze({ attack: 4, hold: 16, decay: 20, sustain: 60, release: 25 }),
-      bass: Object.freeze({ attack: 4, hold: 0, decay: 20, sustain: 96, release: 25 }),
+      kick: Object.freeze({
+        attack: 4,
+        hold: 8,
+        decay: 18,
+        sustain: 40,
+        release: 20,
+        pitch: 60,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "single",
+        gridCollapsed: false,
+      }),
+      snare: Object.freeze({
+        attack: 4,
+        hold: 0,
+        decay: 20,
+        sustain: 60,
+        release: 25,
+        pitch: 60,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "single",
+        gridCollapsed: false,
+      }),
+      hat: Object.freeze({
+        attack: 4,
+        hold: 8,
+        decay: 16,
+        sustain: 36,
+        release: 20,
+        pitch: 60,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "single",
+        gridCollapsed: false,
+      }),
+      blip: Object.freeze({
+        attack: 4,
+        hold: 16,
+        decay: 20,
+        sustain: 60,
+        release: 25,
+        pitch: 60,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "roll",
+        gridCollapsed: false,
+      }),
+      bass: Object.freeze({
+        attack: 4,
+        hold: 0,
+        decay: 20,
+        sustain: 96,
+        release: 25,
+        pitch: 48,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "roll",
+        gridCollapsed: false,
+      }),
+      dualosc: Object.freeze({
+        attack: 4,
+        hold: 10,
+        decay: 20,
+        sustain: 96,
+        release: 25,
+        pitch: 60,
+        tuneCents: 0,
+        volume: 100,
+        pan: 0,
+        swing: 0,
+        offsetMs: 0,
+        muted: false,
+        solo: false,
+        collapsed: true,
+        seqMode: "roll",
+        gridCollapsed: false,
+        osc1Wave: "sawtooth",
+        osc1Level: 127,
+        osc1Octave: 0,
+        osc1Detune: 0,
+        osc2Wave: "sine",
+        osc2Level: 84,
+        osc2Octave: 0,
+        osc2Detune: 7,
+        oscBlend: 0,
+      }),
     }),
     accent: Object.freeze({
       nonThemeBumpOffsetFraction: 0.5,
@@ -292,6 +489,42 @@
   }
 
   const appDefaults = await loadAppDefaults();
+  const appConfig = await loadConfig();
+  const BUMP_UNDERLINE_LENGTH = clampNumber(
+    Math.round(numberOrFallback(appConfig.bump?.underlineLength, 100)),
+    1,
+    100,
+  );
+  const BUMP_UNDERLINE_HOLD_MULTIPLIER = clampNumber(
+    numberOrFallback(appConfig.bump?.underlineHoldMultiplier, 1.6),
+    0.1,
+    8,
+  );
+  const BUMP_UNDERLINE_HOLD_MIN_MS = clampNumber(
+    Math.round(numberOrFallback(appConfig.bump?.underlineHoldMinMs, 80)),
+    20,
+    2000,
+  );
+  const BUMP_GHOST_HOLD_MULTIPLIER = clampNumber(
+    numberOrFallback(appConfig.bump?.ghostHoldMultiplier, 2.25),
+    0.1,
+    12,
+  );
+  const BUMP_GHOST_HOLD_MIN_MS = clampNumber(
+    Math.round(numberOrFallback(appConfig.bump?.ghostHoldMinMs, 140)),
+    20,
+    3000,
+  );
+  const BUMP_GHOST_OPACITY_SCALE_THEME = clampNumber(
+    numberOrFallback(appConfig.bump?.ghostOpacityScaleTheme, 1.0),
+    0,
+    3,
+  );
+  const BUMP_GHOST_OPACITY_SCALE_NON_THEME = clampNumber(
+    numberOrFallback(appConfig.bump?.ghostOpacityScaleNonTheme, 1.0),
+    0,
+    3,
+  );
 
   const TRACK_DEFAULTS = Object.freeze({
     sound: String(appDefaults.trackDefaults?.sound || "kick"),
@@ -323,6 +556,67 @@
     };
   }
 
+  function defaultSeqModeForSound(kind) {
+    return kind === "blip" || kind === "bass" || kind === DUAL_OSC_SOUND
+      ? "roll"
+      : "single";
+  }
+
+  function defaultNoteModeForSound(kind) {
+    return kind === "blip" || kind === "bass" || kind === DUAL_OSC_SOUND
+      ? "hold"
+      : "one-shot";
+  }
+
+  function normalizeNoteMode(value, fallback = "one-shot") {
+    return value === "hold" || value === "one-shot" ? value : fallback;
+  }
+
+  function normalizeSoundKind(kind, fallback = "kick") {
+    const raw = String(kind || "").trim().toLowerCase();
+    const mapped = raw === "stack" ? DUAL_OSC_SOUND : raw;
+    const safeFallback = SOUND_OPTIONS.some((o) => o.value === fallback)
+      ? fallback
+      : "kick";
+    return SOUND_OPTIONS.some((o) => o.value === mapped) ? mapped : safeFallback;
+  }
+
+  function normalizeSoundDefaults(raw, fallback, kind) {
+    const input = raw && typeof raw === "object" ? raw : {};
+    return {
+      pitch: clampNumber(numberOrFallback(input.pitch, fallback.pitch), PITCH_MIN, PITCH_MAX),
+      tuneCents: clampNumber(numberOrFallback(input.tuneCents, fallback.tuneCents), -100, 100),
+      volume: clampNumber(numberOrFallback(input.volume, fallback.volume), 0, 127),
+      pan: clampNumber(numberOrFallback(input.pan, fallback.pan), -100, 100),
+      swing: clampNumber(numberOrFallback(input.swing, fallback.swing), 0, 127),
+      offsetMs: clampNumber(numberOrFallback(input.offsetMs, fallback.offsetMs), -100, 100),
+      muted: typeof input.muted === "boolean" ? input.muted : Boolean(fallback.muted),
+      solo: typeof input.solo === "boolean" ? input.solo : Boolean(fallback.solo),
+      collapsed:
+        typeof input.collapsed === "boolean"
+          ? input.collapsed
+          : Boolean(fallback.collapsed),
+      seqMode:
+        input.seqMode === "roll" || input.seqMode === "single"
+          ? input.seqMode
+          : defaultSeqModeForSound(kind),
+      gridCollapsed:
+        typeof input.gridCollapsed === "boolean"
+          ? input.gridCollapsed
+          : Boolean(fallback.gridCollapsed),
+      noteMode: normalizeNoteMode(input.noteMode, fallback.noteMode),
+      osc1Wave: normalizeOscWave(input.osc1Wave, fallback.osc1Wave),
+      osc1Level: clampNumber(numberOrFallback(input.osc1Level, fallback.osc1Level), 0, 127),
+      osc1Octave: clampNumber(numberOrFallback(input.osc1Octave, fallback.osc1Octave), -2, 2),
+      osc1Detune: clampNumber(numberOrFallback(input.osc1Detune, fallback.osc1Detune), -100, 100),
+      osc2Wave: normalizeOscWave(input.osc2Wave, fallback.osc2Wave),
+      osc2Level: clampNumber(numberOrFallback(input.osc2Level, fallback.osc2Level), 0, 127),
+      osc2Octave: clampNumber(numberOrFallback(input.osc2Octave, fallback.osc2Octave), -2, 2),
+      osc2Detune: clampNumber(numberOrFallback(input.osc2Detune, fallback.osc2Detune), -100, 100),
+      oscBlend: clampNumber(numberOrFallback(input.oscBlend, fallback.oscBlend), -100, 100),
+    };
+  }
+
   const ENV_DEFAULTS_BY_SOUND = Object.freeze({
     kick: normalizeEnvDefaults(
       appDefaults.envDefaultsBySound?.kick ?? appDefaults.envDefaultsBySound?.default,
@@ -344,6 +638,69 @@
       appDefaults.envDefaultsBySound?.bass,
       DEFAULT_APP_DEFAULTS.envDefaultsBySound.bass,
     ),
+    [DUAL_OSC_SOUND]: normalizeEnvDefaults(
+      appDefaults.envDefaultsBySound?.[DUAL_OSC_SOUND] ??
+        appDefaults.envDefaultsBySound?.stack,
+      DEFAULT_APP_DEFAULTS.envDefaultsBySound[DUAL_OSC_SOUND],
+    ),
+  });
+
+  const BASE_SOUND_DEFAULTS = Object.freeze({
+    pitch: TRACK_DEFAULTS.pitch,
+    tuneCents: TRACK_DEFAULTS.tuneCents,
+    volume: TRACK_DEFAULTS.volume,
+    pan: TRACK_DEFAULTS.pan,
+    swing: TRACK_DEFAULTS.swing,
+    offsetMs: TRACK_DEFAULTS.offsetMs,
+    muted: TRACK_DEFAULTS.muted,
+    solo: TRACK_DEFAULTS.solo,
+    collapsed: TRACK_DEFAULTS.collapsed,
+    seqMode: TRACK_DEFAULTS.seqMode,
+    gridCollapsed: TRACK_DEFAULTS.gridCollapsed,
+    noteMode: "one-shot",
+    osc1Wave: "sawtooth",
+    osc1Level: 127,
+    osc1Octave: 0,
+    osc1Detune: 0,
+    osc2Wave: "sine",
+    osc2Level: 84,
+    osc2Octave: 0,
+    osc2Detune: 7,
+    oscBlend: 0,
+  });
+
+  const SOUND_DEFAULTS_BY_SOUND = Object.freeze({
+    kick: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.kick,
+      BASE_SOUND_DEFAULTS,
+      "kick",
+    ),
+    snare: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.snare,
+      BASE_SOUND_DEFAULTS,
+      "snare",
+    ),
+    hat: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.hat,
+      BASE_SOUND_DEFAULTS,
+      "hat",
+    ),
+    blip: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.blip,
+      BASE_SOUND_DEFAULTS,
+      "blip",
+    ),
+    bass: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.bass,
+      BASE_SOUND_DEFAULTS,
+      "bass",
+    ),
+    [DUAL_OSC_SOUND]: normalizeSoundDefaults(
+      appDefaults.envDefaultsBySound?.[DUAL_OSC_SOUND] ??
+        appDefaults.envDefaultsBySound?.stack,
+      BASE_SOUND_DEFAULTS,
+      DUAL_OSC_SOUND,
+    ),
   });
 
   const NON_THEME_BUMP_OFFSET_FRACTION = clampNumber(
@@ -363,8 +720,9 @@
   );
 
   function getEnvDefaultsForSound(kind) {
+    const safeKind = normalizeSoundKind(kind, "kick");
     const base = ENV_DEFAULTS_BY_SOUND.kick;
-    switch (kind) {
+    switch (safeKind) {
       case "kick":
         return ENV_DEFAULTS_BY_SOUND.kick;
       case "snare":
@@ -375,9 +733,51 @@
         return ENV_DEFAULTS_BY_SOUND.blip;
       case "bass":
         return ENV_DEFAULTS_BY_SOUND.bass;
+      case DUAL_OSC_SOUND:
+        return ENV_DEFAULTS_BY_SOUND[DUAL_OSC_SOUND];
       default:
         return base;
     }
+  }
+
+  function getSoundDefaultsForSound(kind) {
+    const safeKind = normalizeSoundKind(kind, "kick");
+    switch (safeKind) {
+      case "kick":
+        return SOUND_DEFAULTS_BY_SOUND.kick;
+      case "snare":
+        return SOUND_DEFAULTS_BY_SOUND.snare;
+      case "hat":
+        return SOUND_DEFAULTS_BY_SOUND.hat;
+      case "blip":
+        return SOUND_DEFAULTS_BY_SOUND.blip;
+      case "bass":
+        return SOUND_DEFAULTS_BY_SOUND.bass;
+      case DUAL_OSC_SOUND:
+        return SOUND_DEFAULTS_BY_SOUND[DUAL_OSC_SOUND];
+      default:
+        return SOUND_DEFAULTS_BY_SOUND.kick;
+    }
+  }
+
+  function normalizeOscWave(value, fallback = "sine") {
+    const wave = String(value || "").trim().toLowerCase();
+    if (OSC_WAVE_OPTIONS.includes(wave)) return wave;
+    return fallback;
+  }
+
+  function getDualOscParams(state) {
+    return {
+      osc1Wave: normalizeOscWave(state.osc1Wave, "sawtooth"),
+      osc1Level: clampNumber(numberOrFallback(state.osc1Level, 127), 0, 127),
+      osc1Octave: clampNumber(numberOrFallback(state.osc1Octave, 0), -2, 2),
+      osc1Detune: clampNumber(numberOrFallback(state.osc1Detune, 0), -100, 100),
+      osc2Wave: normalizeOscWave(state.osc2Wave, "sine"),
+      osc2Level: clampNumber(numberOrFallback(state.osc2Level, 84), 0, 127),
+      osc2Octave: clampNumber(numberOrFallback(state.osc2Octave, 0), -2, 2),
+      osc2Detune: clampNumber(numberOrFallback(state.osc2Detune, 7), -100, 100),
+      oscBlend: clampNumber(numberOrFallback(state.oscBlend, 0), -100, 100),
+    };
   }
 
   let tempo = numberOrFallback(appDefaults.globals.tempo, Number(tempoInput.value));
@@ -418,8 +818,8 @@
   let padRollLongPressTarget = null;
   let padRollWasLongPress = false;
   let samplePadLayoutRaf = null;
-  let wordPlayEnabled = Boolean(appDefaults.ui.wordPlayEnabled);
-  let wordPlaySpeed = numberOrFallback(appDefaults.ui.wordPlaySpeed, 100);
+  let subtitlesEnabled = Boolean(appDefaults.ui.subtitlesEnabled);
+  let subtitlesSpeed = numberOrFallback(appDefaults.ui.subtitlesSpeed, 100);
   let autosaveEnabled = Boolean(appDefaults.ui.autosaveEnabled);
   let autosaveIntervalMinutes = numberOrFallback(
     appDefaults.ui.autosaveIntervalMinutes,
@@ -429,6 +829,8 @@
   const states = new Map();
   const tracks = new Map();
   const hitTimeouts = new WeakMap();
+  const hitUnderlineTimeouts = new WeakMap();
+  const hitGhostTimeouts = new WeakMap();
   const trackHitTimeouts = new WeakMap();
 
   let audio = null;
@@ -452,15 +854,21 @@
   let settingsLayoutRaf = null;
   let settingsScrollHintRaf = null;
   let settingsScrollHintObserver = null;
-  let wordPlayLayoutRaf = null;
+  let subtitleLayoutRaf = null;
 
   let autoscrollEnabled = Boolean(appDefaults.ui.autoscrollEnabled);
+  let gradientAnimationEnabled =
+    typeof appDefaults.ui.gradientAnimationEnabled === "boolean"
+      ? appDefaults.ui.gradientAnimationEnabled
+      : true;
 
   let themeEnabled = Boolean(appDefaults.ui.themeEnabled);
   let bumpEnabled = Boolean(appDefaults.ui.bumpEnabled);
   let starBounceEnabled = Boolean(appDefaults.ui.starBounceEnabled);
   let starBounceAlwaysEnabled = Boolean(appDefaults.ui.starBounceAlwaysEnabled);
   let starDawIntroPlayed = false;
+  let starBounceIntroDelayUntil = 0;
+  let starBounceIntroDelayTimerId = null;
   let bumpHeight = numberOrFallback(appDefaults.ui.bumpHeight, 0);
   let bumpIntensity = numberOrFallback(appDefaults.ui.bumpIntensity, 50);
   let bumpBounce = numberOrFallback(appDefaults.ui.bumpBounce, 50);
@@ -475,15 +883,15 @@
   let uiStepStartedAt = null;
   let transportRaf = null;
   let hasManualSeek = false;
-  let transportWordPlayKey = "";
-  let transportWordPlayActiveIndex = -1;
-  let transportWordPlayChunkCount = 0;
-  let wordPlaySubtitleTimerId = null;
-  let wordPlaySubtitleCycleActive = false;
-  let wordPlaySubtitleEntriesSinceMusic = 0;
-  let wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
-  let wordPlaySubtitleLastTake = null;
-  let wordPlaySubtitleLastTier = "short";
+  let transportSubtitleKey = "";
+  let transportSubtitleActiveIndex = -1;
+  let transportSubtitleChunkCount = 0;
+  let subtitleTimerId = null;
+  let subtitleCycleActive = false;
+  let subtitleEntriesSinceMusic = 0;
+  let subtitleNextMusicAfter = appConfig.subtitles.musicIntervalMin + Math.floor(Math.random() * (appConfig.subtitles.musicIntervalMax - appConfig.subtitles.musicIntervalMin + 1));
+  let subtitleLastTake = null;
+  let subtitleLastTier = "short";
   let autosaveTimerId = null;
   let autosaveStatusTimer = null;
   const samplePadHoldStates = new Map();
@@ -506,11 +914,12 @@
     samplePadTransportMode,
     samplePadRollLength,
     samplePadRollBeatSteps,
-    wordPlayEnabled,
-    wordPlaySpeed,
+    subtitlesEnabled,
+    subtitlesSpeed,
     autosaveEnabled,
     autosaveIntervalMinutes,
     autoscrollEnabled,
+    gradientAnimationEnabled,
     themeEnabled,
     bumpEnabled,
     bumpHeight,
@@ -687,6 +1096,43 @@
 
     if (normalized.length >= stepsCount) return normalized;
     return normalized.concat(new Array(stepsCount - normalized.length).fill(0));
+  }
+
+  function normalizeNoteTies(noteTies, pattern) {
+    const safePattern = normalizePattern(pattern);
+    const base = Array.isArray(noteTies)
+      ? noteTies.length > MAX_STEPS
+        ? noteTies.slice(0, MAX_STEPS)
+        : noteTies.slice()
+      : new Array(stepsCount).fill(0);
+
+    const normalized = base.map((v) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return 0;
+      return clampNumber(Math.round(n), 0, NOTE_MASK_ALL);
+    });
+    while (normalized.length < stepsCount) normalized.push(0);
+
+    for (let i = 0; i < normalized.length; i += 1) {
+      const currentMask = clampNumber(
+        Math.round(numberOrFallback(safePattern[i], 0)),
+        0,
+        NOTE_MASK_ALL,
+      );
+      const prevMask =
+        i > 0
+          ? clampNumber(
+              Math.round(numberOrFallback(safePattern[i - 1], 0)),
+              0,
+              NOTE_MASK_ALL,
+            )
+          : 0;
+      normalized[i] &= currentMask;
+      normalized[i] &= prevMask;
+      if (i === 0) normalized[i] = 0;
+    }
+
+    return normalized;
   }
 
   function readIntFromSelect(selectEl, fallback) {
@@ -1189,27 +1635,41 @@
 
     const trackStates = activeKeys.map((key) => {
       const state = getOrInitState(key);
-      const defaults = getEnvDefaultsForSound(state.sound);
+      const safeSound = normalizeSoundKind(state.sound, "kick");
+      const envDefaults = getEnvDefaultsForSound(safeSound);
+      const soundDefaults = getSoundDefaultsForSound(safeSound);
       return {
         key: String(key),
-        sound: String(state.sound || "kick"),
+        sound: String(safeSound),
         pattern: normalizePattern(state.pattern),
-        pitch: numberOrFallback(state.pitch, TRACK_DEFAULTS.pitch),
-        tuneCents: numberOrFallback(state.tuneCents, TRACK_DEFAULTS.tuneCents),
-        hold: numberOrFallback(state.hold, defaults.hold),
-        volume: numberOrFallback(state.volume, TRACK_DEFAULTS.volume),
-        pan: numberOrFallback(state.pan, TRACK_DEFAULTS.pan),
-        swing: numberOrFallback(state.swing, TRACK_DEFAULTS.swing),
-        offsetMs: numberOrFallback(state.offsetMs, TRACK_DEFAULTS.offsetMs),
-        attack: numberOrFallback(state.attack, defaults.attack),
-        decay: numberOrFallback(state.decay, defaults.decay),
-        sustain: numberOrFallback(state.sustain, defaults.sustain),
-        release: numberOrFallback(state.release, defaults.release),
+        noteTies: normalizeNoteTies(state.noteTies, state.pattern),
+        pitch: numberOrFallback(state.pitch, soundDefaults.pitch),
+        tuneCents: numberOrFallback(state.tuneCents, soundDefaults.tuneCents),
+        osc1Wave: normalizeOscWave(state.osc1Wave, soundDefaults.osc1Wave),
+        osc1Level: numberOrFallback(state.osc1Level, soundDefaults.osc1Level),
+        osc1Octave: numberOrFallback(state.osc1Octave, soundDefaults.osc1Octave),
+        osc1Detune: numberOrFallback(state.osc1Detune, soundDefaults.osc1Detune),
+        osc2Wave: normalizeOscWave(state.osc2Wave, soundDefaults.osc2Wave),
+        osc2Level: numberOrFallback(state.osc2Level, soundDefaults.osc2Level),
+        osc2Octave: numberOrFallback(state.osc2Octave, soundDefaults.osc2Octave),
+        osc2Detune: numberOrFallback(state.osc2Detune, soundDefaults.osc2Detune),
+        oscBlend: numberOrFallback(state.oscBlend, soundDefaults.oscBlend),
+        noteMode: normalizeNoteMode(state.noteMode, soundDefaults.noteMode),
+        hold: numberOrFallback(state.hold, envDefaults.hold),
+        volume: numberOrFallback(state.volume, soundDefaults.volume),
+        pan: numberOrFallback(state.pan, soundDefaults.pan),
+        swing: numberOrFallback(state.swing, soundDefaults.swing),
+        offsetMs: numberOrFallback(state.offsetMs, soundDefaults.offsetMs),
+        attack: numberOrFallback(state.attack, envDefaults.attack),
+        decay: numberOrFallback(state.decay, envDefaults.decay),
+        sustain: numberOrFallback(state.sustain, envDefaults.sustain),
+        release: numberOrFallback(state.release, envDefaults.release),
         muted: Boolean(state.muted),
         solo: Boolean(state.solo),
         collapsed: Boolean(state.collapsed),
         seqMode: state.seqMode === "roll" ? "roll" : "single",
         gridCollapsed: Boolean(state.gridCollapsed),
+        dualTab: state.dualTab === "osc1" || state.dualTab === "osc2" ? state.dualTab : "main",
       };
     });
 
@@ -1237,9 +1697,9 @@
         MAX_STEPS,
       ),
       samplePadRollPattern,
-      wordPlayEnabled: Boolean(wordPlayEnabled),
-      wordPlaySpeed: clampNumber(
-        Math.round(numberOrFallback(wordPlaySpeed, 100)),
+      subtitlesEnabled: Boolean(subtitlesEnabled),
+      subtitlesSpeed: clampNumber(
+        Math.round(numberOrFallback(subtitlesSpeed, 100)),
         20,
         200,
       ),
@@ -1250,6 +1710,7 @@
         60,
       ),
       autoscrollEnabled: Boolean(autoscrollEnabled),
+      gradientAnimationEnabled: Boolean(gradientAnimationEnabled),
       starBounceEnabled: Boolean(starBounceEnabled),
       starBounceAlwaysEnabled: Boolean(starBounceAlwaysEnabled),
       themeEnabled: Boolean(themeEnabled),
@@ -1391,12 +1852,17 @@
     );
     setSamplePadTransportMode(nextSamplePadTransportMode);
 
-    const nextWordPlayEnabled =
-      typeof ui.wordPlayEnabled === "boolean"
-        ? ui.wordPlayEnabled
-        : INITIAL_UI.wordPlayEnabled;
-    const nextWordPlaySpeed = clampNumber(
-      Math.round(numberOrFallback(ui.wordPlaySpeed, wordPlaySpeed)),
+    const nextSubtitlesEnabled =
+      typeof ui.subtitlesEnabled === "boolean"
+        ? ui.subtitlesEnabled
+        : INITIAL_UI.subtitlesEnabled;
+    const nextSubtitlesSpeed = clampNumber(
+      Math.round(
+        numberOrFallback(
+          ui.subtitlesSpeed,
+          subtitlesSpeed,
+        ),
+      ),
       20,
       200,
     );
@@ -1411,14 +1877,20 @@
       1,
       60,
     );
-    setWordPlaySpeed(nextWordPlaySpeed);
-    setWordPlayEnabled(nextWordPlayEnabled);
+    setSubtitlesSpeed(nextSubtitlesSpeed);
+    setSubtitlesEnabled(nextSubtitlesEnabled);
     setAutosaveInterval(nextAutosaveInterval);
     setAutosaveEnabled(nextAutosaveEnabled);
 
     const nextAutoscrollEnabled =
       typeof ui.autoscrollEnabled === "boolean" ? ui.autoscrollEnabled : true;
     setAutoscrollEnabled(nextAutoscrollEnabled);
+
+    const nextGradientAnimationEnabled =
+      typeof ui.gradientAnimationEnabled === "boolean"
+        ? ui.gradientAnimationEnabled
+        : INITIAL_UI.gradientAnimationEnabled;
+    setGradientAnimationEnabled(nextGradientAnimationEnabled);
 
     const nextStarBounceEnabled =
       typeof ui.starBounceEnabled === "boolean"
@@ -1495,38 +1967,66 @@
       const key = String(entry.key ?? "").trim();
       if (!key) continue;
 
+      const sound = normalizeSoundKind(entry.sound, "kick");
+      const envDefaults = getEnvDefaultsForSound(sound);
+      const soundDefaults = getSoundDefaultsForSound(sound);
       const entryCollapsed =
-        typeof entry.collapsed === "boolean" ? entry.collapsed : true;
-      const sound = String(entry.sound || "kick");
-      const defaults = getEnvDefaultsForSound(sound);
+        typeof entry.collapsed === "boolean"
+          ? entry.collapsed
+          : soundDefaults.collapsed;
 
       states.set(key, {
         sound,
         pattern: Array.isArray(entry.pattern)
           ? entry.pattern.slice()
           : new Array(stepsCount).fill(0),
-        pitch: numberOrFallback(entry.pitch, 60),
-        tuneCents: numberOrFallback(entry.tuneCents, 0),
-        hold: numberOrFallback(entry.hold, defaults.hold),
-        volume: numberOrFallback(entry.volume, 100),
-        pan: numberOrFallback(entry.pan, 0),
-        swing: numberOrFallback(entry.swing, 0),
-        offsetMs: numberOrFallback(entry.offsetMs, 0),
-        attack: numberOrFallback(entry.attack, defaults.attack),
-        decay: numberOrFallback(entry.decay, defaults.decay),
-        sustain: numberOrFallback(entry.sustain, defaults.sustain),
-        release: numberOrFallback(entry.release, defaults.release),
-        muted: Boolean(entry.muted),
-        solo: Boolean(entry.solo),
+        noteTies: Array.isArray(entry.noteTies)
+          ? entry.noteTies.slice()
+          : new Array(stepsCount).fill(0),
+        pitch: numberOrFallback(entry.pitch, soundDefaults.pitch),
+        tuneCents: numberOrFallback(entry.tuneCents, soundDefaults.tuneCents),
+        osc1Wave: normalizeOscWave(entry.osc1Wave, soundDefaults.osc1Wave),
+        osc1Level: numberOrFallback(entry.osc1Level, soundDefaults.osc1Level),
+        osc1Octave: numberOrFallback(entry.osc1Octave, soundDefaults.osc1Octave),
+        osc1Detune: numberOrFallback(entry.osc1Detune, soundDefaults.osc1Detune),
+        osc2Wave: normalizeOscWave(entry.osc2Wave, soundDefaults.osc2Wave),
+        osc2Level: numberOrFallback(entry.osc2Level, soundDefaults.osc2Level),
+        osc2Octave: numberOrFallback(entry.osc2Octave, soundDefaults.osc2Octave),
+        osc2Detune: numberOrFallback(entry.osc2Detune, soundDefaults.osc2Detune),
+        oscBlend: numberOrFallback(entry.oscBlend, soundDefaults.oscBlend),
+        noteMode: normalizeNoteMode(entry.noteMode, soundDefaults.noteMode),
+        hold: numberOrFallback(entry.hold, envDefaults.hold),
+        volume: numberOrFallback(entry.volume, soundDefaults.volume),
+        pan: numberOrFallback(entry.pan, soundDefaults.pan),
+        swing: numberOrFallback(entry.swing, soundDefaults.swing),
+        offsetMs: numberOrFallback(entry.offsetMs, soundDefaults.offsetMs),
+        attack: numberOrFallback(entry.attack, envDefaults.attack),
+        decay: numberOrFallback(entry.decay, envDefaults.decay),
+        sustain: numberOrFallback(entry.sustain, envDefaults.sustain),
+        release: numberOrFallback(entry.release, envDefaults.release),
+        muted:
+          typeof entry.muted === "boolean"
+            ? entry.muted
+            : soundDefaults.muted,
+        solo:
+          typeof entry.solo === "boolean"
+            ? entry.solo
+            : soundDefaults.solo,
         collapsed: entryCollapsed,
         seqMode:
           entry.seqMode === "roll" || entry.seqMode === "single"
             ? entry.seqMode
-            : undefined,
+            : soundDefaults.seqMode,
         gridCollapsed:
           typeof entry.gridCollapsed === "boolean"
             ? entry.gridCollapsed
-            : Boolean(entry.notesHidden),
+            : typeof entry.notesHidden === "boolean"
+              ? entry.notesHidden
+              : soundDefaults.gridCollapsed,
+        dualTab:
+          entry.dualTab === "osc1" || entry.dualTab === "osc2"
+            ? entry.dualTab
+            : "main",
       });
       getOrInitState(key);
     }
@@ -1600,11 +2100,12 @@
     setSamplePadTransportMode(INITIAL_UI.samplePadTransportMode);
     setSamplePadEditEnabled(false);
 
-    setWordPlaySpeed(INITIAL_UI.wordPlaySpeed);
-    setWordPlayEnabled(INITIAL_UI.wordPlayEnabled);
+    setSubtitlesSpeed(INITIAL_UI.subtitlesSpeed);
+    setSubtitlesEnabled(INITIAL_UI.subtitlesEnabled);
     setAutoExpandSpeed(INITIAL_UI.autoExpandSpeed);
     setAutoExpandEnabled(INITIAL_UI.autoExpandEnabled);
     setAutoscrollEnabled(INITIAL_UI.autoscrollEnabled);
+    setGradientAnimationEnabled(INITIAL_UI.gradientAnimationEnabled);
     setStarBounceEnabled(INITIAL_UI.starBounceEnabled);
     setStarBounceAlwaysEnabled(INITIAL_UI.starBounceAlwaysEnabled);
     setBumpHeight(INITIAL_UI.bumpHeight);
@@ -1649,6 +2150,11 @@
     if (themeStarBtn) {
       themeStarBtn.classList.remove("is-star-daw-intro", "is-star-bounce-intro");
     }
+    if (starBounceIntroDelayTimerId != null) {
+      window.clearTimeout(starBounceIntroDelayTimerId);
+      starBounceIntroDelayTimerId = null;
+    }
+    starBounceIntroDelayUntil = 0;
     starDawIntroPlayed = false;
     updateDawVisibility();
   }
@@ -1656,96 +2162,150 @@
   function getOrInitState(key) {
     let state = states.get(key);
     if (!state) {
-      const defaultSound = SOUND_OPTIONS.some((o) => o.value === TRACK_DEFAULTS.sound)
-        ? TRACK_DEFAULTS.sound
-        : "kick";
-      const defaults = getEnvDefaultsForSound(defaultSound);
+      const defaultSound = normalizeSoundKind(TRACK_DEFAULTS.sound, "kick");
+      const envDefaults = getEnvDefaultsForSound(defaultSound);
+      const soundDefaults = getSoundDefaultsForSound(defaultSound);
       state = {
         sound: defaultSound,
         pattern: new Array(stepsCount).fill(0),
-        pitch: TRACK_DEFAULTS.pitch,
-        tuneCents: TRACK_DEFAULTS.tuneCents,
-        hold: defaults.hold,
-        volume: TRACK_DEFAULTS.volume,
-        pan: TRACK_DEFAULTS.pan,
-        swing: TRACK_DEFAULTS.swing,
-        offsetMs: TRACK_DEFAULTS.offsetMs,
-        attack: defaults.attack,
-        decay: defaults.decay,
-        sustain: defaults.sustain,
-        release: defaults.release,
-        muted: TRACK_DEFAULTS.muted,
-        solo: TRACK_DEFAULTS.solo,
-        collapsed: TRACK_DEFAULTS.collapsed,
-        seqMode: TRACK_DEFAULTS.seqMode,
-        gridCollapsed: TRACK_DEFAULTS.gridCollapsed,
+        noteTies: new Array(stepsCount).fill(0),
+        pitch: soundDefaults.pitch,
+        tuneCents: soundDefaults.tuneCents,
+        osc1Wave: soundDefaults.osc1Wave,
+        osc1Level: soundDefaults.osc1Level,
+        osc1Octave: soundDefaults.osc1Octave,
+        osc1Detune: soundDefaults.osc1Detune,
+        osc2Wave: soundDefaults.osc2Wave,
+        osc2Level: soundDefaults.osc2Level,
+        osc2Octave: soundDefaults.osc2Octave,
+        osc2Detune: soundDefaults.osc2Detune,
+        oscBlend: soundDefaults.oscBlend,
+        noteMode: soundDefaults.noteMode,
+        hold: envDefaults.hold,
+        volume: soundDefaults.volume,
+        pan: soundDefaults.pan,
+        swing: soundDefaults.swing,
+        offsetMs: soundDefaults.offsetMs,
+        attack: envDefaults.attack,
+        decay: envDefaults.decay,
+        sustain: envDefaults.sustain,
+        release: envDefaults.release,
+        muted: soundDefaults.muted,
+        solo: soundDefaults.solo,
+        collapsed: soundDefaults.collapsed,
+        seqMode: soundDefaults.seqMode,
+        gridCollapsed: soundDefaults.gridCollapsed,
+        dualTab: "main",
       };
       states.set(key, state);
     }
 
-    state.sound = SOUND_OPTIONS.some((o) => o.value === state.sound)
-      ? state.sound
-      : TRACK_DEFAULTS.sound;
-    const defaults = getEnvDefaultsForSound(state.sound);
+    state.sound = normalizeSoundKind(state.sound, TRACK_DEFAULTS.sound);
+    const envDefaults = getEnvDefaultsForSound(state.sound);
+    const soundDefaults = getSoundDefaultsForSound(state.sound);
     state.pattern = normalizePattern(state.pattern);
+    state.noteTies = normalizeNoteTies(state.noteTies, state.pattern);
     state.pitch = clampNumber(
-      numberOrFallback(state.pitch, TRACK_DEFAULTS.pitch),
+      numberOrFallback(state.pitch, soundDefaults.pitch),
       PITCH_MIN,
       PITCH_MAX,
     );
     state.tuneCents = clampNumber(
-      numberOrFallback(state.tuneCents, TRACK_DEFAULTS.tuneCents),
+      numberOrFallback(state.tuneCents, soundDefaults.tuneCents),
       -100,
       100,
     );
+    state.osc1Wave = normalizeOscWave(state.osc1Wave, soundDefaults.osc1Wave);
+    state.osc1Level = clampNumber(
+      numberOrFallback(state.osc1Level, soundDefaults.osc1Level),
+      0,
+      127,
+    );
+    state.osc1Octave = clampNumber(
+      numberOrFallback(state.osc1Octave, soundDefaults.osc1Octave),
+      -2,
+      2,
+    );
+    state.osc1Detune = clampNumber(
+      numberOrFallback(state.osc1Detune, soundDefaults.osc1Detune),
+      -100,
+      100,
+    );
+    state.osc2Wave = normalizeOscWave(state.osc2Wave, soundDefaults.osc2Wave);
+    state.osc2Level = clampNumber(
+      numberOrFallback(state.osc2Level, soundDefaults.osc2Level),
+      0,
+      127,
+    );
+    state.osc2Octave = clampNumber(
+      numberOrFallback(state.osc2Octave, soundDefaults.osc2Octave),
+      -2,
+      2,
+    );
+    state.osc2Detune = clampNumber(
+      numberOrFallback(state.osc2Detune, soundDefaults.osc2Detune),
+      -100,
+      100,
+    );
+    state.oscBlend = clampNumber(
+      numberOrFallback(state.oscBlend, soundDefaults.oscBlend),
+      -100,
+      100,
+    );
+    state.noteMode = normalizeNoteMode(state.noteMode, soundDefaults.noteMode);
     state.hold = clampNumber(
-      numberOrFallback(state.hold, defaults.hold),
+      numberOrFallback(state.hold, envDefaults.hold),
       0,
       100,
     );
     state.volume = clampNumber(
-      numberOrFallback(state.volume, TRACK_DEFAULTS.volume),
+      numberOrFallback(state.volume, soundDefaults.volume),
       0,
       127,
     );
     state.pan = clampNumber(
-      numberOrFallback(state.pan, TRACK_DEFAULTS.pan),
+      numberOrFallback(state.pan, soundDefaults.pan),
       -100,
       100,
     );
     state.swing = clampNumber(
-      numberOrFallback(state.swing, TRACK_DEFAULTS.swing),
+      numberOrFallback(state.swing, soundDefaults.swing),
       0,
       127,
     );
     state.offsetMs = clampNumber(
-      numberOrFallback(state.offsetMs, TRACK_DEFAULTS.offsetMs),
+      numberOrFallback(state.offsetMs, soundDefaults.offsetMs),
       -100,
       100,
     );
     state.attack = clampNumber(
-      numberOrFallback(state.attack, defaults.attack),
+      numberOrFallback(state.attack, envDefaults.attack),
       0,
       127,
     );
     state.decay = clampNumber(
-      numberOrFallback(state.decay, defaults.decay),
+      numberOrFallback(state.decay, envDefaults.decay),
       0,
       127,
     );
     state.sustain = clampNumber(
-      numberOrFallback(state.sustain, defaults.sustain),
+      numberOrFallback(state.sustain, envDefaults.sustain),
       0,
       127,
     );
     state.release = clampNumber(
-      numberOrFallback(state.release, defaults.release),
+      numberOrFallback(state.release, envDefaults.release),
       0,
       127,
     );
-    state.muted = Boolean(state.muted);
-    state.solo = Boolean(state.solo);
-    state.collapsed = Boolean(state.collapsed);
+    state.muted =
+      typeof state.muted === "boolean" ? state.muted : Boolean(soundDefaults.muted);
+    state.solo =
+      typeof state.solo === "boolean" ? state.solo : Boolean(soundDefaults.solo);
+    state.collapsed =
+      typeof state.collapsed === "boolean"
+        ? state.collapsed
+        : Boolean(soundDefaults.collapsed);
 
     const hasMultiRowNotes = state.pattern.some(
       (m) =>
@@ -1759,13 +2319,22 @@
         ? mode
         : hasMultiRowNotes
           ? "roll"
-          : "single";
+          : soundDefaults.seqMode;
 
     const legacyGridCollapsed =
       typeof state.gridCollapsed !== "undefined"
         ? state.gridCollapsed
         : state.notesHidden;
-    state.gridCollapsed = Boolean(legacyGridCollapsed);
+    state.gridCollapsed =
+      typeof legacyGridCollapsed === "boolean"
+        ? legacyGridCollapsed
+        : Boolean(soundDefaults.gridCollapsed);
+
+    const dualTab = String(state.dualTab || "").toLowerCase();
+    state.dualTab =
+      dualTab === "osc1" || dualTab === "osc2" || dualTab === "main"
+        ? dualTab
+        : "main";
     return state;
   }
 
@@ -2065,7 +2634,8 @@
     const intensity = clampNumber(numberOrFallback(bumpIntensity, 50), 0, 100);
     const softRatio = 1 - intensity / 100;
     return {
-      letter: Math.round(90 + softRatio * 180),
+      // Keep hit windows short so dense grids still visibly retrigger each step.
+      letter: Math.round(52 + softRatio * 70),
     };
   }
 
@@ -2165,13 +2735,74 @@
 
   applyLetterHitAccentPalette();
 
+  function refreshBumpUnderlineEnvelope(button, hitDurationMs) {
+    if (!button) return;
+    const holdMs = Math.max(
+      BUMP_UNDERLINE_HOLD_MIN_MS,
+      Math.round(
+        numberOrFallback(hitDurationMs, 90) * BUMP_UNDERLINE_HOLD_MULTIPLIER,
+      ),
+    );
+    button.style.setProperty("--bump-underline-level", "1");
+    const existing = hitUnderlineTimeouts.get(button);
+    if (existing) window.clearTimeout(existing);
+    const timeout = window.setTimeout(() => {
+      button.style.setProperty("--bump-underline-level", "0");
+      hitUnderlineTimeouts.delete(button);
+    }, holdMs);
+    hitUnderlineTimeouts.set(button, timeout);
+  }
+
+  function refreshBumpGhostEnvelope(button, hitDurationMs) {
+    if (!button) return;
+    const holdMs = Math.max(
+      BUMP_GHOST_HOLD_MIN_MS,
+      Math.round(numberOrFallback(hitDurationMs, 90) * BUMP_GHOST_HOLD_MULTIPLIER),
+    );
+    button.style.setProperty("--bump-ghost-level", "1");
+    const existing = hitGhostTimeouts.get(button);
+    if (existing) window.clearTimeout(existing);
+    const timeout = window.setTimeout(() => {
+      button.style.setProperty("--bump-ghost-level", "0");
+      hitGhostTimeouts.delete(button);
+    }, holdMs);
+    hitGhostTimeouts.set(button, timeout);
+  }
+
+  function clearBumpUnderlineEnvelopes() {
+    for (const button of letters) {
+      const underlineTimeout = hitUnderlineTimeouts.get(button);
+      if (underlineTimeout) {
+        window.clearTimeout(underlineTimeout);
+        hitUnderlineTimeouts.delete(button);
+      }
+      const ghostTimeout = hitGhostTimeouts.get(button);
+      if (ghostTimeout) {
+        window.clearTimeout(ghostTimeout);
+        hitGhostTimeouts.delete(button);
+      }
+      button.style.setProperty("--bump-underline-level", "0");
+      button.style.setProperty("--bump-ghost-level", "0");
+    }
+  }
+
   function flashHit(button, durationMs = null) {
     if (!button) return;
+    const isLetterBump = document.body.classList.contains("is-bump-letters");
     const useDuration = Number.isFinite(durationMs)
       ? Math.max(0, durationMs)
-      : document.body.classList.contains("is-bump-letters")
+      : isLetterBump
         ? getBumpHitDurations().letter
         : 90;
+    if (isLetterBump) {
+      refreshBumpUnderlineEnvelope(button, useDuration);
+      refreshBumpGhostEnvelope(button, useDuration);
+    }
+    // Retrigger the bump animation even when hits occur every step.
+    if (button.classList.contains("is-hit")) {
+      button.classList.remove("is-hit");
+      void button.offsetWidth;
+    }
     button.classList.add("is-hit");
     const existing = hitTimeouts.get(button);
     if (existing) window.clearTimeout(existing);
@@ -2319,12 +2950,12 @@
     });
   }
 
-  function positionWordPlaySubtitleStack() {
+  function positionSubtitleStack() {
     const barRect = transportBar ? transportBar.getBoundingClientRect() : null;
-    if (barRect && wordPlaySubtitleStack) {
-      wordPlaySubtitleStack.style.left = `${barRect.left.toFixed(3)}px`;
-      wordPlaySubtitleStack.style.width = `${barRect.width.toFixed(3)}px`;
-      wordPlaySubtitleStack.style.bottom = `${Math.round(window.innerHeight - barRect.top + 10)}px`;
+    if (barRect && subtitleStack) {
+      subtitleStack.style.left = `${barRect.left.toFixed(3)}px`;
+      subtitleStack.style.width = `${barRect.width.toFixed(3)}px`;
+      subtitleStack.style.bottom = `${Math.round(window.innerHeight - barRect.top + 10)}px`;
     }
   }
 
@@ -2337,12 +2968,12 @@
     });
   }
 
-  function scheduleWordPlaySubtitleLayout() {
-    if (wordPlayLayoutRaf != null) return;
-    wordPlayLayoutRaf = window.requestAnimationFrame(() => {
-      wordPlayLayoutRaf = null;
-      if (!wordPlaySubtitleStack || wordPlaySubtitleStack.hidden) return;
-      positionWordPlaySubtitleStack();
+  function scheduleSubtitleLayout() {
+    if (subtitleLayoutRaf != null) return;
+    subtitleLayoutRaf = window.requestAnimationFrame(() => {
+      subtitleLayoutRaf = null;
+      if (!subtitleStack || subtitleStack.hidden) return;
+      positionSubtitleStack();
     });
   }
 
@@ -2392,10 +3023,10 @@
       }
     }
 
-    if (wordPlaySubtitleStack) {
-      wordPlaySubtitleStack.style.left = `${rect.left.toFixed(3)}px`;
-      wordPlaySubtitleStack.style.width = `${rect.width.toFixed(3)}px`;
-      wordPlaySubtitleStack.style.bottom = `${Math.round(window.innerHeight - rect.top + 10)}px`;
+    if (subtitleStack) {
+      subtitleStack.style.left = `${rect.left.toFixed(3)}px`;
+      subtitleStack.style.width = `${rect.width.toFixed(3)}px`;
+      subtitleStack.style.bottom = `${Math.round(window.innerHeight - rect.top + 10)}px`;
     }
 
     if (padPlaybackChip) {
@@ -2474,19 +3105,19 @@
     root.style.setProperty("--floatingClearanceBottom", `${bottomClearance}px`);
   }
 
-  function syncWordPlayUiVisibility() {
-    const showSubtitles = shouldRunWordPlaySubtitleCycle();
-    if (wordPlaySubtitleStack) {
-      wordPlaySubtitleStack.hidden = !showSubtitles;
+  function syncSubtitlesUiVisibility() {
+    const showSubtitles = shouldRunSubtitleCycle();
+    if (subtitleStack) {
+      subtitleStack.hidden = !showSubtitles;
       if (showSubtitles) {
-        positionWordPlaySubtitleStack();
+        positionSubtitleStack();
       }
     }
 
     if (showSubtitles) {
-      ensureWordPlaySubtitleCycle();
+      ensureSubtitleCycle();
     } else {
-      stopWordPlaySubtitleCycle();
+      stopSubtitleCycle();
     }
 
     syncFloatingScrollClearance();
@@ -2540,12 +3171,19 @@
     document.body.classList.toggle("has-daw", hasTracks);
     if (!hasTracks) stop();
     if (!hasTracks) setSettingsOpen(false);
+    if (!hasTracks) {
+      if (starBounceIntroDelayTimerId != null) {
+        window.clearTimeout(starBounceIntroDelayTimerId);
+        starBounceIntroDelayTimerId = null;
+      }
+      starBounceIntroDelayUntil = 0;
+    }
     if (hasTracks) {
       updateTransportBar();
       rebuildTransportTicks();
     }
     syncFloatingBarGeometry();
-    syncWordPlayUiVisibility();
+    syncSubtitlesUiVisibility();
     syncSamplePadToolbarVisibility();
     renderSamplePadGrid();
     updateTransportControls();
@@ -2568,13 +3206,22 @@
       themeStarBtn
     ) {
       starDawIntroPlayed = true;
-      syncStarBounceClass();
       themeStarBtn.classList.remove("is-star-bounce-intro");
       themeStarBtn.classList.add("is-star-daw-intro");
+      syncStarBounceClass();
       themeStarBtn.addEventListener(
         "animationend",
         () => {
+          const STAR_BOUNCE_POST_INTRO_DELAY_MS = 1500;
           themeStarBtn.classList.remove("is-star-daw-intro");
+          starBounceIntroDelayUntil = Date.now() + STAR_BOUNCE_POST_INTRO_DELAY_MS;
+          if (starBounceIntroDelayTimerId != null) {
+            window.clearTimeout(starBounceIntroDelayTimerId);
+          }
+          starBounceIntroDelayTimerId = window.setTimeout(() => {
+            starBounceIntroDelayTimerId = null;
+            syncStarBounceClass();
+          }, STAR_BOUNCE_POST_INTRO_DELAY_MS + 20);
           syncStarBounceClass();
         },
         { once: true },
@@ -2806,7 +3453,7 @@
     }
 
     renderSamplePadGrid();
-    rebuildTransportWordPlay();
+    rebuildTransportSubtitles();
     updateSamplePadKeyHolds();
   }
 
@@ -2950,7 +3597,7 @@
     ensureSamplePadRollPatternShape();
     rebuildTransportTicks();
     updateTransportBar();
-    rebuildTransportWordPlay();
+    rebuildTransportSubtitles();
     syncPadPlaybackChip();
     renderSamplePadRoll();
     scheduleSamplePadLayout();
@@ -3161,20 +3808,86 @@
     samplePadRollRatchetPicker.dataset.col = String(col);
 
     const anchorRect = anchor.getBoundingClientRect();
-    samplePadRollRatchetPicker.style.left = `${anchorRect.left}px`;
-    samplePadRollRatchetPicker.style.top = `${anchorRect.bottom + 4}px`;
+    samplePadRollRatchetPicker.style.left = `${anchorRect.right + 8}px`;
+    samplePadRollRatchetPicker.style.top = `${Math.max(8, anchorRect.top)}px`;
     samplePadRollRatchetPicker.hidden = false;
 
     window.requestAnimationFrame(() => {
       if (!samplePadRollRatchetPicker || samplePadRollRatchetPicker.hidden)
         return;
       const pr = samplePadRollRatchetPicker.getBoundingClientRect();
-      if (pr.right > window.innerWidth - 8) {
-        samplePadRollRatchetPicker.style.left = `${Math.max(8, window.innerWidth - pr.width - 8)}px`;
+      const pad = 8;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+
+      const clampLeft = (value) =>
+        clampNumber(value, pad, Math.max(pad, viewportW - pr.width - pad));
+      const clampTop = (value) =>
+        clampNumber(value, pad, Math.max(pad, viewportH - pr.height - pad));
+
+      const intersectsAnchor = (left, top) => {
+        const right = left + pr.width;
+        const bottom = top + pr.height;
+        return !(
+          right <= anchorRect.left ||
+          left >= anchorRect.right ||
+          bottom <= anchorRect.top ||
+          top >= anchorRect.bottom
+        );
+      };
+
+      const overflowAmount = (left, top) => {
+        const right = left + pr.width;
+        const bottom = top + pr.height;
+        let overflow = 0;
+        if (left < pad) overflow += pad - left;
+        if (top < pad) overflow += pad - top;
+        if (right > viewportW - pad) overflow += right - (viewportW - pad);
+        if (bottom > viewportH - pad) overflow += bottom - (viewportH - pad);
+        return overflow;
+      };
+
+      const candidates = [
+        {
+          left: anchorRect.right + pad,
+          top: clampTop(anchorRect.top),
+        },
+        {
+          left: anchorRect.left - pr.width - pad,
+          top: clampTop(anchorRect.top),
+        },
+        {
+          left: clampLeft(anchorRect.left),
+          top: anchorRect.bottom + pad,
+        },
+        {
+          left: clampLeft(anchorRect.left),
+          top: anchorRect.top - pr.height - pad,
+        },
+      ];
+
+      let best = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+      for (const candidate of candidates) {
+        const overlapPenalty = intersectsAnchor(candidate.left, candidate.top)
+          ? 100000
+          : 0;
+        const score = overlapPenalty + overflowAmount(candidate.left, candidate.top);
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
       }
-      if (pr.bottom > window.innerHeight - 8) {
-        samplePadRollRatchetPicker.style.top = `${Math.max(8, anchorRect.top - pr.height - 4)}px`;
+
+      if (!best) {
+        best = {
+          left: anchorRect.right + pad,
+          top: anchorRect.bottom + pad,
+        };
       }
+
+      samplePadRollRatchetPicker.style.left = `${clampLeft(best.left)}px`;
+      samplePadRollRatchetPicker.style.top = `${clampTop(best.top)}px`;
     });
   }
 
@@ -3194,7 +3907,7 @@
     window.scrollTo({ top: targetTop, behavior: "smooth" });
   }
 
-  function getWordPlayModel() {
+  function getSubtitlesModel() {
     const chunks = [];
 
     if (samplePadEnabled && samplePadTransportMode) {
@@ -3244,11 +3957,11 @@
     return { chunks };
   }
 
-  function updateTransportWordPlayActive(stepIndex) {
-    const itemCount = Math.max(1, transportWordPlayChunkCount);
+  function updateTransportSubtitleActive(stepIndex) {
+    const itemCount = Math.max(1, transportSubtitleChunkCount);
     const raw = Math.round(numberOrFallback(stepIndex, 0));
     const next = ((raw % itemCount) + itemCount) % itemCount;
-    transportWordPlayActiveIndex = next;
+    transportSubtitleActiveIndex = next;
   }
 
   function randomBetween(min, max) {
@@ -3257,56 +3970,60 @@
     return a + Math.random() * Math.max(0, b - a);
   }
 
-  function clearWordPlaySubtitleTimer() {
-    if (wordPlaySubtitleTimerId == null) return;
-    window.clearTimeout(wordPlaySubtitleTimerId);
-    wordPlaySubtitleTimerId = null;
+  function clearSubtitleTimer() {
+    if (subtitleTimerId == null) return;
+    window.clearTimeout(subtitleTimerId);
+    subtitleTimerId = null;
   }
 
-  function shouldRunWordPlaySubtitleCycle() {
-    if (!(wordPlayEnabled && isPlaying && tracks.size > 0)) return false;
-    const model = getWordPlayModel();
+  function shouldRunSubtitleCycle() {
+    if (!(subtitlesEnabled && isPlaying && tracks.size > 0)) return false;
+    const model = getSubtitlesModel();
     return model.chunks.length > 0;
   }
 
   function setSubtitleLines(lowerText, upperText) {
-    if (!wordPlaySubtitleLower || !wordPlaySubtitleUpper) return;
+    if (!subtitleLower || !subtitleUpper) return;
 
     const lower = String(lowerText || "");
     const upper = String(upperText || "");
 
     if (lower) {
-      wordPlaySubtitleLower.textContent = lower;
-      wordPlaySubtitleLower.hidden = false;
+      subtitleLower.textContent = lower;
+      subtitleLower.hidden = false;
     } else {
-      wordPlaySubtitleLower.hidden = true;
+      subtitleLower.hidden = true;
     }
 
     if (upper) {
-      wordPlaySubtitleUpper.textContent = upper;
-      wordPlaySubtitleUpper.hidden = false;
+      subtitleUpper.textContent = upper;
+      subtitleUpper.hidden = false;
     } else {
-      wordPlaySubtitleUpper.hidden = true;
+      subtitleUpper.hidden = true;
     }
   }
 
-  function resetWordPlaySubtitleMusicSpacing() {
-    wordPlaySubtitleEntriesSinceMusic = 0;
-    wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
-    wordPlaySubtitleLastTake = null;
-    wordPlaySubtitleLastTier = "short";
+  function resetSubtitleMusicSpacing() {
+    const cfg = appConfig.subtitles;
+    subtitleEntriesSinceMusic = 0;
+    subtitleNextMusicAfter = cfg.musicIntervalMin + Math.floor(Math.random() * (cfg.musicIntervalMax - cfg.musicIntervalMin + 1));
+    subtitleLastTake = null;
+    subtitleLastTier = "short";
   }
 
-  function pickWordPlaySubtitleTake(maxTake) {
+  function pickSubtitleTake(maxTake) {
     const clampedMax = Math.max(1, Math.round(numberOrFallback(maxTake, 1)));
-    const shortChoices = [2, 3, 4, 5, 6].filter((n) => n <= clampedMax);
-    const mediumChoices = [7, 8, 9].filter((n) => n <= clampedMax);
-    const longChoices = [10, 11, 12].filter((n) => n <= clampedMax);
+    const cfg = appConfig.subtitles;
+    const makeRange = (min, max) =>
+      Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    const shortChoices = makeRange(cfg.shortChunkMin, cfg.shortChunkMax).filter((n) => n <= clampedMax);
+    const mediumChoices = makeRange(cfg.mediumChunkMin, cfg.mediumChunkMax).filter((n) => n <= clampedMax);
+    const longChoices = makeRange(cfg.longChunkMin, cfg.longChunkMax).filter((n) => n <= clampedMax);
 
-    const usedLongLastTime = Number(wordPlaySubtitleLastTake) >= 10;
+    const usedLongLastTime = Number(subtitleLastTake) >= cfg.longChunkMin;
     const allowLong =
-      longChoices.length > 0 && Math.random() < (usedLongLastTime ? 0.04 : 0.1);
-    const allowMedium = mediumChoices.length > 0 && Math.random() < 0.3;
+      longChoices.length > 0 && Math.random() < (usedLongLastTime ? cfg.longAfterLongChunkProb : cfg.longChunkProb);
+    const allowMedium = mediumChoices.length > 0 && Math.random() < cfg.mediumChunkProb;
 
     let pool = shortChoices;
     let tier = "short";
@@ -3318,7 +4035,7 @@
       tier = "medium";
     }
 
-    if (tier === wordPlaySubtitleLastTier && shortChoices.length) {
+    if (tier === subtitleLastTier && shortChoices.length) {
       pool = shortChoices;
       tier = "short";
     }
@@ -3332,54 +4049,55 @@
     }
 
     if (!pool.length) {
-      wordPlaySubtitleLastTake = 1;
-      wordPlaySubtitleLastTier = "short";
+      subtitleLastTake = 1;
+      subtitleLastTier = "short";
       return 1;
     }
 
     let picked = pool[Math.floor(Math.random() * pool.length)];
-    if (pool.length > 1 && picked === wordPlaySubtitleLastTake) {
+    if (pool.length > 1 && picked === subtitleLastTake) {
       picked = pool[(pool.indexOf(picked) + 1) % pool.length];
     }
 
-    wordPlaySubtitleLastTake = picked;
-    wordPlaySubtitleLastTier = tier;
+    subtitleLastTake = picked;
+    subtitleLastTier = tier;
     return picked;
   }
 
-  function getWordPlaySubtitleTiming() {
+  function getSubtitleTiming() {
     const beatMs = clampNumber(
       (60 / clampNumber(numberOrFallback(tempo, 120), 20, 360)) * 1000,
       166,
       3000,
     );
-    const speed = clampNumber(numberOrFallback(wordPlaySpeed, 100), 20, 200);
-    const speedFactor = clampNumber(100 / speed, 0.5, 5);
+    const speed = clampNumber(numberOrFallback(subtitlesSpeed, 100), 20, 200);
+    const cfg = appConfig.subtitles;
+    const speedFactor = clampNumber(100 / speed, cfg.speedFactorMin, cfg.speedFactorMax);
 
     return {
       leadDelayMs:
         randomBetween(
-          clampNumber(beatMs * 1.1, 420, 950),
-          clampNumber(beatMs * 1.8, 650, 1400),
+          clampNumber(beatMs * cfg.leadDelayLoFactor, cfg.leadDelayLoMin, cfg.leadDelayLoMax),
+          clampNumber(beatMs * cfg.leadDelayHiFactor, cfg.leadDelayHiMin, cfg.leadDelayHiMax),
         ) * speedFactor,
       holdDelayMs:
         randomBetween(
-          clampNumber(beatMs * 3.2, 1800, 3200),
-          clampNumber(beatMs * 5.4, 2500, 4700),
+          clampNumber(beatMs * cfg.holdDelayLoFactor, cfg.holdDelayLoMin, cfg.holdDelayLoMax),
+          clampNumber(beatMs * cfg.holdDelayHiFactor, cfg.holdDelayHiMin, cfg.holdDelayHiMax),
         ) * speedFactor,
       gapDelayMs:
         randomBetween(
-          clampNumber(beatMs * 0.9, 350, 700),
-          clampNumber(beatMs * 1.6, 520, 980),
+          clampNumber(beatMs * cfg.gapDelayLoFactor, cfg.gapDelayLoMin, cfg.gapDelayLoMax),
+          clampNumber(beatMs * cfg.gapDelayHiFactor, cfg.gapDelayHiMin, cfg.gapDelayHiMax),
         ) * speedFactor,
     };
   }
 
-  function sampleWordPlaySubtitleText(
+  function sampleSubtitleText(
     advanceChunks = 0,
     { allowMusic = true } = {},
   ) {
-    const model = getWordPlayModel();
+    const model = getSubtitlesModel();
     const chunks = model.chunks;
     if (!chunks.length) return "";
 
@@ -3391,7 +4109,7 @@
         chunkCount) +
         chunkCount) %
       chunkCount;
-    const desiredTake = pickWordPlaySubtitleTake(chunkCount - startIndex);
+    const desiredTake = pickSubtitleTake(chunkCount - startIndex);
     const take = Math.max(1, Math.min(desiredTake, chunkCount - startIndex));
     const labels = [];
     for (let i = 0; i < take; i += 1) {
@@ -3403,101 +4121,102 @@
 
     const shouldUseMusic =
       allowMusic &&
-      wordPlaySubtitleEntriesSinceMusic >= wordPlaySubtitleNextMusicAfter;
+      subtitleEntriesSinceMusic >= subtitleNextMusicAfter;
     if (shouldUseMusic) {
-      wordPlaySubtitleEntriesSinceMusic = 0;
-      wordPlaySubtitleNextMusicAfter = 4 + Math.floor(Math.random() * 3);
+      subtitleEntriesSinceMusic = 0;
+      const scfg = appConfig.subtitles;
+      subtitleNextMusicAfter = scfg.musicIntervalMin + Math.floor(Math.random() * (scfg.musicIntervalMax - scfg.musicIntervalMin + 1));
       return "(music)";
     }
 
-    wordPlaySubtitleEntriesSinceMusic += 1;
+    subtitleEntriesSinceMusic += 1;
     return text;
   }
 
-  function runWordPlaySubtitleCycle() {
-    if (!shouldRunWordPlaySubtitleCycle()) {
-      stopWordPlaySubtitleCycle();
+  function runSubtitleCycle() {
+    if (!shouldRunSubtitleCycle()) {
+      stopSubtitleCycle();
       return;
     }
 
-    const first = sampleWordPlaySubtitleText(0);
+    const first = sampleSubtitleText(0);
     if (!first) {
-      stopWordPlaySubtitleCycle();
+      stopSubtitleCycle();
       return;
     }
 
     setSubtitleLines("", first);
 
     const { leadDelayMs, holdDelayMs, gapDelayMs } =
-      getWordPlaySubtitleTiming();
-    wordPlaySubtitleTimerId = window.setTimeout(() => {
-      wordPlaySubtitleTimerId = null;
-      if (!shouldRunWordPlaySubtitleCycle()) {
-        stopWordPlaySubtitleCycle();
+      getSubtitleTiming();
+    subtitleTimerId = window.setTimeout(() => {
+      subtitleTimerId = null;
+      if (!shouldRunSubtitleCycle()) {
+        stopSubtitleCycle();
         return;
       }
 
-      const secondAdvance = Math.round(randomBetween(2, 6));
-      const second = sampleWordPlaySubtitleText(secondAdvance, {
+      const secondAdvance = Math.round(randomBetween(appConfig.subtitles.secondAdvanceMin, appConfig.subtitles.secondAdvanceMax));
+      const second = sampleSubtitleText(secondAdvance, {
         allowMusic: first !== "(music)",
       });
       setSubtitleLines(first, second || first);
 
-      wordPlaySubtitleTimerId = window.setTimeout(() => {
-        wordPlaySubtitleTimerId = null;
+      subtitleTimerId = window.setTimeout(() => {
+        subtitleTimerId = null;
         setSubtitleLines("", "");
 
-        wordPlaySubtitleTimerId = window.setTimeout(() => {
-          wordPlaySubtitleTimerId = null;
-          runWordPlaySubtitleCycle();
+        subtitleTimerId = window.setTimeout(() => {
+          subtitleTimerId = null;
+          runSubtitleCycle();
         }, gapDelayMs);
       }, holdDelayMs);
     }, leadDelayMs);
   }
 
-  function ensureWordPlaySubtitleCycle() {
-    if (!shouldRunWordPlaySubtitleCycle()) {
-      stopWordPlaySubtitleCycle();
+  function ensureSubtitleCycle() {
+    if (!shouldRunSubtitleCycle()) {
+      stopSubtitleCycle();
       return;
     }
-    if (wordPlaySubtitleCycleActive) return;
-    wordPlaySubtitleCycleActive = true;
-    runWordPlaySubtitleCycle();
+    if (subtitleCycleActive) return;
+    subtitleCycleActive = true;
+    runSubtitleCycle();
   }
 
-  function stopWordPlaySubtitleCycle() {
-    wordPlaySubtitleCycleActive = false;
-    clearWordPlaySubtitleTimer();
-    resetWordPlaySubtitleMusicSpacing();
+  function stopSubtitleCycle() {
+    subtitleCycleActive = false;
+    clearSubtitleTimer();
+    resetSubtitleMusicSpacing();
     setSubtitleLines("", "");
   }
 
-  function rebuildTransportWordPlay() {
+  function rebuildTransportSubtitles() {
     if (!transportTicks || !transportBar) return;
-    transportBar.classList.remove("is-word-play");
+    transportBar.classList.remove("is-subtitles");
     transportTicks.hidden = false;
-    if (transportWordPlay) {
-      transportWordPlay.hidden = true;
-      transportWordPlay.innerHTML = "";
+    if (transportSubtitle) {
+      transportSubtitle.hidden = true;
+      transportSubtitle.innerHTML = "";
     }
 
-    if (!wordPlayEnabled) {
-      transportWordPlayKey = "";
-      transportWordPlayActiveIndex = -1;
-      transportWordPlayChunkCount = 0;
-      stopWordPlaySubtitleCycle();
+    if (!subtitlesEnabled) {
+      transportSubtitleKey = "";
+      transportSubtitleActiveIndex = -1;
+      transportSubtitleChunkCount = 0;
+      stopSubtitleCycle();
       return;
     }
 
-    const model = getWordPlayModel();
-    transportWordPlayKey = model.chunks
+    const model = getSubtitlesModel();
+    transportSubtitleKey = model.chunks
       .map((c) => String(c && c.label ? c.label : ""))
       .join("|");
-    transportWordPlayChunkCount = Math.max(1, model.chunks.length);
-    updateTransportWordPlayActive(isPlaying ? uiStep : currentStep);
-    wordPlaySubtitleCycleActive = false;
-    resetWordPlaySubtitleMusicSpacing();
-    syncWordPlayUiVisibility();
+    transportSubtitleChunkCount = Math.max(1, model.chunks.length);
+    updateTransportSubtitleActive(isPlaying ? uiStep : currentStep);
+    subtitleCycleActive = false;
+    resetSubtitleMusicSpacing();
+    syncSubtitlesUiVisibility();
   }
 
   function stopTransportRaf() {
@@ -3588,8 +4307,8 @@
     seekToStep(step, { fromUser: true, viewStep: step });
     previewStepAtTransport(step);
     flashSamplePadStep(step);
-    if (wordPlayEnabled) {
-      updateTransportWordPlayActive(step);
+    if (subtitlesEnabled) {
+      updateTransportSubtitleActive(step);
     }
   }
 
@@ -3939,6 +4658,7 @@
         sustain: state.sustain,
         release: state.release,
       };
+      const stack = getDualOscParams(state);
 
       if (audible) {
         if (state.seqMode !== "roll") {
@@ -3960,6 +4680,7 @@
             volume: volume01,
             pan: pan01,
             env,
+            stack,
           });
         } else {
           for (let row = 0; row < NOTE_ROWS; row += 1) {
@@ -3982,6 +4703,7 @@
               volume: volume01,
               pan: pan01,
               env,
+              stack,
             });
           }
         }
@@ -4126,7 +4848,6 @@
     const grid = first.grid;
     const btn = first.stepButtons[stepIndex];
     if (!btn) return;
-
     const viewLeft = grid.scrollLeft;
     const viewRight = viewLeft + grid.clientWidth;
     const stepLeft = btn.offsetLeft;
@@ -4185,6 +4906,7 @@
   function renderTrackGrid(track) {
     const state = getOrInitState(track.key);
     const pattern = normalizePattern(state.pattern);
+    const ties = normalizeNoteTies(state.noteTies, pattern);
 
     const byRow = Array.isArray(track.stepButtonsByRow)
       ? track.stepButtonsByRow
@@ -4202,7 +4924,9 @@
           NOTE_MASK_ALL,
         );
         const on = (mask & bit) !== 0;
+        const tied = on && (ties[i] & bit) !== 0;
         btn.classList.toggle("is-on", on);
+        btn.classList.toggle("is-tied", tied);
         btn.classList.toggle("is-current", isPlaying && i === uiStep);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       }
@@ -4245,6 +4969,7 @@
 
     for (const state of states.values()) {
       state.pattern = normalizePattern(state.pattern);
+      state.noteTies = normalizeNoteTies(state.noteTies, state.pattern);
     }
     for (const track of tracks.values()) {
       buildGrid(track);
@@ -4265,7 +4990,7 @@
 
     updateTransportBar();
     rebuildTransportTicks();
-    rebuildTransportWordPlay();
+    rebuildTransportSubtitles();
     renderSamplePadGrid();
     renderSamplePadRoll();
   }
@@ -4293,12 +5018,6 @@
       buildGrid(track);
       renderTrack(track);
     }
-
-    syncGridScroll(null, sharedGridScrollLeft);
-
-    updateTransportBar();
-    rebuildTransportTicks();
-    rebuildTransportWordPlay();
     renderSamplePadGrid();
     renderSamplePadRoll();
   }
@@ -4311,6 +5030,10 @@
     track.el.classList.toggle("is-grid-collapsed", state.gridCollapsed);
     track.el.classList.toggle("is-seq-roll", state.seqMode === "roll");
     track.el.classList.toggle("is-seq-single", state.seqMode !== "roll");
+    track.el.classList.toggle(
+      "is-note-hold",
+      normalizeNoteMode(state.noteMode, "one-shot") === "hold",
+    );
     track.button.classList.toggle("is-muted", state.muted);
 
     track.muteBtn.setAttribute("aria-pressed", state.muted ? "true" : "false");
@@ -4337,6 +5060,68 @@
 
     track.tuneInput.value = String(tuneCents);
     track.tuneOut.value = String(tuneCents);
+
+    const dual = getDualOscParams(state);
+    track.oscBlendInput.value = String(dual.oscBlend);
+    track.oscBlendOut.value = String(dual.oscBlend);
+    track.osc1WaveSelect.value = dual.osc1Wave;
+    track.osc1LevelInput.value = String(dual.osc1Level);
+    track.osc1LevelOut.value = String(dual.osc1Level);
+    track.osc1OctaveInput.value = String(dual.osc1Octave);
+    track.osc1OctaveOut.value = String(dual.osc1Octave);
+    track.osc1DetuneInput.value = String(dual.osc1Detune);
+    track.osc1DetuneOut.value = String(dual.osc1Detune);
+    track.osc2WaveSelect.value = dual.osc2Wave;
+    track.osc2LevelInput.value = String(dual.osc2Level);
+    track.osc2LevelOut.value = String(dual.osc2Level);
+    track.osc2OctaveInput.value = String(dual.osc2Octave);
+    track.osc2OctaveOut.value = String(dual.osc2Octave);
+    track.osc2DetuneInput.value = String(dual.osc2Detune);
+    track.osc2DetuneOut.value = String(dual.osc2Detune);
+
+    const showDualFields = state.sound === DUAL_OSC_SOUND;
+    const activeDualTab =
+      state.dualTab === "osc1" || state.dualTab === "osc2" ? state.dualTab : "main";
+
+    track.dualTabBar.hidden = !showDualFields;
+    track.dualTabOsc1Btn.setAttribute(
+      "aria-pressed",
+      showDualFields && activeDualTab === "osc1" ? "true" : "false",
+    );
+    track.dualTabOsc2Btn.setAttribute(
+      "aria-pressed",
+      showDualFields && activeDualTab === "osc2" ? "true" : "false",
+    );
+    track.dualTabMainBtn.setAttribute(
+      "aria-pressed",
+      showDualFields && activeDualTab === "main" ? "true" : "false",
+    );
+
+    const showOsc1Tab = showDualFields && activeDualTab === "osc1";
+    const showOsc2Tab = showDualFields && activeDualTab === "osc2";
+    const showMainTab = !showDualFields || activeDualTab === "main";
+
+    track.oscBlendField.hidden = !(showDualFields && showMainTab);
+    track.osc1WaveField.hidden = !showOsc1Tab;
+    track.osc1LevelField.hidden = !showOsc1Tab;
+    track.osc1OctaveField.hidden = !showOsc1Tab;
+    track.osc1DetuneField.hidden = !showOsc1Tab;
+    track.osc2WaveField.hidden = !showOsc2Tab;
+    track.osc2LevelField.hidden = !showOsc2Tab;
+    track.osc2OctaveField.hidden = !showOsc2Tab;
+    track.osc2DetuneField.hidden = !showOsc2Tab;
+
+    track.seqModeField.hidden = !showMainTab;
+    track.noteModeField.hidden = !showMainTab;
+    track.pitchField.hidden = !showMainTab;
+    track.tuneField.hidden = !showMainTab;
+    track.offsetField.hidden = !showMainTab;
+    track.holdField.hidden = !showMainTab;
+    track.attackField.hidden = !showMainTab;
+    track.decayField.hidden = !showMainTab;
+    track.sustainField.hidden = !showMainTab;
+    track.releaseField.hidden = !showMainTab;
+    track.swingField.hidden = !showMainTab;
 
     if (!autoExpandEnabled) {
       track.el.classList.remove("is-hover-peek");
@@ -4388,6 +5173,9 @@
 
     if (track.seqModeSelect) {
       track.seqModeSelect.value = state.seqMode === "roll" ? "roll" : "single";
+    }
+    if (track.noteModeSelect) {
+      track.noteModeSelect.value = normalizeNoteMode(state.noteMode, "one-shot");
     }
 
     renderTrackRollLabels(track);
@@ -4490,6 +5278,9 @@
         btn.dataset.row = String(row);
         if (row === beatRow && i % groupLen === 0) {
           btn.dataset.beat = String(Math.floor(i / groupLen) + 1);
+        }
+        if (i > 0 && i % groupLen === 0) {
+          btn.dataset.beatBreakBefore = "true";
         }
         btn.setAttribute("aria-pressed", "false");
 
@@ -4693,6 +5484,30 @@
     seqModeField.appendChild(seqModeSelect);
     seqModeField.appendChild(seqModeSpacer);
 
+    const noteModeField = document.createElement("label");
+    noteModeField.className = "field noteModeField";
+    const noteModeLabel = document.createElement("span");
+    noteModeLabel.className = "fieldLabel";
+    noteModeLabel.textContent = "length";
+    const noteModeSelect = document.createElement("select");
+    noteModeSelect.className = "noteModeSelect";
+    noteModeSelect.setAttribute("aria-label", "note mode");
+    {
+      const optOneShot = document.createElement("option");
+      optOneShot.value = "one-shot";
+      optOneShot.textContent = "one-shot";
+      const optHold = document.createElement("option");
+      optHold.value = "hold";
+      optHold.textContent = "hold note";
+      noteModeSelect.appendChild(optOneShot);
+      noteModeSelect.appendChild(optHold);
+    }
+    const noteModeSpacer = document.createElement("span");
+    noteModeSpacer.setAttribute("aria-hidden", "true");
+    noteModeField.appendChild(noteModeLabel);
+    noteModeField.appendChild(noteModeSelect);
+    noteModeField.appendChild(noteModeSpacer);
+
     const tuneField = document.createElement("label");
     tuneField.className = "field tuneField";
     const tuneLabel = document.createElement("span");
@@ -4712,6 +5527,127 @@
     tuneField.appendChild(tuneLabel);
     tuneField.appendChild(tuneInput);
     tuneField.appendChild(tuneOut);
+
+    function createStackWaveField(labelText, ariaLabel) {
+      const field = document.createElement("label");
+      field.className = "field";
+      const label = document.createElement("span");
+      label.className = "fieldLabel";
+      label.textContent = labelText;
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", ariaLabel);
+      for (const wave of OSC_WAVE_OPTIONS) {
+        const optionEl = document.createElement("option");
+        optionEl.value = wave;
+        optionEl.textContent = wave;
+        select.appendChild(optionEl);
+      }
+      const spacer = document.createElement("span");
+      spacer.setAttribute("aria-hidden", "true");
+      field.appendChild(label);
+      field.appendChild(select);
+      field.appendChild(spacer);
+      return { field, input: select, out: null };
+    }
+
+    function createStackRangeField(labelText, min, max, step, ariaLabel) {
+      const field = document.createElement("label");
+      field.className = "field";
+      const label = document.createElement("span");
+      label.className = "fieldLabel";
+      label.textContent = labelText;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = String(min);
+      input.max = String(max);
+      input.step = String(step);
+      input.setAttribute("aria-label", ariaLabel);
+      const out = document.createElement("input");
+      out.className = "num";
+      out.type = "number";
+      out.min = String(min);
+      out.max = String(max);
+      out.step = String(step);
+      out.setAttribute("aria-label", ariaLabel);
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(out);
+      return { field, input, out };
+    }
+
+    const dualTabBar = document.createElement("div");
+    dualTabBar.className = "trackDualTabs";
+
+    const dualTabOsc1Btn = document.createElement("button");
+    dualTabOsc1Btn.type = "button";
+    dualTabOsc1Btn.className = "btn";
+    dualTabOsc1Btn.textContent = "oscillator 1";
+
+    const dualTabOsc2Btn = document.createElement("button");
+    dualTabOsc2Btn.type = "button";
+    dualTabOsc2Btn.className = "btn";
+    dualTabOsc2Btn.textContent = "oscillator 2";
+
+    const dualTabMainBtn = document.createElement("button");
+    dualTabMainBtn.type = "button";
+    dualTabMainBtn.className = "btn";
+    dualTabMainBtn.textContent = "mix";
+
+    dualTabBar.appendChild(dualTabOsc1Btn);
+    dualTabBar.appendChild(dualTabOsc2Btn);
+    dualTabBar.appendChild(dualTabMainBtn);
+
+    const oscBlendControls = createStackRangeField(
+      "blend",
+      -100,
+      100,
+      1,
+      "osc blend",
+    );
+    const osc1WaveControls = createStackWaveField("wave", "oscillator 1 wave");
+    const osc1LevelControls = createStackRangeField(
+      "level",
+      0,
+      127,
+      1,
+      "oscillator 1 level",
+    );
+    const osc1OctaveControls = createStackRangeField(
+      "octave",
+      -2,
+      2,
+      1,
+      "oscillator 1 octave",
+    );
+    const osc1DetuneControls = createStackRangeField(
+      "tune",
+      -100,
+      100,
+      1,
+      "oscillator 1 tune cents",
+    );
+    const osc2WaveControls = createStackWaveField("wave", "oscillator 2 wave");
+    const osc2LevelControls = createStackRangeField(
+      "level",
+      0,
+      127,
+      1,
+      "oscillator 2 level",
+    );
+    const osc2OctaveControls = createStackRangeField(
+      "octave",
+      -2,
+      2,
+      1,
+      "oscillator 2 octave",
+    );
+    const osc2DetuneControls = createStackRangeField(
+      "tune",
+      -100,
+      100,
+      1,
+      "oscillator 2 tune cents",
+    );
 
     const holdField = document.createElement("label");
     holdField.className = "field holdField";
@@ -4912,16 +5848,36 @@
 
     const sliderGrid = document.createElement("div");
     sliderGrid.className = "grid trackSliderGrid";
+    sliderGrid.appendChild(dualTabBar);
+
+    // Main sequencing layout: left column = mode/pitch/length/tune/offset/swing,
+    // right column = attack/decay/sustain/release/hold.
     sliderGrid.appendChild(seqModeField);
+    sliderGrid.appendChild(attackField);
+
     sliderGrid.appendChild(pitchField);
+    sliderGrid.appendChild(decayField);
+
+    sliderGrid.appendChild(noteModeField);
+    sliderGrid.appendChild(sustainField);
+
     sliderGrid.appendChild(tuneField);
+    sliderGrid.appendChild(releaseField);
+
     sliderGrid.appendChild(offsetField);
     sliderGrid.appendChild(holdField);
-    sliderGrid.appendChild(attackField);
-    sliderGrid.appendChild(decayField);
-    sliderGrid.appendChild(sustainField);
-    sliderGrid.appendChild(releaseField);
+
     sliderGrid.appendChild(swingField);
+
+    sliderGrid.appendChild(oscBlendControls.field);
+    sliderGrid.appendChild(osc1WaveControls.field);
+    sliderGrid.appendChild(osc1LevelControls.field);
+    sliderGrid.appendChild(osc1OctaveControls.field);
+    sliderGrid.appendChild(osc1DetuneControls.field);
+    sliderGrid.appendChild(osc2WaveControls.field);
+    sliderGrid.appendChild(osc2LevelControls.field);
+    sliderGrid.appendChild(osc2OctaveControls.field);
+    sliderGrid.appendChild(osc2DetuneControls.field);
 
     function setCollapsed(collapsed) {
       el.classList.toggle("is-collapsed", Boolean(collapsed));
@@ -5007,10 +5963,42 @@
       pitchOctaveDownBtn,
       pitchOctaveOut,
       pitchOctaveUpBtn,
+      seqModeField,
       seqModeSelect,
+      noteModeField,
+      noteModeSelect,
       tuneField,
       tuneInput,
       tuneOut,
+      dualTabBar,
+      dualTabOsc1Btn,
+      dualTabOsc2Btn,
+      dualTabMainBtn,
+      oscBlendField: oscBlendControls.field,
+      oscBlendInput: oscBlendControls.input,
+      oscBlendOut: oscBlendControls.out,
+      osc1WaveField: osc1WaveControls.field,
+      osc1WaveSelect: osc1WaveControls.input,
+      osc1LevelField: osc1LevelControls.field,
+      osc1LevelInput: osc1LevelControls.input,
+      osc1LevelOut: osc1LevelControls.out,
+      osc1OctaveField: osc1OctaveControls.field,
+      osc1OctaveInput: osc1OctaveControls.input,
+      osc1OctaveOut: osc1OctaveControls.out,
+      osc1DetuneField: osc1DetuneControls.field,
+      osc1DetuneInput: osc1DetuneControls.input,
+      osc1DetuneOut: osc1DetuneControls.out,
+      osc2WaveField: osc2WaveControls.field,
+      osc2WaveSelect: osc2WaveControls.input,
+      osc2LevelField: osc2LevelControls.field,
+      osc2LevelInput: osc2LevelControls.input,
+      osc2LevelOut: osc2LevelControls.out,
+      osc2OctaveField: osc2OctaveControls.field,
+      osc2OctaveInput: osc2OctaveControls.input,
+      osc2OctaveOut: osc2OctaveControls.out,
+      osc2DetuneField: osc2DetuneControls.field,
+      osc2DetuneInput: osc2DetuneControls.input,
+      osc2DetuneOut: osc2DetuneControls.out,
       holdField,
       holdInput,
       holdOut,
@@ -5032,6 +6020,22 @@
       previewRollRow: null,
       rollPreviewDragActive: false,
       rollPreviewLastRow: null,
+      rollPaintActive: false,
+      rollPaintPointerId: null,
+      rollPaintMode: null,
+      rollPaintSuppressClick: false,
+      rollPaintLastStep: null,
+      rollPaintLastRow: null,
+      rollPaintStartStep: null,
+      rollPaintStartRow: null,
+      rollPaintStartOn: false,
+      rollPaintMoved: false,
+      rollPaintStartAt: 0,
+      rollPaintBasePattern: null,
+      rollPaintBaseTies: null,
+      rollPaintStretchAnchorStep: null,
+      rollPaintStretchSourceStart: null,
+      rollPaintStretchSourceEnd: null,
       noteLabelEls: [],
       stepButtonsByRow: [],
       grid,
@@ -5081,14 +6085,18 @@
         sustain: s.sustain,
         release: s.release,
       };
+      const stack = getDualOscParams(s);
+      const noteMode = normalizeNoteMode(s.noteMode, "one-shot");
+      const previewDuration = noteMode === "hold" ? 1.1 : 0.12;
 
       triggerSound(s.sound, audio.currentTime + 0.001, {
-        duration: 0.12,
+        duration: previewDuration,
         frequency,
         pitch: pitchWithTune,
         volume: volume01,
         pan: pan01,
         env,
+        stack,
       });
 
       track.rollPreviewLastRow = rowIndex;
@@ -5165,6 +6173,8 @@
         );
       }
 
+      s.noteTies = normalizeNoteTies(s.noteTies, s.pattern);
+
       s.seqMode = nextMode;
       buildGrid(track);
       renderTrack(track);
@@ -5172,12 +6182,240 @@
       scheduleSettingsPanelLayout();
     });
 
-    rollRows.addEventListener("click", (event) => {
-      const target =
-        event && event.target instanceof Element ? event.target : null;
-      if (!target) return;
-      const btn = target.closest("button.step");
+    noteModeSelect.addEventListener("change", () => {
+      const s = getOrInitState(key);
+      s.noteMode = normalizeNoteMode(noteModeSelect.value, s.noteMode);
+      renderTrackControls(track);
+      renderTrackGrid(track);
+    });
+
+    const getStepButtonFromEvent = (event) => {
+      const target = event && event.target instanceof Element ? event.target : null;
+      const directBtn = target ? target.closest("button.step") : null;
+      if (directBtn) return directBtn;
+
+      if (
+        event &&
+        Number.isFinite(event.clientX) &&
+        Number.isFinite(event.clientY)
+      ) {
+        const hovered = document.elementFromPoint(event.clientX, event.clientY);
+        if (hovered instanceof Element) return hovered.closest("button.step");
+      }
+      return null;
+    };
+
+    const paintStepButton = (
+      btn,
+      paintMode,
+      { linkFromStep = null, linkFromRow = null } = {},
+    ) => {
+      if (!btn || !paintMode) return;
+      const stepIndex = Number(btn.dataset.step);
+      const rowIndex = Number(btn.dataset.row);
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
+
+      const s = getOrInitState(key);
+      s.pattern = normalizePattern(s.pattern);
+      const ties = normalizeNoteTies(s.noteTies, s.pattern).slice();
+      const prev = clampNumber(
+        Math.round(numberOrFallback(s.pattern[stepIndex], 0)),
+        0,
+        NOTE_MASK_ALL,
+      );
+      const bit = 1 << rowIndex;
+      if (paintMode === "draw-linked") {
+        let next = prev | bit;
+
+        if (
+          Number.isFinite(linkFromStep) &&
+          Number.isFinite(linkFromRow) &&
+          linkFromRow === rowIndex &&
+          linkFromStep !== stepIndex
+        ) {
+          const from = Math.min(linkFromStep, stepIndex);
+          const to = Math.max(linkFromStep, stepIndex);
+          for (let i = from; i <= to; i += 1) {
+            const m = clampNumber(
+              Math.round(numberOrFallback(s.pattern[i], 0)),
+              0,
+              NOTE_MASK_ALL,
+            );
+            s.pattern[i] = m | bit;
+            if (i > from) ties[i] = (ties[i] | bit) & NOTE_MASK_ALL;
+          }
+          next = clampNumber(
+            Math.round(numberOrFallback(s.pattern[stepIndex], 0)),
+            0,
+            NOTE_MASK_ALL,
+          );
+        } else {
+          ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+          s.pattern[stepIndex] = next;
+        }
+
+        if (next !== prev) {
+          if (stepIndex + 1 < ties.length) {
+            const nextMask = clampNumber(
+              Math.round(numberOrFallback(s.pattern[stepIndex + 1], 0)),
+              0,
+              NOTE_MASK_ALL,
+            );
+            if ((nextMask & bit) !== 0 && !Number.isFinite(linkFromStep)) {
+              ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+            }
+          }
+        }
+      } else if (paintMode === "draw-single") {
+        const next = prev | bit;
+        s.pattern[stepIndex] = next;
+        ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+        if (stepIndex + 1 < ties.length) {
+          ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+        }
+      } else {
+        const next = prev & ~bit;
+        if (next === prev) return;
+        s.pattern[stepIndex] = next;
+        ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+        if (stepIndex + 1 < ties.length) {
+          ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+        }
+      }
+
+      s.noteTies = normalizeNoteTies(ties, s.pattern);
+      renderTrackGrid(track);
+    };
+
+    const getStepButtonAt = (stepIndex, rowIndex) => {
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return null;
+      const rows = Array.isArray(track.stepButtonsByRow) ? track.stepButtonsByRow : [];
+      const rowButtons = rows[rowIndex];
+      if (!Array.isArray(rowButtons)) return null;
+      return rowButtons[stepIndex] || null;
+    };
+
+    const toggleStepButton = (btn) => {
       if (!btn) return;
+      const stepIndex = Number(btn.dataset.step);
+      const rowIndex = Number(btn.dataset.row);
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
+
+      const s = getOrInitState(key);
+      s.pattern = normalizePattern(s.pattern);
+      const ties = normalizeNoteTies(s.noteTies, s.pattern).slice();
+      const prev = clampNumber(
+        Math.round(numberOrFallback(s.pattern[stepIndex], 0)),
+        0,
+        NOTE_MASK_ALL,
+      );
+      const bit = 1 << rowIndex;
+      const next = prev ^ bit;
+      s.pattern[stepIndex] = next;
+      ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+      if (stepIndex + 1 < ties.length) {
+        ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+      }
+      s.noteTies = normalizeNoteTies(ties, s.pattern);
+      renderTrackGrid(track);
+    };
+
+    const findRowSegmentBounds = (pattern, ties, rowBit, stepIndex) => {
+      const safeStep = clampNumber(Math.round(stepIndex), 0, stepsCount - 1);
+      if ((pattern[safeStep] & rowBit) === 0) {
+        return { start: safeStep, end: safeStep };
+      }
+
+      let start = safeStep;
+      while (
+        start > 0 &&
+        (pattern[start - 1] & rowBit) !== 0 &&
+        (ties[start] & rowBit) !== 0
+      ) {
+        start -= 1;
+      }
+
+      let end = safeStep;
+      while (
+        end + 1 < stepsCount &&
+        (pattern[end + 1] & rowBit) !== 0 &&
+        (ties[end + 1] & rowBit) !== 0
+      ) {
+        end += 1;
+      }
+
+      return { start, end };
+    };
+
+    const applyStretchFromGesture = (targetStepRaw) => {
+      if (
+        !Number.isFinite(track.rollPaintStartRow) ||
+        !Number.isFinite(track.rollPaintStretchAnchorStep)
+      ) {
+        return;
+      }
+
+      const s = getOrInitState(key);
+      const rowIndex = clampNumber(Math.round(track.rollPaintStartRow), 0, NOTE_ROWS - 1);
+      const bit = 1 << rowIndex;
+      const targetStep = clampNumber(Math.round(targetStepRaw), 0, stepsCount - 1);
+
+      const basePattern = Array.isArray(track.rollPaintBasePattern)
+        ? track.rollPaintBasePattern.slice()
+        : normalizePattern(s.pattern).slice();
+      const baseTies = Array.isArray(track.rollPaintBaseTies)
+        ? track.rollPaintBaseTies.slice()
+        : normalizeNoteTies(s.noteTies, s.pattern).slice();
+
+      const pattern = basePattern.slice();
+      const ties = baseTies.slice();
+
+      const sourceStart = Number.isFinite(track.rollPaintStretchSourceStart)
+        ? clampNumber(Math.round(track.rollPaintStretchSourceStart), 0, stepsCount - 1)
+        : null;
+      const sourceEnd = Number.isFinite(track.rollPaintStretchSourceEnd)
+        ? clampNumber(Math.round(track.rollPaintStretchSourceEnd), 0, stepsCount - 1)
+        : null;
+
+      if (sourceStart != null && sourceEnd != null) {
+        for (let i = sourceStart; i <= sourceEnd; i += 1) {
+          pattern[i] = pattern[i] & ~bit;
+          ties[i] = ties[i] & ~bit;
+        }
+        ties[sourceStart] = ties[sourceStart] & ~bit;
+        if (sourceEnd + 1 < ties.length) {
+          ties[sourceEnd + 1] = ties[sourceEnd + 1] & ~bit;
+        }
+      }
+
+      const anchorStep = clampNumber(
+        Math.round(track.rollPaintStretchAnchorStep),
+        0,
+        stepsCount - 1,
+      );
+      const from = Math.min(anchorStep, targetStep);
+      const to = Math.max(anchorStep, targetStep);
+
+      for (let i = from; i <= to; i += 1) {
+        pattern[i] = pattern[i] | bit;
+        if (i > from) ties[i] = ties[i] | bit;
+      }
+      ties[from] = ties[from] & ~bit;
+      if (to + 1 < ties.length) ties[to + 1] = ties[to + 1] & ~bit;
+
+      s.pattern = normalizePattern(pattern);
+      s.noteTies = normalizeNoteTies(ties, s.pattern);
+      renderTrackGrid(track);
+    };
+
+    rollRows.addEventListener("pointerdown", (event) => {
+      if (!event) return;
+      const isTouch = String(event.pointerType || "") === "touch";
+      if (!isTouch && event.button !== 0) return;
+
+      const btn = getStepButtonFromEvent(event);
+      if (!btn) return;
+
       const stepIndex = Number(btn.dataset.step);
       const rowIndex = Number(btn.dataset.row);
       if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
@@ -5190,8 +6428,193 @@
         NOTE_MASK_ALL,
       );
       const bit = 1 << rowIndex;
-      s.pattern[stepIndex] = prev ^ bit;
-      renderTrackGrid(track);
+      track.rollPaintActive = true;
+      track.rollPaintPointerId = event.pointerId;
+      track.rollPaintMode = null;
+      track.rollPaintSuppressClick = true;
+      track.rollPaintLastStep = stepIndex;
+      track.rollPaintLastRow = rowIndex;
+      track.rollPaintStartStep = stepIndex;
+      track.rollPaintStartRow = rowIndex;
+      track.rollPaintStartOn = (prev & bit) !== 0;
+      track.rollPaintMoved = false;
+      track.rollPaintStartAt =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      track.rollPaintBasePattern = null;
+      track.rollPaintBaseTies = null;
+      track.rollPaintStretchAnchorStep = null;
+      track.rollPaintStretchSourceStart = null;
+      track.rollPaintStretchSourceEnd = null;
+
+      if (typeof rollRows.setPointerCapture === "function") {
+        try {
+          rollRows.setPointerCapture(event.pointerId);
+        } catch {}
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    rollRows.addEventListener("pointermove", (event) => {
+      if (!track.rollPaintActive) return;
+      if (!event || track.rollPaintPointerId !== event.pointerId) return;
+      if (String(event.pointerType || "") === "mouse" && event.buttons === 0) {
+        track.rollPaintActive = false;
+        track.rollPaintPointerId = null;
+        track.rollPaintMode = null;
+        track.rollPaintLastStep = null;
+        track.rollPaintLastRow = null;
+        track.rollPaintStartStep = null;
+        track.rollPaintStartRow = null;
+        track.rollPaintStartOn = false;
+        track.rollPaintMoved = false;
+        track.rollPaintStartAt = 0;
+        track.rollPaintBasePattern = null;
+        track.rollPaintBaseTies = null;
+        track.rollPaintStretchAnchorStep = null;
+        track.rollPaintStretchSourceStart = null;
+        track.rollPaintStretchSourceEnd = null;
+        return;
+      }
+
+      const btn = getStepButtonFromEvent(event);
+      if (!btn) return;
+
+      const stepIndex = Number(btn.dataset.step);
+      const rowIndex = Number(btn.dataset.row);
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
+
+      if (
+        !track.rollPaintMoved &&
+        stepIndex === track.rollPaintStartStep &&
+        rowIndex === track.rollPaintStartRow
+      ) {
+        return;
+      }
+
+      const nowMs =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      const heldLongEnough =
+        Number.isFinite(track.rollPaintStartAt) &&
+        nowMs - track.rollPaintStartAt >= NOTE_DRAG_LONG_HOLD_MS;
+
+      if (!track.rollPaintMode) {
+        if (track.rollPaintStartOn) {
+          track.rollPaintMode = "erase";
+          const startBtn = getStepButtonAt(
+            track.rollPaintStartStep,
+            track.rollPaintStartRow,
+          );
+          paintStepButton(startBtn, "erase");
+        } else if (heldLongEnough && rowIndex === track.rollPaintStartRow) {
+          const s = getOrInitState(key);
+          s.pattern = normalizePattern(s.pattern);
+          s.noteTies = normalizeNoteTies(s.noteTies, s.pattern);
+
+          const bit = 1 << rowIndex;
+          track.rollPaintBasePattern = s.pattern.slice();
+          track.rollPaintBaseTies = s.noteTies.slice();
+
+          const bounds = findRowSegmentBounds(
+            track.rollPaintBasePattern,
+            track.rollPaintBaseTies,
+            bit,
+            track.rollPaintStartStep,
+          );
+          track.rollPaintStretchAnchorStep = bounds.start;
+          track.rollPaintStretchSourceStart = bounds.start;
+          track.rollPaintStretchSourceEnd = bounds.end;
+          track.rollPaintMode = "stretch";
+        } else {
+          track.rollPaintMode = "draw-single";
+          const startBtn = getStepButtonAt(
+            track.rollPaintStartStep,
+            track.rollPaintStartRow,
+          );
+          paintStepButton(startBtn, "draw-single");
+        }
+      }
+
+      if (track.rollPaintMode === "stretch") {
+        if (rowIndex !== track.rollPaintStartRow) return;
+        track.rollPaintMoved = true;
+        applyStretchFromGesture(stepIndex);
+        if (Number.isFinite(stepIndex)) track.rollPaintLastStep = stepIndex;
+        if (Number.isFinite(rowIndex)) track.rollPaintLastRow = rowIndex;
+        event.preventDefault();
+        return;
+      }
+
+      track.rollPaintMoved = true;
+
+      paintStepButton(btn, track.rollPaintMode, {
+        linkFromStep:
+          track.rollPaintMode === "draw-linked" ? track.rollPaintLastStep : null,
+        linkFromRow:
+          track.rollPaintMode === "draw-linked" ? track.rollPaintLastRow : null,
+      });
+      if (Number.isFinite(stepIndex)) track.rollPaintLastStep = stepIndex;
+      if (Number.isFinite(rowIndex)) track.rollPaintLastRow = rowIndex;
+      event.preventDefault();
+    });
+
+    const stopRollPaint = (event) => {
+      if (!track.rollPaintActive) return;
+      if (
+        event &&
+        track.rollPaintPointerId != null &&
+        Number.isFinite(event.pointerId) &&
+        track.rollPaintPointerId !== event.pointerId
+      ) {
+        return;
+      }
+
+      if (!track.rollPaintMoved) {
+        const startBtn = getStepButtonAt(
+          track.rollPaintStartStep,
+          track.rollPaintStartRow,
+        );
+        toggleStepButton(startBtn);
+      }
+
+      track.rollPaintActive = false;
+      track.rollPaintPointerId = null;
+      track.rollPaintMode = null;
+      track.rollPaintLastStep = null;
+      track.rollPaintLastRow = null;
+      track.rollPaintStartStep = null;
+      track.rollPaintStartRow = null;
+      track.rollPaintStartOn = false;
+      track.rollPaintMoved = false;
+      track.rollPaintStartAt = 0;
+      track.rollPaintBasePattern = null;
+      track.rollPaintBaseTies = null;
+      track.rollPaintStretchAnchorStep = null;
+      track.rollPaintStretchSourceStart = null;
+      track.rollPaintStretchSourceEnd = null;
+    };
+
+    rollRows.addEventListener("pointerup", stopRollPaint);
+    rollRows.addEventListener("pointercancel", stopRollPaint);
+    rollRows.addEventListener("lostpointercapture", stopRollPaint);
+
+    rollRows.addEventListener("click", (event) => {
+      if (track.rollPaintSuppressClick) {
+        track.rollPaintSuppressClick = false;
+        return;
+      }
+
+      const target =
+        event && event.target instanceof Element ? event.target : null;
+      if (!target) return;
+      const btn = target.closest("button.step");
+      if (!btn) return;
+      toggleStepButton(btn);
     });
 
     el.addEventListener("pointerenter", (event) => {
@@ -5228,34 +6651,103 @@
         MAX_STEPS,
       );
       s.pattern = new Array(nextLen).fill(0);
+      s.noteTies = new Array(nextLen).fill(0);
       renderTrackGrid(track);
     });
 
     soundSelect.addEventListener("change", () => {
       const s = getOrInitState(key);
       const prevSound = s.sound;
-      const nextSound = soundSelect.value;
+      const prevMode = s.seqMode;
+      const nextSound = normalizeSoundKind(soundSelect.value, prevSound);
 
-      const prevDefaults = getEnvDefaultsForSound(prevSound);
-      const nextDefaults = getEnvDefaultsForSound(nextSound);
+      const prevEnvDefaults = getEnvDefaultsForSound(prevSound);
+      const nextEnvDefaults = getEnvDefaultsForSound(nextSound);
+      const prevSoundDefaults = getSoundDefaultsForSound(prevSound);
+      const nextSoundDefaults = getSoundDefaultsForSound(nextSound);
       const envLooksDefault =
-        s.attack === prevDefaults.attack &&
-        s.hold === prevDefaults.hold &&
-        s.decay === prevDefaults.decay &&
-        s.sustain === prevDefaults.sustain &&
-        s.release === prevDefaults.release;
+        s.attack === prevEnvDefaults.attack &&
+        s.hold === prevEnvDefaults.hold &&
+        s.decay === prevEnvDefaults.decay &&
+        s.sustain === prevEnvDefaults.sustain &&
+        s.release === prevEnvDefaults.release;
+
+      const soundLooksDefault =
+        s.pitch === prevSoundDefaults.pitch &&
+        s.tuneCents === prevSoundDefaults.tuneCents &&
+        s.volume === prevSoundDefaults.volume &&
+        s.pan === prevSoundDefaults.pan &&
+        s.swing === prevSoundDefaults.swing &&
+        s.offsetMs === prevSoundDefaults.offsetMs &&
+        s.muted === prevSoundDefaults.muted &&
+        s.solo === prevSoundDefaults.solo &&
+        s.collapsed === prevSoundDefaults.collapsed &&
+        s.gridCollapsed === prevSoundDefaults.gridCollapsed &&
+        s.seqMode === prevSoundDefaults.seqMode &&
+        s.noteMode === prevSoundDefaults.noteMode &&
+        s.osc1Wave === prevSoundDefaults.osc1Wave &&
+        s.osc1Level === prevSoundDefaults.osc1Level &&
+        s.osc1Octave === prevSoundDefaults.osc1Octave &&
+        s.osc1Detune === prevSoundDefaults.osc1Detune &&
+        s.osc2Wave === prevSoundDefaults.osc2Wave &&
+        s.osc2Level === prevSoundDefaults.osc2Level &&
+        s.osc2Octave === prevSoundDefaults.osc2Octave &&
+        s.osc2Detune === prevSoundDefaults.osc2Detune &&
+        s.oscBlend === prevSoundDefaults.oscBlend;
 
       s.sound = nextSound;
       if (envLooksDefault) {
-        s.attack = nextDefaults.attack;
-        s.hold = nextDefaults.hold;
-        s.decay = nextDefaults.decay;
-        s.sustain = nextDefaults.sustain;
-        s.release = nextDefaults.release;
+        s.attack = nextEnvDefaults.attack;
+        s.hold = nextEnvDefaults.hold;
+        s.decay = nextEnvDefaults.decay;
+        s.sustain = nextEnvDefaults.sustain;
+        s.release = nextEnvDefaults.release;
       }
-      renderTrackControls(track);
-      renderTrackGrid(track);
+      if (soundLooksDefault) {
+        s.pitch = nextSoundDefaults.pitch;
+        s.tuneCents = nextSoundDefaults.tuneCents;
+        s.volume = nextSoundDefaults.volume;
+        s.pan = nextSoundDefaults.pan;
+        s.swing = nextSoundDefaults.swing;
+        s.offsetMs = nextSoundDefaults.offsetMs;
+        s.muted = nextSoundDefaults.muted;
+        s.solo = nextSoundDefaults.solo;
+        s.collapsed = nextSoundDefaults.collapsed;
+        s.gridCollapsed = nextSoundDefaults.gridCollapsed;
+        s.seqMode = nextSoundDefaults.seqMode;
+        s.noteMode = nextSoundDefaults.noteMode;
+        s.osc1Wave = nextSoundDefaults.osc1Wave;
+        s.osc1Level = nextSoundDefaults.osc1Level;
+        s.osc1Octave = nextSoundDefaults.osc1Octave;
+        s.osc1Detune = nextSoundDefaults.osc1Detune;
+        s.osc2Wave = nextSoundDefaults.osc2Wave;
+        s.osc2Level = nextSoundDefaults.osc2Level;
+        s.osc2Octave = nextSoundDefaults.osc2Octave;
+        s.osc2Detune = nextSoundDefaults.osc2Detune;
+        s.oscBlend = nextSoundDefaults.oscBlend;
+      }
+      if (s.sound !== DUAL_OSC_SOUND) s.dualTab = "main";
+      if (s.seqMode !== prevMode) {
+        buildGrid(track);
+        renderTrack(track);
+        syncGridScroll(null, sharedGridScrollLeft);
+        scheduleSettingsPanelLayout();
+      } else {
+        renderTrackControls(track);
+        renderTrackGrid(track);
+      }
     });
+
+    function setDualTab(tab) {
+      const s = getOrInitState(key);
+      if (tab !== "osc1" && tab !== "osc2" && tab !== "main") return;
+      s.dualTab = tab;
+      renderTrackControls(track);
+    }
+
+    track.dualTabOsc1Btn.addEventListener("click", () => setDualTab("osc1"));
+    track.dualTabOsc2Btn.addEventListener("click", () => setDualTab("osc2"));
+    track.dualTabMainBtn.addEventListener("click", () => setDualTab("main"));
 
     volumeInput.addEventListener("input", () => {
       const s = getOrInitState(key);
@@ -5380,6 +6872,172 @@
         100,
       );
       tuneInput.value = String(s.tuneCents);
+      renderTrackControls(track);
+    });
+
+    track.osc1WaveSelect.addEventListener("change", () => {
+      const s = getOrInitState(key);
+      s.osc1Wave = normalizeOscWave(track.osc1WaveSelect.value, s.osc1Wave);
+      renderTrackControls(track);
+    });
+
+    track.osc1LevelInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc1Level = clampNumber(
+        numberOrFallback(track.osc1LevelInput.value, s.osc1Level),
+        0,
+        127,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc1LevelOut.addEventListener("input", () => {
+      if (track.osc1LevelOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc1Level = clampNumber(
+        numberOrFallback(track.osc1LevelOut.value, s.osc1Level),
+        0,
+        127,
+      );
+      track.osc1LevelInput.value = String(s.osc1Level);
+      renderTrackControls(track);
+    });
+
+    track.osc1OctaveInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc1Octave = clampNumber(
+        numberOrFallback(track.osc1OctaveInput.value, s.osc1Octave),
+        -2,
+        2,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc1OctaveOut.addEventListener("input", () => {
+      if (track.osc1OctaveOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc1Octave = clampNumber(
+        numberOrFallback(track.osc1OctaveOut.value, s.osc1Octave),
+        -2,
+        2,
+      );
+      track.osc1OctaveInput.value = String(s.osc1Octave);
+      renderTrackControls(track);
+    });
+
+    track.osc1DetuneInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc1Detune = clampNumber(
+        numberOrFallback(track.osc1DetuneInput.value, s.osc1Detune),
+        -100,
+        100,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc1DetuneOut.addEventListener("input", () => {
+      if (track.osc1DetuneOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc1Detune = clampNumber(
+        numberOrFallback(track.osc1DetuneOut.value, s.osc1Detune),
+        -100,
+        100,
+      );
+      track.osc1DetuneInput.value = String(s.osc1Detune);
+      renderTrackControls(track);
+    });
+
+    track.osc2WaveSelect.addEventListener("change", () => {
+      const s = getOrInitState(key);
+      s.osc2Wave = normalizeOscWave(track.osc2WaveSelect.value, s.osc2Wave);
+      renderTrackControls(track);
+    });
+
+    track.osc2LevelInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc2Level = clampNumber(
+        numberOrFallback(track.osc2LevelInput.value, s.osc2Level),
+        0,
+        127,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc2LevelOut.addEventListener("input", () => {
+      if (track.osc2LevelOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc2Level = clampNumber(
+        numberOrFallback(track.osc2LevelOut.value, s.osc2Level),
+        0,
+        127,
+      );
+      track.osc2LevelInput.value = String(s.osc2Level);
+      renderTrackControls(track);
+    });
+
+    track.osc2OctaveInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc2Octave = clampNumber(
+        numberOrFallback(track.osc2OctaveInput.value, s.osc2Octave),
+        -2,
+        2,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc2OctaveOut.addEventListener("input", () => {
+      if (track.osc2OctaveOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc2Octave = clampNumber(
+        numberOrFallback(track.osc2OctaveOut.value, s.osc2Octave),
+        -2,
+        2,
+      );
+      track.osc2OctaveInput.value = String(s.osc2Octave);
+      renderTrackControls(track);
+    });
+
+    track.osc2DetuneInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.osc2Detune = clampNumber(
+        numberOrFallback(track.osc2DetuneInput.value, s.osc2Detune),
+        -100,
+        100,
+      );
+      renderTrackControls(track);
+    });
+
+    track.osc2DetuneOut.addEventListener("input", () => {
+      if (track.osc2DetuneOut.value === "") return;
+      const s = getOrInitState(key);
+      s.osc2Detune = clampNumber(
+        numberOrFallback(track.osc2DetuneOut.value, s.osc2Detune),
+        -100,
+        100,
+      );
+      track.osc2DetuneInput.value = String(s.osc2Detune);
+      renderTrackControls(track);
+    });
+
+    track.oscBlendInput.addEventListener("input", () => {
+      const s = getOrInitState(key);
+      s.oscBlend = clampNumber(
+        numberOrFallback(track.oscBlendInput.value, s.oscBlend),
+        -100,
+        100,
+      );
+      renderTrackControls(track);
+    });
+
+    track.oscBlendOut.addEventListener("input", () => {
+      if (track.oscBlendOut.value === "") return;
+      const s = getOrInitState(key);
+      s.oscBlend = clampNumber(
+        numberOrFallback(track.oscBlendOut.value, s.oscBlend),
+        -100,
+        100,
+      );
+      track.oscBlendInput.value = String(s.oscBlend);
       renderTrackControls(track);
     });
 
@@ -5716,10 +7374,61 @@
     osc.stop(endTime + 0.05);
   }
 
+  function triggerDualOsc(time, duration, frequency, volume, env, pan = 0, stack = {}) {
+    const safeDuration = Math.max(0.04, duration);
+    const safeFrequency = Math.max(20, numberOrFallback(frequency, 440));
+    const panner = createPanNode(time, pan);
+
+    const blend = clampNumber(numberOrFallback(stack.oscBlend, 0), -100, 100) / 100;
+    const osc1Base = clampNumber(numberOrFallback(stack.osc1Level, 127), 0, 127);
+    const osc2Base = clampNumber(numberOrFallback(stack.osc2Level, 84), 0, 127);
+    const osc1Level = osc1Base * (blend > 0 ? 1 - blend : 1);
+    const osc2Level = osc2Base * (blend < 0 ? 1 + blend : 1);
+    const totalLevel = osc1Level + osc2Level;
+    if (totalLevel <= 0) return;
+
+    const sharedGain = audio.createGain();
+    const peak = 0.7 * volume;
+    const { endTime } = applyAdsr(sharedGain.gain, time, safeDuration, peak, env);
+    if (panner) sharedGain.connect(panner);
+    else sharedGain.connect(master);
+
+    const layers = [
+      {
+        wave: normalizeOscWave(stack.osc1Wave, "sawtooth"),
+        level: osc1Level,
+        octave: clampNumber(numberOrFallback(stack.osc1Octave, 0), -2, 2),
+        detune: clampNumber(numberOrFallback(stack.osc1Detune, 0), -100, 100),
+      },
+      {
+        wave: normalizeOscWave(stack.osc2Wave, "sine"),
+        level: osc2Level,
+        octave: clampNumber(numberOrFallback(stack.osc2Octave, 0), -2, 2),
+        detune: clampNumber(numberOrFallback(stack.osc2Detune, 7), -100, 100),
+      },
+    ];
+
+    for (const layer of layers) {
+      if (layer.level <= 0) continue;
+      const layerGain = audio.createGain();
+      layerGain.gain.setValueAtTime(layer.level / totalLevel, time);
+
+      const osc = audio.createOscillator();
+      osc.type = layer.wave;
+      const octaveRatio = Math.pow(2, layer.octave);
+      const detuneRatio = Math.pow(2, layer.detune / 1200);
+      osc.frequency.setValueAtTime(safeFrequency * octaveRatio * detuneRatio, time);
+      osc.connect(layerGain);
+      layerGain.connect(sharedGain);
+      osc.start(time);
+      osc.stop(endTime + 0.05);
+    }
+  }
+
   function triggerSound(
     kind,
     time,
-    { duration, frequency, pitch, volume, pan, env } = {},
+    { duration, frequency, pitch, volume, pan, env, stack } = {},
   ) {
     if (!audio || !master) return;
     const v = clampNumber(volume ?? 1, 0, 1);
@@ -5733,6 +7442,8 @@
       triggerHat(time, { duration, volume: v, pitch, pan, env });
     else if (kind === "bass")
       triggerBass(time, duration ?? 0.15, frequency ?? 110, v, env, pan);
+    else if (kind === DUAL_OSC_SOUND)
+      triggerDualOsc(time, duration ?? 0.12, frequency ?? 440, v, env, pan, stack);
     else triggerTonalBlip(time, duration ?? 0.1, frequency ?? 440, v, env, pan);
   }
 
@@ -5768,7 +7479,8 @@
       const noteTime = Math.max(noteTimeRaw, audio.currentTime + 0.001);
       const msUntilNote = (noteTime - audio.currentTime) * 1000;
 
-      const duration = stepDuration;
+      const noteMode = normalizeNoteMode(state.noteMode, "one-shot");
+      const holdNotes = noteMode === "hold";
       const tuneCents = clampNumber(
         numberOrFallback(state.tuneCents, 0),
         -100,
@@ -5783,9 +7495,42 @@
         sustain: state.sustain,
         release: state.release,
       };
+      const stack = getDualOscParams(state);
+      const ties = normalizeNoteTies(state.noteTies, state.pattern);
+
+      const getMaskAt = (index) =>
+        clampNumber(
+          Math.round(numberOrFallback(state.pattern[index], 0)),
+          0,
+          NOTE_MASK_ALL,
+        );
+
+      const getTieAt = (index) =>
+        clampNumber(
+          Math.round(numberOrFallback(ties[index], 0)),
+          0,
+          NOTE_MASK_ALL,
+        );
+
+      const getRunLength = (startIndex, rowBit = 0) => {
+        let len = 1;
+        for (let i = startIndex + 1; i < stepsCount; i += 1) {
+          const nextMask = getMaskAt(i);
+          const nextTie = getTieAt(i);
+          const active = rowBit ? (nextMask & rowBit) !== 0 : nextMask !== 0;
+          const tied = rowBit ? (nextTie & rowBit) !== 0 : nextTie !== 0;
+          if (!active || !tied) break;
+          len += 1;
+        }
+        return len;
+      };
 
       if (audible) {
         if (state.seqMode !== "roll") {
+          if (holdNotes && getTieAt(stepIndex) !== 0) {
+            continue;
+          }
+          const duration = stepDuration * (holdNotes ? getRunLength(stepIndex) : 1);
           const rowMidi = clampNumber(basePitch, PITCH_MIN, PITCH_MAX);
           const pitchWithTune = clampNumber(
             rowMidi + tuneCents / 100,
@@ -5804,10 +7549,16 @@
             volume: volume01,
             pan: pan01,
             env,
+            stack,
           });
         } else {
           for (let row = 0; row < NOTE_ROWS; row += 1) {
-            if ((mask & (1 << row)) === 0) continue;
+            const rowBit = 1 << row;
+            if ((mask & rowBit) === 0) continue;
+            if (holdNotes && (getTieAt(stepIndex) & rowBit) !== 0) {
+              continue;
+            }
+            const duration = stepDuration * (holdNotes ? getRunLength(stepIndex, rowBit) : 1);
             const rowMidi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
             const pitchWithTune = clampNumber(
               rowMidi + tuneCents / 100,
@@ -5826,6 +7577,7 @@
               volume: volume01,
               pan: pan01,
               env,
+              stack,
             });
           }
         }
@@ -5917,7 +7669,7 @@
       transportBar.dataset.mode =
         samplePadEnabled && samplePadTransportMode ? "pad" : "sequence";
     }
-    syncWordPlayUiVisibility();
+    syncSubtitlesUiVisibility();
     syncPadPlaybackChip();
 
     const hasTracks = tracks.size > 0;
@@ -6206,6 +7958,12 @@
   if (themeModeBtn) {
     themeModeBtn.addEventListener("click", () => {
       setThemeEnabled(!themeEnabled);
+    });
+  }
+
+  if (gradientAnimationToggleBtn) {
+    gradientAnimationToggleBtn.addEventListener("click", () => {
+      setGradientAnimationEnabled(!gradientAnimationEnabled);
     });
   }
 
@@ -6787,22 +8545,22 @@
     });
   }
 
-  if (wordPlayToggleBtn) {
-    wordPlayToggleBtn.addEventListener("click", () => {
-      setWordPlayEnabled(!wordPlayEnabled);
+  if (subtitlesToggleBtn) {
+    subtitlesToggleBtn.addEventListener("click", () => {
+      setSubtitlesEnabled(!subtitlesEnabled);
     });
   }
 
-  if (wordPlaySpeedInput) {
-    wordPlaySpeedInput.addEventListener("input", () => {
-      setWordPlaySpeed(wordPlaySpeedInput.value);
+  if (subtitlesSpeedInput) {
+    subtitlesSpeedInput.addEventListener("input", () => {
+      setSubtitlesSpeed(subtitlesSpeedInput.value);
     });
   }
 
-  if (wordPlaySpeedOut) {
-    wordPlaySpeedOut.addEventListener("input", () => {
-      if (wordPlaySpeedOut.value === "") return;
-      setWordPlaySpeed(wordPlaySpeedOut.value);
+  if (subtitlesSpeedOut) {
+    subtitlesSpeedOut.addEventListener("input", () => {
+      if (subtitlesSpeedOut.value === "") return;
+      setSubtitlesSpeed(subtitlesSpeedOut.value);
     });
   }
 
@@ -6853,7 +8611,7 @@
 
   window.addEventListener("resize", () => {
     scheduleSettingsPanelLayout();
-    scheduleWordPlaySubtitleLayout();
+    scheduleSubtitleLayout();
     scheduleSamplePadLayout();
     rebuildTransportTicks();
     syncFloatingBarGeometry();
@@ -6874,6 +8632,7 @@
     themeEnabled = Boolean(nextEnabled);
     applyThemeVars();
     document.documentElement.classList.toggle("is-theme", themeEnabled);
+    syncGradientAnimationToggleVisibility();
 
     if (themeStarBtn) {
       themeStarBtn.hidden = tracks.size === 0;
@@ -6908,7 +8667,8 @@
 
   function isStarBounceBlockedByIntro() {
     return Boolean(
-      themeStarBtn && themeStarBtn.classList.contains("is-star-daw-intro"),
+      (themeStarBtn && themeStarBtn.classList.contains("is-star-daw-intro")) ||
+        Date.now() < starBounceIntroDelayUntil,
     );
   }
 
@@ -6960,6 +8720,9 @@
         "aria-pressed",
         bumpEnabled ? "true" : "false",
       );
+    }
+    if (!bumpEnabled) {
+      clearBumpUnderlineEnvelopes();
     }
     syncBumpModeClass();
   }
@@ -7020,6 +8783,22 @@
     );
   }
 
+  function applyBumpConfigVars() {
+    const root = document.documentElement;
+    root.style.setProperty(
+      "--bump-underline-length",
+      String(BUMP_UNDERLINE_LENGTH),
+    );
+    root.style.setProperty(
+      "--bump-ghost-opacity-scale-theme",
+      BUMP_GHOST_OPACITY_SCALE_THEME.toFixed(3),
+    );
+    root.style.setProperty(
+      "--bump-ghost-opacity-scale-nontheme",
+      BUMP_GHOST_OPACITY_SCALE_NON_THEME.toFixed(3),
+    );
+  }
+
   function setBumpHeight(nextHeight) {
     bumpHeight = clampNumber(
       Math.round(numberOrFallback(nextHeight, bumpHeight)),
@@ -7068,6 +8847,29 @@
     if (!autoscrollEnabled) {
       followCenterLock = false;
     }
+  }
+
+  function syncGradientAnimationToggleVisibility() {
+    if (!gradientAnimationRow) return;
+    gradientAnimationRow.hidden = themeEnabled;
+  }
+
+  function setGradientAnimationEnabled(nextEnabled) {
+    gradientAnimationEnabled = Boolean(nextEnabled);
+    document.documentElement.classList.toggle(
+      "is-gradient-animation-disabled",
+      !gradientAnimationEnabled,
+    );
+    if (gradientAnimationToggleBtn) {
+      gradientAnimationToggleBtn.setAttribute(
+        "aria-pressed",
+        gradientAnimationEnabled ? "true" : "false",
+      );
+      gradientAnimationToggleBtn.title = gradientAnimationEnabled
+        ? "gradient animation: on"
+        : "gradient animation: off";
+    }
+    syncGradientAnimationToggleVisibility();
   }
 
   function formatSeconds(seconds) {
@@ -7129,46 +8931,46 @@
         ? "sample pad: on"
         : "sample pad: off";
     }
-    syncWordPlayUiVisibility();
+    syncSubtitlesUiVisibility();
     syncSamplePadToolbarVisibility();
     syncSamplePadEditor();
-    rebuildTransportWordPlay();
+    rebuildTransportSubtitles();
     setSamplePadTransportMode(samplePadTransportMode);
     ensureSamplePadRollPatternShape();
     renderSamplePadGrid();
     renderSamplePadRoll();
   }
 
-  function setWordPlayEnabled(nextEnabled) {
-    wordPlayEnabled = Boolean(nextEnabled);
-    if (!wordPlayEnabled) {
-      resetWordPlaySubtitleMusicSpacing();
+  function setSubtitlesEnabled(nextEnabled) {
+    subtitlesEnabled = Boolean(nextEnabled);
+    if (!subtitlesEnabled) {
+      resetSubtitleMusicSpacing();
     }
-    if (wordPlayToggleBtn) {
-      wordPlayToggleBtn.setAttribute(
+    if (subtitlesToggleBtn) {
+      subtitlesToggleBtn.setAttribute(
         "aria-pressed",
-        wordPlayEnabled ? "true" : "false",
+        subtitlesEnabled ? "true" : "false",
       );
-      wordPlayToggleBtn.title = wordPlayEnabled
+      subtitlesToggleBtn.title = subtitlesEnabled
         ? "subtitles: on"
         : "subtitles: off";
     }
-    if (wordPlaySpeedRow) {
-      wordPlaySpeedRow.hidden = !wordPlayEnabled;
+    if (subtitlesSpeedRow) {
+      subtitlesSpeedRow.hidden = !subtitlesEnabled;
     }
     scheduleSettingsPanelLayout();
-    syncWordPlayUiVisibility();
-    rebuildTransportWordPlay();
+    syncSubtitlesUiVisibility();
+    rebuildTransportSubtitles();
   }
 
-  function setWordPlaySpeed(nextSpeed) {
-    wordPlaySpeed = clampNumber(
-      Math.round(numberOrFallback(nextSpeed, wordPlaySpeed)),
+  function setSubtitlesSpeed(nextSpeed) {
+    subtitlesSpeed = clampNumber(
+      Math.round(numberOrFallback(nextSpeed, subtitlesSpeed)),
       20,
       200,
     );
-    if (wordPlaySpeedInput) wordPlaySpeedInput.value = String(wordPlaySpeed);
-    if (wordPlaySpeedOut) wordPlaySpeedOut.value = String(wordPlaySpeed);
+    if (subtitlesSpeedInput) subtitlesSpeedInput.value = String(subtitlesSpeed);
+    if (subtitlesSpeedOut) subtitlesSpeedOut.value = String(subtitlesSpeed);
   }
 
   function setAutoExpandEnabled(nextEnabled) {
@@ -7212,20 +9014,22 @@
   setSamplePadRollBeatSteps(samplePadRollBeatSteps);
   setSamplePadEnabled(samplePadEnabled);
   setSamplePadTransportMode(samplePadTransportMode);
-  setWordPlaySpeed(wordPlaySpeed);
-  setWordPlayEnabled(wordPlayEnabled);
+  setSubtitlesSpeed(subtitlesSpeed);
+  setSubtitlesEnabled(subtitlesEnabled);
   setAutosaveInterval(autosaveIntervalMinutes);
   setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
+  setGradientAnimationEnabled(gradientAnimationEnabled);
   setStarBounceEnabled(starBounceEnabled);
   setStarBounceAlwaysEnabled(starBounceAlwaysEnabled);
   setBumpHeight(bumpHeight);
   setBumpBounce(bumpBounce);
   setBumpIntensity(bumpIntensity);
+  applyBumpConfigVars();
   setBumpEnabled(bumpEnabled);
   setSettingsOpen(false);
   setThemeEnabled(themeEnabled);
-  syncWordPlayUiVisibility();
+  syncSubtitlesUiVisibility();
   syncFloatingBarGeometry();
   syncFloatingScrollClearance();
 
@@ -7369,7 +9173,9 @@
     for (const track of tracks.values()) {
       const state = getOrInitState(track.key);
       const pattern = normalizePattern(state.pattern).slice();
+      const ties = normalizeNoteTies(state.noteTies, pattern).slice();
       const segment = pattern.slice(start, end + 1);
+      const tieSegment = ties.slice(start, end + 1);
       for (let i = 0; i < len; i += 1) {
         const targetIndex = insertAt + i;
         if (targetIndex >= stepsCount) break;
@@ -7378,8 +9184,14 @@
           0,
           NOTE_MASK_ALL,
         );
+        ties[targetIndex] = clampNumber(
+          Math.round(numberOrFallback(tieSegment[i], 0)),
+          0,
+          NOTE_MASK_ALL,
+        );
       }
       state.pattern = pattern;
+      state.noteTies = normalizeNoteTies(ties, pattern);
       renderTrackGrid(track);
     }
   }
@@ -7394,18 +9206,27 @@
     const snapshots = new Map();
     for (const track of tracks.values()) {
       const state = getOrInitState(track.key);
-      snapshots.set(track.key, normalizePattern(state.pattern));
+      const pattern = normalizePattern(state.pattern);
+      const noteTies = normalizeNoteTies(state.noteTies, pattern);
+      snapshots.set(track.key, { pattern, noteTies });
     }
 
     applyStepsCount(nextSteps);
 
-    for (const [key, pattern] of snapshots.entries()) {
+    for (const [key, snapshot] of snapshots.entries()) {
+      const pattern = snapshot.pattern;
+      const noteTies = snapshot.noteTies;
       const segment = pattern.slice(start, end + 1);
+      const tieSegment = noteTies.slice(start, end + 1);
       const prefix = pattern.slice(0, end + 1);
+      const tiePrefix = noteTies.slice(0, end + 1);
       const suffix = pattern.slice(end + 1);
+      const tieSuffix = noteTies.slice(end + 1);
       const nextPattern = prefix.concat(segment, suffix);
+      const nextTies = tiePrefix.concat(tieSegment, tieSuffix);
       const state = getOrInitState(key);
       state.pattern = normalizePattern(nextPattern);
+      state.noteTies = normalizeNoteTies(nextTies, state.pattern);
     }
 
     renderAllTrackGrids();
@@ -7417,8 +9238,10 @@
     for (const track of tracks.values()) {
       const state = getOrInitState(track.key);
       const pattern = normalizePattern(state.pattern).slice();
+      const ties = normalizeNoteTies(state.noteTies, pattern).slice();
       for (let i = start; i <= end; i += 1) pattern[i] = 0;
       state.pattern = pattern;
+      state.noteTies = normalizeNoteTies(ties, pattern);
       renderTrackGrid(track);
     }
   }

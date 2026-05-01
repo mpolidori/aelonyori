@@ -176,7 +176,7 @@
         <button type="button" id="transportRestartBtn" class="transportIconBtn transportRestartBtn" aria-label="restart" title="restart">↺</button>
         <button type="button" id="transportSeekBtn" class="transportSeekBtn" aria-label="seek">
             <span class="transportTicks" id="transportTicks" aria-hidden="true"></span>
-            <span class="transportWordPlay" id="transportWordPlay" aria-hidden="true" hidden></span>
+            <span class="transportSubtitle" id="transportSubtitle" aria-hidden="true" hidden></span>
         </button>
     </div>
 
@@ -187,9 +187,9 @@
         <span class="padPlaybackChipText">sample pad playback</span>
     </button>
 
-    <div id="wordPlaySubtitleStack" class="wordPlaySubtitleStack" aria-hidden="true" hidden>
-        <div id="wordPlaySubtitleLower" class="wordPlaySubtitleLine wordPlaySubtitleLineLower" hidden></div>
-        <div id="wordPlaySubtitleUpper" class="wordPlaySubtitleLine wordPlaySubtitleLineUpper" hidden></div>
+    <div id="subtitleStack" class="subtitleStack" aria-hidden="true" hidden>
+        <div id="subtitleLower" class="subtitleLine subtitleLineLower" hidden></div>
+        <div id="subtitleUpper" class="subtitleLine subtitleLineUpper" hidden></div>
     </div>
 
     <div id="settingsModal" class="settingsModal" hidden>
@@ -323,6 +323,11 @@
                     <button type="button" class="caret themeResetBtn" id="themeResetBtn" aria-label="reset theme">↺</button>
                 </label>
 
+                <label class="field settingsField" id="gradientAnimationRow">
+                    <span class="fieldLabel">gradient</span>
+                    <button type="button" class="switchToggle" id="gradientAnimationToggleBtn" aria-label="gradient animation" aria-pressed="true"></button>
+                </label>
+
                 <div id="settingsThemeControlsMount" class="settingsThemeControlsMount" aria-label="theme options" hidden></div>
 
                 <label class="field settingsField">
@@ -367,14 +372,14 @@
             <div class="settingsSection" aria-label="subtitles">
                 <label class="field settingsField">
                     <span class="fieldLabel">subtitles</span>
-                    <button type="button" class="switchToggle" id="wordPlayToggleBtn" aria-label="subtitles" aria-pressed="false"></button>
+                    <button type="button" class="switchToggle" id="subtitlesToggleBtn" aria-label="subtitles" aria-pressed="false"></button>
                 </label>
 
-                <div class="field settingsField settingsFieldRange" id="wordPlaySpeedRow" aria-label="subtitle speed" hidden>
+                <div class="field settingsField settingsFieldRange" id="subtitlesSpeedRow" aria-label="subtitle speed" hidden>
                     <span class="rangeEdgeLabel">slower</span>
-                    <input id="wordPlaySpeed" type="range" min="20" max="200" step="1" value="100" aria-label="subtitle speed slower to faster" />
+                    <input id="subtitlesSpeed" type="range" min="20" max="200" step="1" value="100" aria-label="subtitle speed slower to faster" />
                     <span class="rangeEdgeLabel rangeEdgeLabelEnd">faster</span>
-                    <input id="wordPlaySpeedOut" class="num rangeValueMirror" type="number" min="20" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
+                    <input id="subtitlesSpeedOut" class="num rangeValueMirror" type="number" min="20" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
                 </div>
             </div>
 

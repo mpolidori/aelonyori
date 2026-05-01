@@ -720,10 +720,16 @@
 
     const cellFromWidth = availableWidth / (stepsCount + 1);
     const cellFromHeight = availableHeight / (NUM_PADS + 1);
-    const nextCell = Math.max(
+    const baseCell = Math.max(
       18,
       Math.floor(Math.min(cellFromWidth, cellFromHeight) || 32),
     );
+    const isDesktop = window.matchMedia(
+      "(min-width: 640px) and (pointer: fine)",
+    ).matches;
+    const nextCell = isDesktop
+      ? Math.max(18, Math.floor(baseCell))
+      : Math.max(27, Math.floor(baseCell * 1.5));
 
     composeGrid.style.setProperty("--compose-cell", `${nextCell}px`);
     composeGrid.style.setProperty("--compose-label", `${nextCell}px`);
@@ -780,11 +786,69 @@
       composeRatchetPicker.appendChild(btn);
     }
 
-    const top = Math.max(8, Math.round(rect.top - 42));
-    const left = Math.max(8, Math.round(rect.left - 8));
-    composeRatchetPicker.style.top = `${top}px`;
-    composeRatchetPicker.style.left = `${left}px`;
+    const pad = 10;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+
+    // Render first so picker dimensions are known for robust placement.
+    composeRatchetPicker.style.top = `${Math.max(8, Math.round(rect.top))}px`;
+    composeRatchetPicker.style.left = `${Math.max(8, Math.round(rect.right + pad))}px`;
     composeRatchetPicker.hidden = false;
+
+    window.requestAnimationFrame(() => {
+      if (!composeRatchetPicker || composeRatchetPicker.hidden) return;
+      const pr = composeRatchetPicker.getBoundingClientRect();
+
+      const clampLeft = (value) =>
+        clampNumber(value, 8, Math.max(8, viewportW - pr.width - 8));
+      const clampTop = (value) =>
+        clampNumber(value, 8, Math.max(8, viewportH - pr.height - 8));
+
+      const intersectsAnchor = (left, top) => {
+        const right = left + pr.width;
+        const bottom = top + pr.height;
+        return !(
+          right <= rect.left ||
+          left >= rect.right ||
+          bottom <= rect.top ||
+          top >= rect.bottom
+        );
+      };
+
+      const overflowAmount = (left, top) => {
+        const right = left + pr.width;
+        const bottom = top + pr.height;
+        let overflow = 0;
+        if (left < 8) overflow += 8 - left;
+        if (top < 8) overflow += 8 - top;
+        if (right > viewportW - 8) overflow += right - (viewportW - 8);
+        if (bottom > viewportH - 8) overflow += bottom - (viewportH - 8);
+        return overflow;
+      };
+
+      const candidates = [
+        { left: rect.right + pad, top: clampTop(rect.top) },
+        { left: rect.left - pr.width - pad, top: clampTop(rect.top) },
+        { left: clampLeft(rect.left), top: rect.bottom + pad },
+        { left: clampLeft(rect.left), top: rect.top - pr.height - pad },
+      ];
+
+      let best = candidates[0];
+      let bestScore = Number.POSITIVE_INFINITY;
+      for (const candidate of candidates) {
+        const overlapPenalty = intersectsAnchor(candidate.left, candidate.top)
+          ? 100000
+          : 0;
+        const score = overlapPenalty + overflowAmount(candidate.left, candidate.top);
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      }
+
+      composeRatchetPicker.style.left = `${clampLeft(best.left)}px`;
+      composeRatchetPicker.style.top = `${clampTop(best.top)}px`;
+    });
   }
 
   function closeComposeRatchetPicker() {

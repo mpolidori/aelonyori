@@ -1,0 +1,56 @@
+{
+  "subtitles": {
+    "_comment": "Backend tuning variables for the subtitle/wordplay engine. None of these are exposed to users.",
+
+    "musicIntervalMin": 4,
+    "musicIntervalMax": 6,
+
+    "shortChunkMin": 2,
+    "shortChunkMax": 6,
+    "mediumChunkMin": 7,
+    "mediumChunkMax": 9,
+    "longChunkMin": 10,
+    "longChunkMax": 12,
+
+    "longChunkProb": 0.1,
+    "longAfterLongChunkProb": 0.04,
+    "mediumChunkProb": 0.3,
+
+    "secondAdvanceMin": 2,
+    "secondAdvanceMax": 6,
+
+    "leadDelayLoFactor": 1.1,
+    "leadDelayLoMin": 420,
+    "leadDelayLoMax": 950,
+    "leadDelayHiFactor": 1.8,
+    "leadDelayHiMin": 650,
+    "leadDelayHiMax": 1400,
+
+    "holdDelayLoFactor": 3.2,
+    "holdDelayLoMin": 1800,
+    "holdDelayLoMax": 3200,
+    "holdDelayHiFactor": 5.4,
+    "holdDelayHiMin": 2500,
+    "holdDelayHiMax": 4700,
+
+    "gapDelayLoFactor": 0.9,
+    "gapDelayLoMin": 350,
+    "gapDelayLoMax": 700,
+    "gapDelayHiFactor": 1.6,
+    "gapDelayHiMin": 520,
+    "gapDelayHiMax": 980,
+
+    "speedFactorMin": 0.5,
+    "speedFactorMax": 5.0
+  },
+  "bump": {
+    "_comment": "Bump tuning vars (not user-facing): lengths, envelope timing, and shadow visibility.",
+    "underlineLength": 95,
+    "underlineHoldMultiplier": 1.6,
+    "underlineHoldMinMs": 80,
+    "ghostHoldMultiplier": 2.25,
+    "ghostHoldMinMs": 140,
+    "ghostOpacityScaleTheme": 0.78,
+    "ghostOpacityScaleNonTheme": 1.0
+  }
+}

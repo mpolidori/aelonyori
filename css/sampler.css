@@ -238,6 +238,11 @@ body.is-sampler-view #settingsModal {
   -webkit-tap-highlight-color: transparent;
 }
 
+.samplerPad:not(:disabled):hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.45);
+}
+
 .samplerPadQuarterLines {
   position: absolute;
   inset: 0;
@@ -380,7 +385,7 @@ body.is-sampler-view #settingsModal {
 }
 
 .samplerComposeGrid {
-  --compose-cell: 2.04rem;
+  --compose-cell: 3.06rem;
   --compose-label: var(--compose-cell);
   --compose-side-gap: 0.42rem;
   --compose-accent: var(--sampler-accent);
@@ -395,6 +400,12 @@ body.is-sampler-view #settingsModal {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+}
+
+@media (min-width: 640px) and (pointer: fine) {
+  .samplerComposeGrid {
+    --compose-cell: 2.04rem;
+  }
 }
 
 .samplerStepHeader,
@@ -484,6 +495,15 @@ body.is-sampler-view #settingsModal {
 .samplerStep.is-current {
   outline: 2px solid color-mix(in srgb, var(--compose-accent) 92%, transparent);
   outline-offset: 1px;
+  border-color: transparent;
+}
+
+.samplerStep:hover:not(.is-on):not(:disabled) {
+  background: color-mix(in srgb, var(--compose-accent) 12%, transparent);
+}
+
+.samplerStep:focus-visible {
+  outline: none;
 }
 
 .samplerFab {
