@@ -6115,6 +6115,8 @@
       rollPaintStartStep: null,
       rollPaintStartRow: null,
       rollPaintStartOn: false,
+      rollPaintStartX: 0,
+      rollPaintStartY: 0,
       rollPaintMoved: false,
       rollPaintStartAt: 0,
       rollPaintBasePattern: null,
@@ -6514,7 +6516,7 @@
         NOTE_MASK_ALL,
       );
       const bit = 1 << rowIndex;
-      track.rollPaintActive = true;
+      track.rollPaintActive = false;
       track.rollPaintPointerId = event.pointerId;
       track.rollPaintMode = null;
       track.rollPaintSuppressClick = true;
@@ -6528,19 +6530,19 @@
         typeof performance !== "undefined" && performance.now
           ? performance.now()
           : Date.now();
+      track.rollPaintStartX = event.clientX;
+      track.rollPaintStartY = event.clientY;
       track.rollPaintBasePattern = null;
       track.rollPaintBaseTies = null;
       track.rollPaintStretchAnchorStep = null;
       track.rollPaintStretchSourceStart = null;
       track.rollPaintStretchSourceEnd = null;
-
-      event.preventDefault();
-      event.stopPropagation();
     });
 
     rollRows.addEventListener("pointermove", (event) => {
-      if (!track.rollPaintActive) return;
       if (!event || track.rollPaintPointerId !== event.pointerId) return;
+      
+      // If we don't have a pending paint ready, might be active from previous action
       if (String(event.pointerType || "") === "mouse" && event.buttons === 0) {
         track.rollPaintActive = false;
         track.rollPaintPointerId = null;
@@ -6560,6 +6562,43 @@
         return;
       }
 
+      // Calculate movement distance
+      const dx = Math.abs(event.clientX - track.rollPaintStartX);
+      const dy = Math.abs(event.clientY - track.rollPaintStartY);
+
+      // If not yet activated, check if this is scroll or draw intent
+      if (!track.rollPaintActive) {
+        // Vertical movement > horizontal = scrolling intent, cancel
+        if (dy > dx + 6 && dy > 10) {
+          track.rollPaintPointerId = null;
+          return;
+        }
+        // Horizontal movement enough to start drawing
+        if (dx > 6 || dy > 6) {
+          track.rollPaintActive = true;
+          // Determine mode based on what we're starting on
+          if (track.rollPaintStartOn) {
+            track.rollPaintMode = "erase";
+            const startBtn = getStepButtonAt(
+              track.rollPaintStartStep,
+              track.rollPaintStartRow,
+            );
+            paintStepButton(startBtn, "erase");
+          } else {
+            track.rollPaintMode = "draw-single";
+            const startBtn = getStepButtonAt(
+              track.rollPaintStartStep,
+              track.rollPaintStartRow,
+            );
+            paintStepButton(startBtn, "draw-single");
+          }
+        } else {
+          // Still within deadzone, don't paint yet
+          return;
+        }
+      }
+
+      // Now we're actively painting
       const btn = getStepButtonFromEvent(event);
       if (!btn) return;
 
@@ -6573,42 +6612,6 @@
         rowIndex === track.rollPaintStartRow
       ) {
         return;
-      }
-
-      // Detect scroll intent: if vertical movement > horizontal, likely scrolling
-      const clientRectStart = getStepButtonAt(
-        track.rollPaintStartStep,
-        track.rollPaintStartRow,
-      )?.getBoundingClientRect?.();
-      if (clientRectStart) {
-        const dx = Math.abs(event.clientX - clientRectStart.left - clientRectStart.width / 2);
-        const dy = Math.abs(event.clientY - clientRectStart.top - clientRectStart.height / 2);
-        // If vertical movement exceeds horizontal by significant margin, treat as scroll
-        if (dy > dx + 8 && dy > 12) {
-          track.rollPaintActive = false;
-          track.rollPaintPointerId = null;
-          track.rollPaintMode = null;
-          track.rollPaintMoved = false;
-          return;
-        }
-      }
-
-      if (!track.rollPaintMode) {
-        if (track.rollPaintStartOn) {
-          track.rollPaintMode = "erase";
-          const startBtn = getStepButtonAt(
-            track.rollPaintStartStep,
-            track.rollPaintStartRow,
-          );
-          paintStepButton(startBtn, "erase");
-        } else {
-          track.rollPaintMode = "draw-single";
-          const startBtn = getStepButtonAt(
-            track.rollPaintStartStep,
-            track.rollPaintStartRow,
-          );
-          paintStepButton(startBtn, "draw-single");
-        }
       }
 
       track.rollPaintMoved = true;
@@ -6651,6 +6654,8 @@
       track.rollPaintStartStep = null;
       track.rollPaintStartRow = null;
       track.rollPaintStartOn = false;
+      track.rollPaintStartX = 0;
+      track.rollPaintStartY = 0;
       track.rollPaintMoved = false;
       track.rollPaintStartAt = 0;
       track.rollPaintBasePattern = null;
