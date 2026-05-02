@@ -6534,12 +6534,6 @@
       track.rollPaintStretchSourceStart = null;
       track.rollPaintStretchSourceEnd = null;
 
-      if (typeof rollRows.setPointerCapture === "function") {
-        try {
-          rollRows.setPointerCapture(event.pointerId);
-        } catch {}
-      }
-
       event.preventDefault();
       event.stopPropagation();
     });
@@ -6581,13 +6575,23 @@
         return;
       }
 
-      const nowMs =
-        typeof performance !== "undefined" && performance.now
-          ? performance.now()
-          : Date.now();
-      const heldLongEnough =
-        Number.isFinite(track.rollPaintStartAt) &&
-        nowMs - track.rollPaintStartAt >= NOTE_DRAG_LONG_HOLD_MS;
+      // Detect scroll intent: if vertical movement > horizontal, likely scrolling
+      const clientRectStart = getStepButtonAt(
+        track.rollPaintStartStep,
+        track.rollPaintStartRow,
+      )?.getBoundingClientRect?.();
+      if (clientRectStart) {
+        const dx = Math.abs(event.clientX - clientRectStart.left - clientRectStart.width / 2);
+        const dy = Math.abs(event.clientY - clientRectStart.top - clientRectStart.height / 2);
+        // If vertical movement exceeds horizontal by significant margin, treat as scroll
+        if (dy > dx + 8 && dy > 12) {
+          track.rollPaintActive = false;
+          track.rollPaintPointerId = null;
+          track.rollPaintMode = null;
+          track.rollPaintMoved = false;
+          return;
+        }
+      }
 
       if (!track.rollPaintMode) {
         if (track.rollPaintStartOn) {
@@ -6597,25 +6601,6 @@
             track.rollPaintStartRow,
           );
           paintStepButton(startBtn, "erase");
-        } else if (heldLongEnough && rowIndex === track.rollPaintStartRow) {
-          const s = getOrInitState(key);
-          s.pattern = normalizePattern(s.pattern);
-          s.noteTies = normalizeNoteTies(s.noteTies, s.pattern);
-
-          const bit = 1 << rowIndex;
-          track.rollPaintBasePattern = s.pattern.slice();
-          track.rollPaintBaseTies = s.noteTies.slice();
-
-          const bounds = findRowSegmentBounds(
-            track.rollPaintBasePattern,
-            track.rollPaintBaseTies,
-            bit,
-            track.rollPaintStartStep,
-          );
-          track.rollPaintStretchAnchorStep = bounds.start;
-          track.rollPaintStretchSourceStart = bounds.start;
-          track.rollPaintStretchSourceEnd = bounds.end;
-          track.rollPaintMode = "stretch";
         } else {
           track.rollPaintMode = "draw-single";
           const startBtn = getStepButtonAt(
@@ -6624,16 +6609,6 @@
           );
           paintStepButton(startBtn, "draw-single");
         }
-      }
-
-      if (track.rollPaintMode === "stretch") {
-        if (rowIndex !== track.rollPaintStartRow) return;
-        track.rollPaintMoved = true;
-        applyStretchFromGesture(stepIndex);
-        if (Number.isFinite(stepIndex)) track.rollPaintLastStep = stepIndex;
-        if (Number.isFinite(rowIndex)) track.rollPaintLastRow = rowIndex;
-        event.preventDefault();
-        return;
       }
 
       track.rollPaintMoved = true;
