@@ -6629,7 +6629,9 @@
     });
 
     const stopRollPaint = (event) => {
-      if (!track.rollPaintActive) return;
+      // Allow tap-to-toggle even if we never entered active paint mode
+      const hasPending = track.rollPaintPointerId != null;
+      if (!track.rollPaintActive && !hasPending) return;
       if (
         event &&
         track.rollPaintPointerId != null &&
