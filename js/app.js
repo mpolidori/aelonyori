@@ -3324,8 +3324,14 @@
     const beatCount = Math.floor((steps - 1) / groupLen) + 1;
     const viewportWidth = Math.max(320, window.innerWidth || 1024);
     const mobileToDesktop = clampNumber((viewportWidth - 420) / 780, 0, 1);
-    const maxBeatLabels = Math.round(16 + (40 - 16) * mobileToDesktop);
-    const beatLabelStride = Math.max(1, Math.ceil(beatCount / maxBeatLabels));
+    const maxBeatLabels = Math.round(12 + (36 - 12) * mobileToDesktop);
+    const minLabelPx = viewportWidth < 520 ? 26 : 22;
+    const densityStride = Math.ceil((beatCount * minLabelPx) / viewportWidth);
+    const beatLabelStride = Math.max(
+      1,
+      Math.ceil(beatCount / maxBeatLabels),
+      densityStride,
+    );
 
     const key = `${steps}|${groupLen}|${beatLabelStride}|${Math.round(viewportWidth / 24)}`;
     if (key === transportTicksKey) return;
@@ -4329,7 +4335,10 @@
     transportRaf = window.requestAnimationFrame(tick);
   }
 
-  function seekToStep(nextStep, { fromUser = false, viewStep = null } = {}) {
+  function seekToStep(
+    nextStep,
+    { fromUser = false, viewStep = null, suppressScroll = false } = {},
+  ) {
     const activeSteps = getActiveTransportSteps();
     if (activeSteps <= 0) return;
 
@@ -4360,18 +4369,19 @@
           )
         : step;
 
-    if (!samplePadTransportMode && fromUser) {
+    if (!samplePadTransportMode && !suppressScroll && fromUser) {
       followCenterLock = true;
       scrollGridsToStep(viewTarget, { center: true });
-    } else if (!samplePadTransportMode) {
+    } else if (!samplePadTransportMode && !suppressScroll) {
       scrollGridsToStep(viewTarget, { behavior: "auto" });
     }
 
     if (isPlaying && audio) {
+      const prevUiStep = uiStep;
       uiStep = step;
       uiStepStartedAt = audio.currentTime;
       nextNoteTime = audio.currentTime + 0.05;
-      renderAllTrackGrids();
+      updateTrackCurrentStepClasses(prevUiStep, uiStep);
       scheduler();
       startTransportRaf();
     }
@@ -4382,15 +4392,20 @@
   const samplePadFlashTimeouts = new Map();
   const pressedAlphaKeys = new Set();
   const samplePadKeyHoldStates = new Map();
+  const SAMPLE_PAD_HOLD_MIN_GAP_SEC = 0.02;
+  const SAMPLE_PAD_HOLD_MIN_LEAD_SEC = 0.012;
 
-  function triggerSamplePadStep(stepIndex) {
+  function triggerSamplePadStep(
+    stepIndex,
+    { fromUser = true, suppressScroll = false } = {},
+  ) {
     if (tracks.size === 0) return;
     const step = clampNumber(
       Math.round(numberOrFallback(stepIndex, 0)),
       0,
       Math.max(0, stepsCount - 1),
     );
-    seekToStep(step, { fromUser: true, viewStep: step });
+    seekToStep(step, { fromUser, viewStep: step, suppressScroll });
     previewStepAtTransport(step);
     flashSamplePadStep(step);
     if (subtitlesEnabled) {
@@ -4398,12 +4413,87 @@
     }
   }
 
+  function getSamplePadClockNowSeconds() {
+    if (audio) return audio.currentTime;
+    if (typeof performance !== "undefined" && performance.now) {
+      return performance.now() / 1000;
+    }
+    return Date.now() / 1000;
+  }
+
+  function getSamplePadClockAnchorSeconds() {
+    if (!audio) return 0;
+    if (!Number.isFinite(uiStepStartedAt) || !Number.isFinite(uiStep)) return 0;
+    if (uiStep < 0) return 0;
+
+    const stepDuration = 60 / tempo / 4;
+    if (!Number.isFinite(stepDuration) || stepDuration <= 0) return 0;
+
+    return uiStepStartedAt - uiStep * stepDuration;
+  }
+
+  function getSamplePadPulseSeconds(step) {
+    return clampNumber(
+      60 / tempo / 4 / getSamplePadConfig(step).ratchet,
+      0.035,
+      1.4,
+    );
+  }
+
+  function getNextSamplePadPulseTimeSeconds(
+    nowSeconds,
+    pulseSeconds,
+    lastFiredAtSeconds = null,
+  ) {
+    const safePulseSeconds = Math.max(SAMPLE_PAD_HOLD_MIN_GAP_SEC, pulseSeconds);
+    const fromLast = Number.isFinite(lastFiredAtSeconds)
+      ? lastFiredAtSeconds +
+        Math.max(SAMPLE_PAD_HOLD_MIN_GAP_SEC, safePulseSeconds * 0.35)
+      : -Infinity;
+    const minTarget = Math.max(nowSeconds + SAMPLE_PAD_HOLD_MIN_LEAD_SEC, fromLast);
+    const anchor = getSamplePadClockAnchorSeconds();
+    const cycles = Math.ceil((minTarget - anchor) / safePulseSeconds);
+    return anchor + Math.max(0, cycles) * safePulseSeconds;
+  }
+
+  function clearSamplePadHoldTick(state) {
+    if (!state || !state.timerId) return;
+    window.clearTimeout(state.timerId);
+    state.timerId = null;
+  }
+
+  function scheduleSamplePadHoldTick(state, id, collection) {
+    if (!state) return;
+    clearSamplePadHoldTick(state);
+
+    const nowSeconds = getSamplePadClockNowSeconds();
+    const pulseSeconds = getSamplePadPulseSeconds(state.step);
+    state.pulseSeconds = pulseSeconds;
+    const nextAtSeconds = getNextSamplePadPulseTimeSeconds(
+      nowSeconds,
+      pulseSeconds,
+      state.lastFiredAtSeconds,
+    );
+    state.nextAtSeconds = nextAtSeconds;
+
+    const delayMs = clampNumber((nextAtSeconds - nowSeconds) * 1000, 8, 1600);
+
+    state.timerId = window.setTimeout(() => {
+      const live = collection.get(id);
+      if (!live || live !== state) return;
+      triggerSamplePadStep(live.step, {
+        fromUser: false,
+        suppressScroll: true,
+      });
+      live.lastFiredAtSeconds = getSamplePadClockNowSeconds();
+      scheduleSamplePadHoldTick(live, id, collection);
+    }, delayMs);
+  }
+
   function stopSamplePadHold(pointerId = null) {
     if (pointerId == null) {
       for (const holdState of samplePadHoldStates.values()) {
-        if (holdState && holdState.timerId) {
-          window.clearInterval(holdState.timerId);
-        }
+        clearSamplePadHoldTick(holdState);
       }
       samplePadHoldStates.clear();
       return;
@@ -4411,32 +4501,26 @@
 
     const holdState = samplePadHoldStates.get(pointerId);
     if (!holdState) return;
-    if (holdState.timerId) {
-      window.clearInterval(holdState.timerId);
-    }
+    clearSamplePadHoldTick(holdState);
     samplePadHoldStates.delete(pointerId);
   }
 
   function startSamplePadPreviewHold(pointerId, step) {
     stopSamplePadHold(pointerId);
-    const repeatMs = clampNumber(
-      (60 / tempo / 4 / getSamplePadConfig(step).ratchet) * 1000,
-      35,
-      1400,
-    );
-    samplePadHoldStates.set(pointerId, {
+    const holdState = {
       step,
-      timerId: window.setInterval(() => {
-        const holdState = samplePadHoldStates.get(pointerId);
-        if (!holdState) return;
-        triggerSamplePadStep(holdState.step);
-      }, repeatMs),
-    });
+      timerId: null,
+      pulseSeconds: getSamplePadPulseSeconds(step),
+      nextAtSeconds: null,
+      lastFiredAtSeconds: getSamplePadClockNowSeconds(),
+    };
+    samplePadHoldStates.set(pointerId, holdState);
+    scheduleSamplePadHoldTick(holdState, pointerId, samplePadHoldStates);
   }
 
   function stopSamplePadKeyHolds() {
     for (const hold of samplePadKeyHoldStates.values()) {
-      if (hold && hold.timerId) window.clearInterval(hold.timerId);
+      clearSamplePadHoldTick(hold);
     }
     samplePadKeyHoldStates.clear();
   }
@@ -4452,8 +4536,7 @@
       const trigger = config.trigger;
       if (trigger.length !== 2) {
         const existing = samplePadKeyHoldStates.get(step);
-        if (existing && existing.timerId)
-          window.clearInterval(existing.timerId);
+        clearSamplePadHoldTick(existing);
         samplePadKeyHoldStates.delete(step);
         continue;
       }
@@ -4464,18 +4547,23 @@
 
       if (activeNow && !existing) {
         triggerSamplePadStep(step);
-        const repeatMs = clampNumber(
-          (60 / tempo / 4 / config.ratchet) * 1000,
-          35,
-          1400,
-        );
-        samplePadKeyHoldStates.set(step, {
-          timerId: window.setInterval(() => {
-            triggerSamplePadStep(step);
-          }, repeatMs),
-        });
+        const holdState = {
+          step,
+          timerId: null,
+          pulseSeconds: getSamplePadPulseSeconds(step),
+          nextAtSeconds: null,
+          lastFiredAtSeconds: getSamplePadClockNowSeconds(),
+        };
+        samplePadKeyHoldStates.set(step, holdState);
+        scheduleSamplePadHoldTick(holdState, step, samplePadKeyHoldStates);
+      } else if (activeNow && existing) {
+        const nextPulse = getSamplePadPulseSeconds(step);
+        if (Math.abs(nextPulse - numberOrFallback(existing.pulseSeconds, nextPulse)) > 0.0001) {
+          existing.pulseSeconds = nextPulse;
+          scheduleSamplePadHoldTick(existing, step, samplePadKeyHoldStates);
+        }
       } else if (!activeNow && existing) {
-        if (existing.timerId) window.clearInterval(existing.timerId);
+        clearSamplePadHoldTick(existing);
         samplePadKeyHoldStates.delete(step);
       }
     }
@@ -5015,6 +5103,34 @@
         btn.classList.toggle("is-tied", tied);
         btn.classList.toggle("is-current", isPlaying && i === uiStep);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+    }
+  }
+
+  function updateTrackCurrentStepClasses(prevStep, nextStep) {
+    const prev = Number.isFinite(prevStep)
+      ? clampNumber(Math.round(prevStep), 0, Math.max(0, stepsCount - 1))
+      : -1;
+    const next = Number.isFinite(nextStep)
+      ? clampNumber(Math.round(nextStep), 0, Math.max(0, stepsCount - 1))
+      : -1;
+
+    if (prev === next) return;
+
+    for (const track of tracks.values()) {
+      const byRow = Array.isArray(track.stepButtonsByRow)
+        ? track.stepButtonsByRow
+        : [];
+      for (const rowButtons of byRow) {
+        if (!Array.isArray(rowButtons)) continue;
+        if (prev >= 0) {
+          const prevBtn = rowButtons[prev];
+          if (prevBtn) prevBtn.classList.remove("is-current");
+        }
+        if (next >= 0) {
+          const nextBtn = rowButtons[next];
+          if (nextBtn) nextBtn.classList.add("is-current");
+        }
       }
     }
   }
@@ -6568,14 +6684,19 @@
 
       // If not yet activated, check if this is scroll or draw intent
       if (!track.rollPaintActive) {
-        // Only treat as scroll if: substantial vertical movement AND minimal horizontal
-        // This prevents accidentally canceling diagonal/horizontal drags
-        if (dy > 15 && dx < 5) {
+        const pointerType = String(event.pointerType || "").toLowerCase();
+        const isTouchLike = pointerType === "touch" || pointerType === "pen";
+        const scrollIntentDy = isTouchLike ? 12 : 15;
+        const scrollIntentDx = isTouchLike ? 8 : 5;
+        const paintDeadzone = isTouchLike ? 8 : 2;
+
+        // Prefer vertical navigation on touch to avoid accidental paint while panning.
+        if (dy > scrollIntentDy && dx < scrollIntentDx && dy > dx * 1.2) {
           track.rollPaintPointerId = null;
           return;
         }
-        // Activate drawing on any movement > 2px (very small deadzone)
-        if (dx > 2 || dy > 2) {
+
+        if (dx > paintDeadzone || dy > paintDeadzone) {
           track.rollPaintActive = true;
           // Determine mode based on what we're starting on
           if (track.rollPaintStartOn) {
@@ -7669,11 +7790,12 @@
     window.setTimeout(
       () => {
         if (!isPlaying) return;
+        const prevUiStep = uiStep;
         uiStep = stepIndex;
         if (audio) uiStepStartedAt = audio.currentTime;
         updateTransportBar();
         startTransportRaf();
-        renderAllTrackGrids();
+        updateTrackCurrentStepClasses(prevUiStep, uiStep);
       },
       Math.max(0, msUntil),
     );
@@ -8302,6 +8424,18 @@
       event.preventDefault();
     });
 
+    samplePadGrid.addEventListener(
+      "touchstart",
+      (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+        if (target.closest("button.samplePadBtn")) {
+          event.preventDefault();
+        }
+      },
+      { passive: false },
+    );
+
     samplePadGrid.addEventListener("selectstart", (event) => {
       event.preventDefault();
     });
@@ -8584,6 +8718,14 @@
     samplePadPreviewBtn.addEventListener("contextmenu", (event) => {
       event.preventDefault();
     });
+
+    samplePadPreviewBtn.addEventListener(
+      "touchstart",
+      (event) => {
+        event.preventDefault();
+      },
+      { passive: false },
+    );
 
     samplePadPreviewBtn.addEventListener("pointerdown", (event) => {
       if (event.button != null && event.button !== 0) return;
@@ -9110,6 +9252,7 @@
   tempoInput.addEventListener("input", () => {
     tempo = Number(tempoInput.value);
     tempoOut.value = String(tempo);
+    updateSamplePadKeyHolds();
     if (starBounceEnabled) syncStarBounceDuration();
   });
 
@@ -9130,6 +9273,7 @@
     tempo = next;
     tempoInput.value = String(next);
     tempoOut.value = String(next);
+    updateSamplePadKeyHolds();
     if (starBounceEnabled) syncStarBounceDuration();
   }
 

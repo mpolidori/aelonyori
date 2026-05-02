@@ -16,7 +16,7 @@ This map highlights important code regions and where to make common changes.
 | Config loading | Merge config.json and apply bump/subtitle tuning |
 | Song object serialization | getSongObject/applySongObject flow |
 | Track creation/render | DOM creation and per-track controls |
-| Transport scheduler | play/pause/stop, lookahead scheduling, seek |
+| Transport scheduler | play/pause/stop, lookahead scheduling, seek, lightweight current-step class updates |
 | Step trigger pipeline | compute active notes, trigger synth, animate hit states |
 | Visual effects | theme, star bounce, bump envelopes, subtitle stack |
 | Persistence | presets, autosave, JSON copy/apply/download/upload |

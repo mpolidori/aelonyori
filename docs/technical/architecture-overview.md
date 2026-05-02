@@ -70,6 +70,7 @@ DAW playback uses lookahead scheduling:
 - lookahead tick checks upcoming window.
 - events are scheduled ahead of current audio time.
 - UI updates are synchronized via timeouts/requestAnimationFrame.
+- During playback, step-marker rendering updates only current/previous step classes instead of full grid rerenders.
 
 This decouples audio timing from frame-rate and interaction jitter.
 

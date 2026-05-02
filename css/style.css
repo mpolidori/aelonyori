@@ -277,11 +277,17 @@ html.is-theme .field output {
 }
 
 html.is-theme .field input[type="number"],
-html.is-theme .field input[type="text"],
+html.is-theme .field input[type="text"] {
+  border-color: var(--t-34, rgba(255, 255, 255, 0.34));
+  background-color: var(--t-3, rgba(255, 255, 255, 0.03));
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
 html.is-theme .field select {
   border-color: var(--t-34, rgba(255, 255, 255, 0.34));
   background-color: var(--t-3, rgba(255, 255, 255, 0.03));
   color: var(--t-92, rgba(255, 255, 255, 0.92));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 html.is-theme .field input[type="range"]:focus-visible {
@@ -608,7 +614,7 @@ html.is-theme .samplePadRollPadBtn {
 .samplePadRollCell.is-current {
   outline: 2px solid color-mix(in srgb, var(--samplePadNum) 92%, transparent);
   outline-offset: 1px;
-  border-color: transparent;
+  border: 0;
 }
 
 .samplePadRollWrap .field input[type="range"] {
@@ -728,10 +734,11 @@ html.is-theme .samplePadWrap {
     background 140ms ease,
     border-color 140ms ease,
     color 140ms ease;
-  touch-action: none;
+  touch-action: manipulation;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .samplePadBtn.is-beat-start {
@@ -965,8 +972,11 @@ html.is-theme .samplePadModeToolbar {
   font-size: 0.96rem;
   line-height: 1;
   cursor: pointer;
-  touch-action: none;
+  touch-action: manipulation;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .settingsFieldRange {
@@ -2865,10 +2875,12 @@ html.is-theme .settingsDivider {
 }
 
 .trackInstrumentSelect {
-  appearance: auto;
-  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: transparent;
   border: 1px solid rgba(0, 0, 0, 0.32);
-  padding: 0.2rem 0.45rem;
+  padding: 0.2rem 1.35rem 0.2rem 0.45rem;
   border-radius: 0;
   font: inherit;
   letter-spacing: inherit;
@@ -2876,11 +2888,16 @@ html.is-theme .settingsDivider {
   cursor: pointer;
   max-width: 18ch;
   margin-left: 0.35rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 0.5rem 0.3rem;
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
 }
 
 html.is-theme .trackInstrumentSelect {
   border-color: var(--t-34, rgba(255, 255, 255, 0.34));
   background-color: var(--t-3, rgba(255, 255, 255, 0.03));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .trackMainControls {
@@ -3400,6 +3417,13 @@ html.is-theme .autosaveStatus::before {
     padding: 0.4rem 0.55rem;
   }
 
+  .field select {
+    padding: 0.4rem 1.45rem 0.4rem 0.55rem;
+    background-position:
+      calc(100% - 0.73rem) 52%,
+      calc(100% - 0.55rem) 52%;
+  }
+
   .field input[type="range"] {
     height: 1.3rem;
   }
@@ -3524,11 +3548,18 @@ html.is-theme .autosaveStatus::before {
 
 .field select {
   border: 1px solid rgba(0, 0, 0, 0.32);
-  background: transparent;
+  background-color: transparent;
   color: #000000;
-  padding: 0.3rem 0.45rem;
+  padding: 0.3rem 1.35rem 0.3rem 0.45rem;
   border-radius: 0;
   font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 0.5rem 0.3rem;
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
 }
 
 .field input[type="number"]:focus,
@@ -3581,6 +3612,15 @@ html.is-theme .trackInstrumentSelect:focus-visible {
   list-style: none;
 }
 
+.songIoSummary::-webkit-details-marker {
+  display: none;
+}
+
+.songIoSummary::marker {
+  content: "";
+  font-size: 0;
+}
+
 .songIo > summary::-webkit-details-marker {
   display: none;
 }
@@ -3594,13 +3634,17 @@ html.is-theme .trackInstrumentSelect:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   cursor: pointer;
 }
 
+.songIoSummary > .btn {
+  flex: 0 0 auto;
+}
+
 .songIoToggle {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3609,12 +3653,23 @@ html.is-theme .trackInstrumentSelect:focus-visible {
 }
 
 .songIoToggle::after {
-  content: "▹";
-  font-weight: 800;
+  content: "";
+  display: inline-block;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transform-origin: 55% 55%;
 }
 
 .songIo[open] .songIoToggle::after {
-  content: "▿";
+  transform: rotate(45deg);
+}
+
+.field select::-ms-expand,
+.trackInstrumentSelect::-ms-expand {
+  display: none;
 }
 
 .songIoBody {
@@ -3626,6 +3681,7 @@ html.is-theme .trackInstrumentSelect:focus-visible {
 .songJsonWrap {
   position: relative;
   width: 100%;
+  overflow: hidden;
 }
 
 .songJsonHighlight {
@@ -3642,6 +3698,7 @@ html.is-theme .trackInstrumentSelect:focus-visible {
   white-space: pre-wrap;
   overflow: auto;
   pointer-events: none;
+  box-sizing: border-box;
 
   scrollbar-width: none;
 }
@@ -3665,6 +3722,7 @@ html.is-theme .trackInstrumentSelect:focus-visible {
 }
 
 .songJson {
+  display: block;
   width: 100%;
   border: 1px solid rgba(0, 0, 0, 0.32);
   background: transparent;
@@ -3675,6 +3733,9 @@ html.is-theme .trackInstrumentSelect:focus-visible {
   font-size: 0.75rem;
   line-height: 1.25;
   resize: vertical;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 
   caret-color: #000000;
 }
@@ -3881,7 +3942,7 @@ html.is-theme .trackBeatHeaderNum {
 .step.is-current {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  border-color: transparent;
+  border: 0;
 }
 
 .step:hover:not(.is-on):not(:disabled) {

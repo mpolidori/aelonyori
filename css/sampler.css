@@ -328,20 +328,30 @@ body.is-sampler-view #settingsModal {
 .samplerPadEditSelect {
   position: absolute;
   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.2);
   background: var(--page-bg, #ffffff);
   color: inherit;
   font: inherit;
   font-size: 0.68rem;
-  padding: 0.12rem 0.2rem;
+  padding: 0.12rem 0.86rem 0.12rem 0.2rem;
   cursor: pointer;
   z-index: 2;
   width: calc(50% - 0.44rem);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 0.4rem 0.24rem;
+  background-repeat: no-repeat;
+  background-position: right 0.28rem center;
 }
 
 .samplerPadEditSelect option {
   background: var(--page-bg, #ffffff);
   color: inherit;
+}
+
+.samplerPadEditSelect::-ms-expand {
+  display: none;
 }
 
 .samplerPadEditQ0 {
@@ -495,7 +505,7 @@ body.is-sampler-view #settingsModal {
 .samplerStep.is-current {
   outline: 2px solid color-mix(in srgb, var(--compose-accent) 92%, transparent);
   outline-offset: 1px;
-  border-color: transparent;
+  border: 0;
 }
 
 .samplerStep:hover:not(.is-on):not(:disabled) {
@@ -772,11 +782,15 @@ html.is-theme .samplerComposeRatchetOption {
   border-color: var(--t-22, rgba(255, 255, 255, 0.22));
 }
 
-html.is-theme .samplerPadEditSelect,
 html.is-theme .samplerPadEditSelect option {
   background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+html.is-theme .samplerPadEditSelect {
+  background-color: var(--t-3, rgba(255, 255, 255, 0.03));
   border-color: var(--t-22, rgba(255, 255, 255, 0.22));
   color: var(--t-92, rgba(255, 255, 255, 0.92));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 @media (max-width: 860px) {
