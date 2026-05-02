@@ -6568,13 +6568,14 @@
 
       // If not yet activated, check if this is scroll or draw intent
       if (!track.rollPaintActive) {
-        // Vertical movement > horizontal = scrolling intent, cancel
-        if (dy > dx + 6 && dy > 10) {
+        // Only treat as scroll if: substantial vertical movement AND minimal horizontal
+        // This prevents accidentally canceling diagonal/horizontal drags
+        if (dy > 15 && dx < 5) {
           track.rollPaintPointerId = null;
           return;
         }
-        // Horizontal movement enough to start drawing
-        if (dx > 6 || dy > 6) {
+        // Activate drawing on any movement > 2px (very small deadzone)
+        if (dx > 2 || dy > 2) {
           track.rollPaintActive = true;
           // Determine mode based on what we're starting on
           if (track.rollPaintStartOn) {
