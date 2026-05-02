@@ -3397,6 +3397,19 @@ html.is-theme .autosaveStatus::before {
   .trackSliderGrid {
     grid-template-columns: 1fr;
   }
+
+  /* Reorder fields so left-column items come first, right-column (ADSR/H) after */
+  .trackSliderGrid .seqModeField  { order: 1; }
+  .trackSliderGrid .pitchField    { order: 2; }
+  .trackSliderGrid .noteModeField { order: 3; }
+  .trackSliderGrid .tuneField     { order: 4; }
+  .trackSliderGrid .offsetField   { order: 5; }
+  .trackSliderGrid .swingField    { order: 6; }
+  .trackSliderGrid .attackField   { order: 7; }
+  .trackSliderGrid .decayField    { order: 8; }
+  .trackSliderGrid .sustainField  { order: 9; }
+  .trackSliderGrid .releaseField  { order: 10; }
+  .trackSliderGrid .holdField     { order: 11; }
 }
 
 @media (pointer: coarse) {
