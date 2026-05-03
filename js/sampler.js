@@ -41,6 +41,8 @@
 
   const recordFab = document.getElementById("samplerRecordFab");
   const playFab = document.getElementById("samplerPlayFab");
+  const samplerPadsBar = document.getElementById("samplerPadsBar");
+  const samplerComposeBar = document.getElementById("samplerComposeBar");
   const samplerRecordStatus = document.getElementById("samplerRecordStatus");
   const composeRatchetPicker = document.getElementById(
     "samplerComposeRatchetPicker",
@@ -560,6 +562,7 @@
       playFab.setAttribute("aria-pressed", "false");
       playFab.title = "play";
     }
+    if (samplerComposeBar) samplerComposeBar.dataset.playing = "0";
     renderCompose();
   }
 
@@ -574,6 +577,7 @@
       playFab.setAttribute("aria-pressed", "true");
       playFab.title = "stop";
     }
+    if (samplerComposeBar) samplerComposeBar.dataset.playing = "1";
 
     const stepMs = (60 / clampNumber(bpm, 60, 200) / 4) * 1000;
     timerId = window.setInterval(() => {
@@ -678,9 +682,9 @@
 
     if (padsView) padsView.hidden = activeTab !== "pads";
     if (composeView) composeView.hidden = activeTab !== "compose";
-    if (ratchetBtn) ratchetBtn.hidden = activeTab !== "pads";
-    if (recordFab) recordFab.hidden = activeTab !== "pads";
-    if (playFab) playFab.hidden = activeTab !== "compose";
+
+    if (samplerPadsBar) samplerPadsBar.hidden = activeTab !== "pads";
+    if (samplerComposeBar) samplerComposeBar.hidden = activeTab !== "compose";
 
     closeComposeRatchetPicker();
 
@@ -1019,6 +1023,7 @@
     if (!composeGrid) return;
 
     syncComposeLayout();
+    syncComposeBarPosition();
 
     const frag = document.createDocumentFragment();
 
@@ -1163,6 +1168,20 @@
 
     composeGrid.innerHTML = "";
     composeGrid.appendChild(frag);
+  }
+
+  function syncComposeBarPosition() {
+    if (!samplerComposeBar) return;
+    samplerComposeBar.dataset.playing = isPlaying ? "1" : "0";
+    if (isPlaying && stepsCount > 0) {
+      const ps = (currentStep / stepsCount) * 100;
+      const pe = ((currentStep + 1) / stepsCount) * 100;
+      samplerComposeBar.style.setProperty("--ps", `${ps}%`);
+      samplerComposeBar.style.setProperty("--pe", `${pe}%`);
+    } else {
+      samplerComposeBar.style.setProperty("--ps", "0%");
+      samplerComposeBar.style.setProperty("--pe", "0%");
+    }
   }
 
   function closeSamplerView() {

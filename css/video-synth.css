@@ -1,0 +1,277 @@
+.videoSynthRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: var(--page-bg, #ffffff);
+  color: rgba(0, 0, 0, 0.86);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html.is-theme .videoSynthRoot {
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
+}
+
+body.is-video-synth-view .videoSynthRoot {
+  transform: translateX(0);
+}
+
+.videoSynthShell {
+  width: min(900px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 1.2rem;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.videoSynthTopBar {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.5rem 0.62rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.videoSynthTitle {
+  font-size: 0.78rem;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.videoSynthActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.videoSynthPreview {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: #05070d;
+  height: clamp(220px, 44vh, 430px);
+  overflow: hidden;
+}
+
+.videoSynthCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.videoSynthHud {
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 0.18rem 0.4rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+html.is-theme .videoSynthHud {
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-32, rgba(255, 255, 255, 0.32));
+}
+
+.videoSynthControls {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.55rem 0.62rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.44rem 0.68rem;
+}
+
+.videoSynthGroup {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.44rem;
+}
+
+.videoSynthGroup-glitch,
+.videoSynthGroup-colors {
+  align-self: start;
+}
+
+.videoSynthField {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr) 5.3ch;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.videoSynthField .fieldLabel {
+  font-size: 0.66rem;
+  text-transform: lowercase;
+}
+
+.videoSynthSelect,
+.videoSynthField .num,
+.videoSynthField input[type="range"] {
+  min-width: 0;
+}
+
+.videoSynthField .num {
+  width: 100%;
+}
+
+.videoSynthField input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 0.82rem;
+  background: transparent;
+}
+
+.videoSynthField input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.videoSynthField input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.videoSynthField input[type="range"]::-moz-range-progress {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.videoSynthField input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.9);
+  margin-top: -4.5px;
+}
+
+.videoSynthField input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.videoSynthColorField {
+  grid-template-columns: 7ch minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.videoSynthColorInput {
+  width: 100%;
+  min-width: 0;
+  height: 1.4rem;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  background: transparent;
+}
+
+.videoSynthHexInput {
+  font-family: inherit;
+  text-transform: lowercase;
+}
+
+.videoSynthToggles {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.45rem 0.62rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.videoSynthHint {
+  margin: 0;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.35rem 0.52rem;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  text-transform: lowercase;
+  letter-spacing: 0.01em;
+}
+
+body.is-video-synth-view .edgeNav {
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: 2px;
+  opacity: 0.72;
+}
+
+body.is-video-synth-view .edgeNav:hover,
+body.is-video-synth-view .edgeNav:focus-visible {
+  color: rgba(255, 255, 255, 0.96);
+  opacity: 0.94;
+}
+
+html.is-theme body.is-video-synth-view .edgeNav {
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+  background: var(--t-14, rgba(255, 255, 255, 0.14));
+}
+
+html.is-theme .videoSynthTopBar,
+html.is-theme .videoSynthControls,
+html.is-theme .videoSynthToggles {
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+html.is-theme .videoSynthHint {
+  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
+  background: var(--t-4, rgba(255, 255, 255, 0.04));
+  color: var(--t-90, rgba(255, 255, 255, 0.9));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-webkit-slider-runnable-track,
+html.is-theme .videoSynthField input[type="range"]::-moz-range-track,
+html.is-theme .videoSynthField input[type="range"]::-moz-range-progress {
+  background: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-webkit-slider-thumb,
+html.is-theme .videoSynthField input[type="range"]::-moz-range-thumb {
+  border-color: var(--t-28, rgba(255, 255, 255, 0.28));
+  background: var(--t-fg, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .videoSynthColorInput {
+  border-color: var(--t-28, rgba(255, 255, 255, 0.28));
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+@media (max-width: 760px) {
+  .videoSynthControls {
+    grid-template-columns: 1fr;
+  }
+}
+
+body.is-video-synth-view .container,
+body.is-video-synth-view #samplePadToolbar,
+body.is-video-synth-view #samplePadModeToolbar,
+body.is-video-synth-view #padPlaybackChip,
+body.is-video-synth-view #wordPlaySubtitleStack {
+  transform: translateX(100vw);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.is-video-synth-view #settingsModal {
+  display: none !important;
+}

@@ -6,10 +6,13 @@
     <title>aelonyori</title>
     <link rel="stylesheet" href="css/style.css?v=17">
     <link rel="stylesheet" href="css/sampler.css?v=6">
+    <link rel="stylesheet" href="css/video-synth.css?v=1">
 </head>
 <body>
-    <button type="button" id="navToSamplerBtn" class="edgeNav edgeNavRight" aria-label="open sampler">&gt;</button>
-    <button type="button" id="navToDawBtn" class="edgeNav edgeNavLeft" aria-label="back to daw" hidden>&lt;</button>
+    <button type="button" id="navToVideoSynthBtn" class="edgeNav edgeNavLeft edgeNavVideoOpen" aria-label="open video synth">&lt;</button>
+    <button type="button" id="navToSamplerBtn" class="edgeNav edgeNavRight edgeNavSamplerOpen" aria-label="open sampler">&gt;</button>
+    <button type="button" id="navToDawBtn" class="edgeNav edgeNavLeft edgeNavSamplerBack" aria-label="back to daw" hidden>&lt;</button>
+    <button type="button" id="navToDawFromVideoBtn" class="edgeNav edgeNavRight edgeNavVideoBack" aria-label="back to daw" hidden>&gt;</button>
 
     <div class="container">
         <section id="samplePadWrap" class="samplePadWrap" hidden aria-label="sample pad">
@@ -51,6 +54,8 @@
             <div id="tracks" class="tracks" aria-label="tracks"></div>
         </section>
     </div>
+
+    <section id="videoSynthRoot" class="videoSynthRoot" hidden aria-label="video synthesis"></section>
 
     <main id="samplerRoot" class="samplerRoot" aria-label="sampler">
         <section class="samplerShell" aria-label="sampler app">
@@ -101,15 +106,18 @@
             </section>
         </section>
 
-        <div class="samplerBottomDock" aria-label="sampler actions">
-            <button type="button" id="samplerRatchetBtn" class="samplerFab" aria-label="pad ratchet settings" aria-pressed="false" title="pad ratchet settings">
-                <span class="samplerSettingsIcon" aria-hidden="true">⚙</span>
-            </button>
-            <button type="button" id="samplerRecordFab" class="samplerFab" aria-label="toggle sampler record" aria-pressed="false">
+        <div id="samplerPadsBar" class="transportBar samplerPadsBar" data-loop="0" hidden aria-label="sampler pads controls">
+            <button type="button" id="samplerRatchetBtn" class="transportIconBtn transportSettingsBtn" aria-label="pad ratchet settings" aria-pressed="false" title="pad ratchet settings">⚙</button>
+            <button type="button" id="samplerRecordFab" class="transportIconBtn samplerTransportRecordBtn" aria-label="toggle sampler record" aria-pressed="false" title="record">
                 <span class="samplerRecordIcon" aria-hidden="true"></span>
             </button>
-            <button type="button" id="samplerPlayFab" class="samplerFab" aria-label="toggle sampler play" aria-pressed="false" hidden>
-                <span class="samplerPlayIcon" aria-hidden="true"></span>
+        </div>
+        <div id="samplerComposeBar" class="transportBar samplerComposeBar" data-playing="0" data-loop="0" hidden aria-label="sampler compose controls">
+            <button type="button" id="samplerPlayFab" class="transportIconBtn transportPlayBtn" aria-label="play" aria-pressed="false">
+                <span class="transportPlayIcon" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="transportSeekBtn" aria-label="playback position">
+                <span class="transportTicks" id="samplerComposeTicks" aria-hidden="true"></span>
             </button>
         </div>
         <div id="samplerRecordStatus" class="samplerRecordStatus" aria-live="polite" hidden>recording...</div>
@@ -402,6 +410,7 @@
     <div id="autosaveStatus" class="status autosaveStatus" aria-live="polite" hidden>saving</div>
 
     <script src="js/sampler.js?v=4" defer></script>
+    <script src="js/video-synth.js?v=1" defer></script>
     <script src="js/app.js?v=5" defer></script>
 </body>
 </html>

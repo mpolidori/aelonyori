@@ -38,6 +38,8 @@
   --bump-ghost-opacity-scale-nontheme: 1;
   --bump-letter-shadow-spread: 2px;
   --bump-track-ghost-opacity: 0.2;
+  --select-caret-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-caret-theme: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 html {
@@ -129,15 +131,27 @@ body {
   right: 0.08rem;
 }
 
-body:not(.has-daw) .edgeNavRight {
+body:not(.has-daw) .edgeNavSamplerOpen {
   display: none;
 }
 
-body:not(.is-sampler-view) .edgeNavLeft {
+body:not(.is-sampler-view) .edgeNavSamplerBack {
   display: none;
 }
 
-body.is-sampler-view .edgeNavRight {
+body:not(.is-video-synth-view) .edgeNavVideoBack {
+  display: none;
+}
+
+body.is-sampler-view .edgeNavSamplerOpen,
+body.is-sampler-view .edgeNavVideoOpen,
+body.is-sampler-view .edgeNavVideoBack {
+  display: none;
+}
+
+body.is-video-synth-view .edgeNavSamplerOpen,
+body.is-video-synth-view .edgeNavVideoOpen,
+body.is-video-synth-view .edgeNavSamplerBack {
   display: none;
 }
 
@@ -287,7 +301,7 @@ html.is-theme .field select {
   border-color: var(--t-34, rgba(255, 255, 255, 0.34));
   background-color: var(--t-3, rgba(255, 255, 255, 0.03));
   color: var(--t-92, rgba(255, 255, 255, 0.92));
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--select-caret-theme);
 }
 
 html.is-theme .field input[type="range"]:focus-visible {
@@ -1350,6 +1364,7 @@ html.is-theme .switchToggle:focus-visible {
   color: #000000;
   position: relative;
   isolation: isolate;
+  z-index: 0;
   background-image: linear-gradient(var(--hit), var(--hit));
   background-repeat: no-repeat;
   background-position: 0 100%;
@@ -1391,6 +1406,7 @@ html.is-theme .switchToggle:focus-visible {
   background: var(--hit);
   opacity: var(--bump-underline-level, 0);
   pointer-events: none;
+  z-index: 0;
   transform: translate(-50%, 0);
   transition:
     width 0.24s cubic-bezier(0.22, 1, 0.36, 1),
@@ -1637,7 +1653,11 @@ html.is-theme body.is-bump-letters .logo .letter::before {
 }
 
 html:not(.is-theme) body.is-bump-letters .logo .letter::before {
-  color: color-mix(in srgb, var(--hit) 42%, #ffffff);
+  color: color-mix(
+    in srgb,
+    var(--hit) var(--bump-ghost-hit-mix-nontheme, 42%),
+    #ffffff
+  );
   opacity: calc(
     var(--bump-letter-ghost-opacity, 0.14)
       * var(--bump-ghost-level, 0)
@@ -1646,23 +1666,56 @@ html:not(.is-theme) body.is-bump-letters .logo .letter::before {
   text-shadow:
     calc(-1 * var(--bump-letter-shadow-spread, 2px))
       calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     0 calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     var(--bump-letter-shadow-spread, 2px)
       calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     var(--bump-letter-shadow-spread, 2px) 0 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     calc(-1 * var(--bump-letter-shadow-spread, 2px))
       var(--bump-letter-shadow-spread, 2px) 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     0 var(--bump-letter-shadow-spread, 2px) 0
-      color-mix(in srgb, var(--hit) 36%, #ffffff),
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      ),
     var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px)
-      0 color-mix(in srgb, var(--hit) 36%, #ffffff);
+      0
+      color-mix(
+        in srgb,
+        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
+        #ffffff
+      );
 }
 
 .logo .letter.is-muted {
@@ -2888,7 +2941,7 @@ html.is-theme .settingsDivider {
   cursor: pointer;
   max-width: 18ch;
   margin-left: 0.35rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--select-caret-default);
   background-size: 0.5rem 0.3rem;
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
@@ -2897,7 +2950,7 @@ html.is-theme .settingsDivider {
 html.is-theme .trackInstrumentSelect {
   border-color: var(--t-34, rgba(255, 255, 255, 0.34));
   background-color: var(--t-3, rgba(255, 255, 255, 0.03));
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23ccc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--select-caret-theme);
 }
 
 .trackMainControls {
@@ -3569,7 +3622,7 @@ html.is-theme .autosaveStatus::before {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpolyline points='0,0 5,6 10,0' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--select-caret-default);
   background-size: 0.5rem 0.3rem;
   background-repeat: no-repeat;
   background-position: right 0.5rem center;

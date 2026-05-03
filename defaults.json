@@ -165,6 +165,7 @@
   "accent": {
     "nonThemeBumpOffsetFraction": 0.5,
     "nonThemeBumpLighten": 0.1,
-    "nonThemeBumpDesaturate": 0.08
+    "nonThemeBumpDesaturate": 0.08,
+    "nonThemeBumpShadowLightness": 0.61
   }
 }
