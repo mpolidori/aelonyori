@@ -135,7 +135,8 @@ body {
   right: 0.08rem;
 }
 
-body:not(.has-daw) .edgeNavSamplerOpen {
+body:not(.has-daw) .edgeNavSamplerOpen,
+body:not(.has-daw) .edgeNavVideoOpen {
   display: none;
 }
 
