@@ -130,6 +130,12 @@
     return String(n).replace(/\.0$/, "");
   }
 
+  function setGlobalStatus(message, { busy = false, ok = true } = {}) {
+    const hub = window.AelonyoriStatus;
+    if (!hub || typeof hub.set !== "function") return;
+    hub.set(message, { busy, ok });
+  }
+
   function formatCornerLabel(cornerIndex) {
     const c = clampNumber(Math.round(numberOrFallback(cornerIndex, 0)), 0, 3);
     if (c === 0) return "top left";
@@ -340,7 +346,7 @@
   function downloadCurrentSamplerPack() {
     const hasAnyLoadedSample = buffers.some((buf) => Boolean(buf));
     if (!hasAnyLoadedSample) {
-      window.alert("No samples loaded to download.");
+      setGlobalStatus("no samples loaded", { ok: false });
       return;
     }
 
@@ -356,6 +362,7 @@
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setGlobalStatus("pack downloaded");
   }
 
   function requestSamplerPackUpload() {
@@ -372,12 +379,14 @@
         : null;
     if (!file) return;
 
+    setGlobalStatus("loading pack", { busy: true });
+
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const ok = await applySamplerPackData(parsed);
       if (!ok) {
-        window.alert("Invalid sample pack file.");
+        setGlobalStatus("invalid pack", { ok: false });
         return;
       }
 
@@ -388,9 +397,10 @@
       if (samplerPackNameInput) {
         samplerPackNameInput.value = inferredName || getSamplerPackNameFromUi();
       }
+      setGlobalStatus("pack loaded");
     } catch (error) {
       console.warn("Unable to import sample pack", error);
-      window.alert("Unable to import sample pack.");
+      setGlobalStatus("pack import failed", { ok: false });
     }
   }
 
@@ -1434,6 +1444,24 @@
   setSteps(stepsCount);
   setBeat(beatSteps);
   setRecordingMode(false);
+
+  (async () => {
+    try {
+      const res = await fetch("configs/sampler/defaults.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const cfg = await res.json();
+      if (!cfg || typeof cfg !== "object") return;
+      const nextBpm = clampNumber(Math.round(numberOrFallback(cfg.bpm, bpm)), 20, 360);
+      const nextSteps = clampNumber(Math.round(numberOrFallback(cfg.steps, stepsCount)), 4, 256);
+      const nextBeat = clampNumber(Math.round(numberOrFallback(cfg.beat, beatSteps)), 1, 16);
+      setBpm(nextBpm);
+      setSteps(nextSteps);
+      setBeat(nextBeat);
+    } catch {
+      // ignore — use hardcoded defaults
+    }
+  })();
+
   setPadRatchetPanelOpen(false);
   setActiveTab("pads");
   setSelectedPad(0);

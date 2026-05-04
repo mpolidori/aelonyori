@@ -21,7 +21,7 @@ This reference lists user-facing controls currently rendered by the app UI.
 | Name input | Rename/save target |
 | New / Save / Load / Default | Preset actions |
 | Autosave toggle + interval | Background save behavior |
-| Song JSON copy/apply/download/upload | Import/export and direct JSON workflows |
+| Song JSON copy/apply/download/upload | Import/export and direct JSON workflows, including embedded video synth state |
 
 ### Range
 
@@ -129,3 +129,64 @@ This reference lists user-facing controls currently rendered by the app UI.
 | Repeat | Selected pad ratchet |
 | Trigger | Two-key trigger chord |
 | Playback mode button | Enable pad playback transport mode |
+
+## Video Synth Controls
+
+### Top Bar
+
+| Control | Purpose |
+|---|---|
+| reset | Reset all params to defaults |
+| fullscreen | Enter fullscreen mode |
+| HUD label | Shows current mode and audio/auto status |
+
+### Preset Panel
+
+| Control | Purpose |
+|---|---|
+| Preset select | Choose a saved preset |
+| Name input | Label for new/saved preset |
+| New / Save / Load / Default | Standalone video synth preset CRUD actions |
+| Autosave toggle + interval | Background save interval control |
+| JSON copy/apply/download/upload | Import/export preset state as JSON |
+
+### Left Column
+
+| Control | Range | Purpose |
+|---|---|---|
+| mode select | wave / noise field / grid fold / rings / bars / plasma | Base pattern generator |
+| formula select | sine / tangent / fold / pulse / cheby / xor | Signal shaping function |
+| video speed | 0–100 | Background video element playback speed |
+| glitch a | 0–100 | Primary per-line jitter strength |
+| glitch b | 0–100 | Secondary glitch layer strength |
+| offset | 0–100 | Phase offset between glitch channels |
+| rgb split | 0–100 | Ghost layer separation distance |
+| pixel | 0–100 | UV pixelation / quantization amount |
+| drift | 0–100 | Time warp / speed factor |
+| scan | 0–100 | Scanline depth |
+
+### Right Column
+
+| Control | Range | Purpose |
+|---|---|---|
+| hue | 0–100 | Global hue rotation |
+| noise | 0–100 | Additive noise per pattern layer |
+| audio mix | 0–100 | Live audio waveform signal blend |
+| auto mix | 0–100 | Auto-oscillator signal blend |
+| color a | hex | Primary pattern layer color |
+| color b | hex | Ghost/split layer color |
+| text | string (≤3 lines) | Overlay text content |
+| text color | hex | Overlay text tint color applied directly to the visible text |
+| text size | 10–160 | Overlay text font size (px) |
+| text mix | 0–100 | Blend amount between the pattern and the selected text tint |
+| flip horizontal | toggle | Mirror overlay text horizontally |
+| flip vertical | toggle | Flip overlay text upside-down |
+
+### Toggle Row
+
+| Toggle | Purpose |
+|---|---|
+| audio react | Enable/disable live audio waveform input |
+| invert | Invert entire color output |
+| video background | Enable logo video feed as background layer |
+| crop | Show/hide crop overlay for video background region |

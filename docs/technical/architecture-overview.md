@@ -1,14 +1,16 @@
 # Architecture Overview
 
-This project is a browser-only, no-build frontend application with two primary runtime modules:
+This project is a browser-only, no-build frontend application with three primary runtime modules:
 
 - DAW runtime in [js/app.js](../../js/app.js)
 - Sampler runtime in [js/sampler.js](../../js/sampler.js)
+- Video synth runtime in [js/video-synth.js](../../js/video-synth.js)
 
 Styling is split by concern:
 
 - DAW + global visuals in [css/style.css](../../css/style.css)
 - Sampler visuals in [css/sampler.css](../../css/sampler.css)
+- Video synth visuals in [css/video-synth.css](../../css/video-synth.css)
 
 Entry shell is [index.html](../../index.html).
 
@@ -22,7 +24,7 @@ Key responsibilities:
 - Global transport, seek, loop, scheduler.
 - Pattern model (single and roll modes).
 - Per-track synthesis and envelope execution.
-- Presets/song JSON persistence and autosave.
+- Presets/song JSON persistence and autosave, including embedded video synth state.
 - Visual systems (theme, bump, subtitles, star bounce).
 - DAW-side sample pad and pad-roll overlays.
 
@@ -36,17 +38,33 @@ Key responsibilities:
 - Recording workflow (media stream + media recorder).
 - Sampler playback timing independent from DAW scheduler.
 
+## Video Synth Module: video-synth.js
+
+Key responsibilities:
+
+- WebGL fullscreen canvas rendering loop.
+- GLSL fragment shader for generative visual patterns (6 modes, 6 formulas).
+- Text overlay via 2D canvas rasterization uploaded as a luminance texture.
+- Audio reactive input via AnalyserNode fed from the DAW audio element.
+- Logo video background capture and interactive crop overlay.
+- Standalone preset/autosave system plus DAW-song state import/export compatibility.
+
+See [video-synth.md](video-synth.md) for full technical reference.
+
 ## 2. Data Model Layers
 
 ## Config Layer
 
-- [config.json](../../config.json): backend tuning values not exposed in UI (subtitle/bump tuning).
-- Loaded by app.js at startup and merged against defaults.
+- [configs/daw/config.json](../../configs/daw/config.json): backend tuning values not exposed in UI (subtitle/bump tuning).
+- [configs/sampler/config.json](../../configs/sampler/config.json): reserved sampler tuning surface.
+- [configs/video/config.json](../../configs/video/config.json): reserved video synth tuning surface.
+- DAW config is currently loaded by app.js at startup and merged against in-code defaults.
 
 ## Defaults Layer
 
-- [defaults.json](../../defaults.json): initial UI, global, and instrument defaults.
-- Controls startup state for sliders, toggles, and per-sound envelopes.
+- [configs/daw/defaults.json](../../configs/daw/defaults.json): initial DAW UI, global, and instrument defaults.
+- [configs/sampler/defaults.json](../../configs/sampler/defaults.json): initial sampler BPM, steps, and beat values.
+- [configs/video/defaults.json](../../configs/video/defaults.json): initial video synth parameter defaults.
 
 ## Runtime State Layer
 
@@ -112,6 +130,6 @@ Supported persistence channels:
 The app has two categories of tunables:
 
 - User-facing controls in the UI for creative performance.
-- Internal tuning values in config.json/defaults.json for feel calibration and system behavior.
+- Internal tuning values in `configs/*/config.json` and `configs/*/defaults.json` for feel calibration and startup behavior.
 
 This separation enables safe iteration on timing/visual behavior without increasing UI complexity.

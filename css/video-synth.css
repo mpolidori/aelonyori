@@ -100,6 +100,10 @@ body.is-video-synth-view .videoSynthRoot {
   justify-self: start;
 }
 
+.videoSynthPresetStatus {
+  display: none !important;
+}
+
 .videoSynthPresetActions {
   margin-top: 0.25rem;
 }
@@ -135,6 +139,12 @@ body.is-video-synth-view .videoSynthRoot {
 .videoSynthCropOverlay.is-active {
   opacity: 1;
   pointer-events: auto;
+}
+
+.videoSynthPreview.is-crop-active,
+.videoSynthCropOverlay.is-active {
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .videoSynthCropRect {
@@ -281,6 +291,28 @@ html.is-theme .videoSynthHud {
 .videoSynthHexInput {
   font-family: inherit;
   text-transform: lowercase;
+}
+
+.videoSynthTextFlipRow {
+  display: grid;
+  gap: 0.44rem;
+}
+
+.videoSynthFlipToggleField {
+  min-width: 0;
+  width: auto;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  justify-items: start;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.videoSynthFlipToggleField .fieldLabel {
+  font-size: 0.66rem;
+  text-transform: lowercase;
+  white-space: nowrap;
 }
 
 .videoSynthToggles {

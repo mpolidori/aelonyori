@@ -120,6 +120,7 @@
 
   const settingsModal = document.getElementById("settingsModal");
   const settingsPanel = document.getElementById("settingsPanel");
+  const settingsDocsLink = document.getElementById("settingsDocsLink");
   const settingsThemeControlsMount = document.getElementById(
     "settingsThemeControlsMount",
   );
@@ -136,7 +137,6 @@
 
   const presetSelect = document.getElementById("presetSelect");
   const presetNameInput = document.getElementById("presetName");
-  const presetStatus = document.getElementById("presetStatus");
   const autosaveToggleBtn = document.getElementById("autosaveToggleBtn");
   const autosaveIntervalSelect = document.getElementById("autosaveInterval");
   const presetNewBtn = document.getElementById("presetNewBtn");
@@ -148,7 +148,6 @@
   const songJsonDownloadBtn = document.getElementById("songJsonDownloadBtn");
   const songJsonUploadBtn = document.getElementById("songJsonUploadBtn");
   const songJsonUploadInput = document.getElementById("songJsonUploadInput");
-  const autosaveStatus = document.getElementById("autosaveStatus");
   const songIo = document.getElementById("songIo");
   const songJson = document.getElementById("songJson");
   const songJsonHighlight = document.getElementById("songJsonHighlight");
@@ -204,8 +203,8 @@
     SOUND_OPTIONS.filter((o) => o.tonal).map((o) => o.value),
   );
 
-  const DEFAULTS_PATH = "defaults.json";
-  const CONFIG_PATH = "config.json";
+  const DEFAULTS_PATH = "configs/daw/defaults.json";
+  const CONFIG_PATH = "configs/daw/config.json";
 
   const DEFAULT_CONFIG = Object.freeze({
     subtitles: Object.freeze({
@@ -932,7 +931,6 @@
   let subtitleCursorChunkCount = 0;
   let subtitleLastText = "";
   let autosaveTimerId = null;
-  let autosaveStatusTimer = null;
   let logoVideoBgRaf = null;
   let logoVideoBgIntervalId = null;
   let logoVideoBgLastSampleAt = 0;
@@ -1335,11 +1333,11 @@
     const extensions = cloneSongExtensions(loadedSongExtensions);
     if (
       videoSynthPlugin
-      && typeof videoSynthPlugin.exportSession === "function"
+      && typeof videoSynthPlugin.exportState === "function"
     ) {
-      const videoSynthSession = videoSynthPlugin.exportSession();
-      if (videoSynthSession && typeof videoSynthSession === "object") {
-        extensions.videoSynth = videoSynthSession;
+      const videoSynthState = videoSynthPlugin.exportState();
+      if (videoSynthState && typeof videoSynthState === "object") {
+        extensions.videoSynth = videoSynthState;
       } else {
         delete extensions.videoSynth;
       }
@@ -1350,7 +1348,7 @@
   function applySongExtensions(extensions) {
     loadedSongExtensions = cloneSongExtensions(extensions);
 
-    const videoSynthSession =
+    const videoSynthState =
       loadedSongExtensions.videoSynth
       && typeof loadedSongExtensions.videoSynth === "object"
         ? loadedSongExtensions.videoSynth
@@ -1358,12 +1356,12 @@
 
     if (
       videoSynthPlugin
-      && typeof videoSynthPlugin.importSession === "function"
+      && typeof videoSynthPlugin.applyState === "function"
     ) {
-      if (videoSynthSession) {
-        videoSynthPlugin.importSession(videoSynthSession);
-      } else if (typeof videoSynthPlugin.resetSession === "function") {
-        videoSynthPlugin.resetSession();
+      if (videoSynthState) {
+        videoSynthPlugin.applyState(videoSynthState);
+      } else if (typeof videoSynthPlugin.resetParams === "function") {
+        videoSynthPlugin.resetParams();
       }
       if (typeof videoSynthPlugin.setLogoFeedActive === "function") {
         videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
@@ -1517,8 +1515,6 @@
     syncSongJsonScroll();
   }
 
-  let presetStatusTimer = null;
-  let presetStatusBusySince = null;
   let lastPresetSaveErrorMessage = "";
 
   function isQuotaExceededError(error) {
@@ -1546,47 +1542,11 @@
   }
 
   function setPresetStatus(message, { busy = false, ok = true } = {}) {
-    if (!presetStatus) return;
-
-    if (presetStatusTimer) {
-      clearTimeout(presetStatusTimer);
-      presetStatusTimer = null;
-    }
-
-    const now =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
-
-    const label = String(message || "").trim();
-    presetStatus.textContent = label;
-    presetStatus.title = !ok && message ? String(message || "") : "";
-    presetStatus.classList.toggle("is-ok", Boolean(ok) && !busy);
-    presetStatus.classList.toggle("is-error", !ok && !busy);
-
-    if (busy) {
-      presetStatusBusySince = now;
-      presetStatus.classList.add("is-busy");
+    const hub = window.AelonyoriStatus;
+    if (hub && typeof hub.set === "function") {
+      hub.set(message, { busy, ok });
       return;
     }
-
-    if (presetStatusBusySince == null) {
-      presetStatusBusySince = now;
-      presetStatus.classList.add("is-busy");
-    }
-
-    const minBusyMs = 520;
-    const elapsed = now - presetStatusBusySince;
-    const remaining = Math.max(0, minBusyMs - elapsed);
-    const holdMs = ok ? 1700 : 3200;
-
-    presetStatusTimer = setTimeout(() => {
-      presetStatus.classList.remove("is-busy", "is-ok", "is-error");
-      presetStatus.textContent = "";
-      presetStatus.title = "";
-      presetStatusBusySince = null;
-      presetStatusTimer = null;
-    }, remaining + holdMs);
   }
 
   function normalizeAutosaveInterval(value) {
@@ -1612,23 +1572,11 @@
   }
 
   function showAutosaveStatus(message, { ok = true } = {}) {
-    if (!autosaveStatus) return;
-    if (autosaveStatusTimer) {
-      window.clearTimeout(autosaveStatusTimer);
-      autosaveStatusTimer = null;
+    const hub = window.AelonyoriStatus;
+    if (hub && typeof hub.flash === "function") {
+      hub.flash(message, { ok, busy: true, durationMs: 3000 });
+      return;
     }
-
-    autosaveStatus.hidden = false;
-    autosaveStatus.textContent = String(message || "saving");
-    autosaveStatus.classList.add("is-busy");
-    autosaveStatus.classList.toggle("is-ok", Boolean(ok));
-    autosaveStatus.classList.toggle("is-error", !ok);
-
-    autosaveStatusTimer = window.setTimeout(() => {
-      autosaveStatus.classList.remove("is-busy", "is-ok", "is-error");
-      autosaveStatus.hidden = true;
-      autosaveStatusTimer = null;
-    }, 3000);
   }
 
   function broadcastAutosaveConfig() {
@@ -2777,6 +2725,15 @@
     syncThemePickerInputs();
     applyLetterHitAccentPalette();
     syncBumpModeClass();
+  }
+
+  function buildDocsUrl() {
+    const url = new URL("/docs/", window.location.origin);
+    if (themeEnabled) {
+      url.searchParams.set("themeA", normalizeHexColor(themeA, DEFAULT_THEME_A));
+      url.searchParams.set("themeB", normalizeHexColor(themeB, DEFAULT_THEME_B));
+    }
+    return url.toString();
   }
 
   function syncBumpModeClass() {
@@ -8705,6 +8662,15 @@
   if (themeModeBtn) {
     themeModeBtn.addEventListener("click", () => {
       setThemeEnabled(!themeEnabled);
+    });
+  }
+
+  if (settingsDocsLink) {
+    settingsDocsLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      const target = buildDocsUrl();
+      settingsDocsLink.href = target;
+      window.open(target, "_blank", "noopener");
     });
   }
 

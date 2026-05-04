@@ -2318,6 +2318,24 @@ html.is-theme .settingsDivider {
   background: var(--t-14, rgba(255, 255, 255, 0.14));
 }
 
+.settingsDocLink {
+  text-align: right;
+}
+
+.settingsDocLink a {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--accent) 68%, transparent);
+  text-decoration: none;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.settingsDocLink a:hover {
+  color: var(--accent);
+}
+
 .settingsRow {
   margin: 0;
 }
@@ -2371,6 +2389,10 @@ html.is-theme .settingsDivider {
   justify-self: end;
   align-self: start;
   margin-top: 0.15rem;
+}
+
+#presetStatus {
+  display: none !important;
 }
 
 .settingsSection[aria-label="presets"] #presetStatus {
@@ -3447,7 +3469,6 @@ html.is-auto-expand .lockToggle {
 .autosaveStatus::before {
   width: 1.08em;
   height: 1.08em;
-  order: 2;
 }
 
 html.is-theme .autosaveStatus {
