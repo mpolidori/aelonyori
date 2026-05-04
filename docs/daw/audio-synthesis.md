@@ -1,4 +1,4 @@
-# Synthesis and Audio Engine
+# Audio Synthesis
 
 This document describes the current synthesis implementation and practical future extension paths.
 

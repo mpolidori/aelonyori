@@ -1,21 +1,27 @@
-# config.json Reference
+# Config Files Reference
 
-Runtime tuning values that are not exposed as normal UI controls.
+Runtime tuning values that are not exposed as normal UI controls live under `configs/`.
 
-Source file: [config.json](../../config.json)
+## Active config files
+
+- DAW runtime config: [configs/daw/config.json](../../configs/daw/config.json)
+- Sampler config placeholder: [configs/sampler/config.json](../../configs/sampler/config.json)
+- Video synth config placeholder: [configs/video/config.json](../../configs/video/config.json)
 
 ## Merge behavior
 
-Startup order:
+Current startup order for the DAW:
 
-1. in-code defaults are defined in app.js
-2. config.json is fetched
-3. provided keys override defaults
+1. in-code defaults are defined in `app.js`
+2. `configs/daw/config.json` is fetched
+3. provided keys override in-code defaults
 4. missing keys fall back safely
 
 This means partial config files are supported.
 
-## Current schema
+The sampler and video synth config files currently exist to stabilize the layout and future tuning surface. Their `defaults.json` files are active now; their `config.json` files are reserved for non-UI tuning that may be added later.
+
+## DAW config schema
 
 ```json
 {
@@ -66,7 +72,7 @@ This means partial config files are supported.
 }
 ```
 
-## subtitles keys
+## `subtitles` keys
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -104,7 +110,7 @@ This means partial config files are supported.
 | speedFactorMin | number | Lower clamp for speed scaling factor |
 | speedFactorMax | number | Upper clamp for speed scaling factor |
 
-## bump keys
+## `bump` keys
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -118,5 +124,6 @@ This means partial config files are supported.
 
 ## Notes
 
-- Reload the page after changing config.json.
+- Reload the page after changing files in `configs/`.
 - Values are merged with in-code defaults, so you can tune only the keys you care about.
+- Keep `configs/sampler/config.json` and `configs/video/config.json` additive if new non-UI tuning knobs are introduced.

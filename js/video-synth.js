@@ -1,8 +1,82 @@
 (() => {
+  const VIDEO_SYNTH_DEFAULTS_PATH = "configs/video/defaults.json";
   const VIDEO_SYNTH_PRESET_INDEX_KEY = "aelonyori.video-synth.preset.index";
   const VIDEO_SYNTH_PRESET_DEFAULT_KEY = "aelonyori.video-synth.preset.default";
   const VIDEO_SYNTH_PRESET_STORAGE_PREFIX = "aelonyori.video-synth.preset.";
   const VIDEO_SYNTH_AUTOSAVE_KEY = "aelonyori.video-synth.autosave";
+
+  const shared = window.AelonyoriShared || {};
+  const sharedClampNumber = shared.clampNumber || ((value, min, max) => Math.min(max, Math.max(min, value)));
+  const sharedNumberOrFallback = shared.numberOrFallback || ((value, fallback) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  });
+  const sharedSafeJsonParse = shared.safeJsonParse || ((text) => {
+    try {
+      return { ok: true, value: JSON.parse(text) };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  });
+  const sharedFileSafeStem = shared.fileSafeStem || ((value, fallback = "video-synth") => {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  });
+  const sharedHighlightJson = shared.highlightJson || ((text) => String(text));
+  const sharedIsQuotaExceededError = shared.isQuotaExceededError || ((error) => {
+    if (!error) return false;
+    const code = Number(error.code);
+    const name = String(error.name || "");
+    return (
+      name === "QuotaExceededError" ||
+      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      code === 22 ||
+      code === 1014
+    );
+  });
+  const sharedNormalizeIntervalChoice = shared.normalizeIntervalChoice || ((value, allowed, fallback) => {
+    const options = Array.isArray(allowed) && allowed.length > 0
+      ? allowed
+      : [1, 5, 10, 15, 30, 60];
+    const next = Math.round(sharedNumberOrFallback(value, fallback));
+    if (options.includes(next)) return next;
+    let best = options[0];
+    let bestDist = Math.abs(next - best);
+    for (let i = 1; i < options.length; i += 1) {
+      const dist = Math.abs(next - options[i]);
+      if (dist < bestDist) {
+        best = options[i];
+        bestDist = dist;
+      }
+    }
+    return best;
+  });
+  const sharedMakeUniquePresetName = shared.makeUniquePresetName || ((base, existingNames, defaultBase) => {
+    const baseName = String(base || "").trim() || String(defaultBase || "preset");
+    const existing = new Set(existingNames);
+    if (!existing.has(baseName)) return baseName;
+    let i = 2;
+    while (existing.has(`${baseName} ${i}`)) i += 1;
+    return `${baseName} ${i}`;
+  });
+  const sharedTriggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
+    const type = String(mimeType || "application/json");
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = String(filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
 
   class VideoSynthPlugin {
     constructor({ mount }) {
@@ -76,6 +150,8 @@
       this.uTextEnabled = null;
       this.uTextMix = null;
       this.uTextColor = null;
+      this.uTextFlipH = null;
+      this.uTextFlipV = null;
 
       this.audioNode = null;
       this.analyser = null;
@@ -97,8 +173,6 @@
       this.playbackTimeSeconds = 0;
       this.lastFrameTimestampMs = null;
       this.autosaveTimerId = null;
-      this.presetStatusTimer = null;
-      this.presetStatusBusySince = null;
       this.lastPresetSaveErrorMessage = "";
       this.logoVideoBackgroundEnabled = false;
       this.logoVideoCropX = 50;
@@ -106,6 +180,10 @@
       this.logoVideoCropSize = 88;
       this.logoCropModeActive = false;
       this.logoCropDragState = null;
+      this.logoCropLastTapAtMs = 0;
+      this.logoCropLastTapX = 0;
+      this.logoCropLastTapY = 0;
+      this.loadedDefaults = null;
 
       this.params = {
         mode: 0,
@@ -131,6 +209,8 @@
         textSize: 62,
         textMix: 70,
         textColor: "#f4ecff",
+        textFlipH: false,
+        textFlipV: false,
       };
 
       const autosaveConfig = this.readAutosaveConfig();
@@ -156,6 +236,8 @@
       };
       this.onLogoCropPointerMove = (event) => {
         if (!this.logoCropDragState) return;
+        if (event.cancelable) event.preventDefault();
+        event.stopPropagation();
         const state = this.logoCropDragState;
         const dx = event.clientX - state.startPointerX;
         const dy = event.clientY - state.startPointerY;
@@ -188,16 +270,54 @@
         const nextCropSize = (nextRectW / state.maxRectW) * 100;
         this.emitLogoCropChange(state.startCropX, state.startCropY, nextCropSize);
       };
-      this.onLogoCropPointerUp = () => {
+      this.onLogoCropPointerUp = (event) => {
         if (!this.logoCropDragState) return;
+        const state = this.logoCropDragState;
+        if (
+          event
+          && state.pointerId != null
+          && event.pointerId != null
+          && event.pointerId !== state.pointerId
+        ) {
+          return;
+        }
         this.logoCropDragState = null;
         if (this.logoCropRect) {
           this.logoCropRect.classList.remove("is-dragging", "is-resizing");
+        }
+        if (
+          state
+          && state.captureTarget
+          && typeof state.captureTarget.releasePointerCapture === "function"
+          && state.pointerId != null
+        ) {
+          try {
+            state.captureTarget.releasePointerCapture(state.pointerId);
+          } catch {
+            // ignore
+          }
         }
         window.removeEventListener("pointermove", this.onLogoCropPointerMove);
         window.removeEventListener("pointerup", this.onLogoCropPointerUp);
         window.removeEventListener("pointercancel", this.onLogoCropPointerUp);
       };
+
+      this.loadDefaults();
+    }
+
+    async loadDefaults() {
+      try {
+        const response = await fetch(VIDEO_SYNTH_DEFAULTS_PATH, { cache: "no-store" });
+        if (!response.ok) return;
+        const parsed = await response.json();
+        if (!parsed || typeof parsed !== "object") return;
+        this.loadedDefaults = this.normalizeParams(parsed, this.getDefaultParams());
+        this.params = { ...this.loadedDefaults };
+        this.syncParamInputs();
+        this.textTextureDirty = true;
+      } catch {
+        // ignore and keep built-in defaults
+      }
     }
 
     init() {
@@ -208,37 +328,8 @@
       this.shell = document.createElement("section");
       this.shell.className = "videoSynthShell";
 
-      const topBar = document.createElement("header");
-      topBar.className = "videoSynthTopBar";
-
-      const title = document.createElement("h2");
-      title.className = "videoSynthTitle";
-      title.textContent = "video synth";
-
-      const actions = document.createElement("div");
-      actions.className = "videoSynthActions";
-
   const presetPanel = this.buildPresetPanel();
 
-      this.resetBtn = document.createElement("button");
-      this.resetBtn.type = "button";
-      this.resetBtn.className = "btn";
-      this.resetBtn.textContent = "reset";
-      this.resetBtn.addEventListener("click", () => this.resetParams());
-
-      this.fullscreenBtn = document.createElement("button");
-      this.fullscreenBtn.type = "button";
-      this.fullscreenBtn.className = "btn";
-      this.fullscreenBtn.textContent = "fullscreen";
-      this.fullscreenBtn.addEventListener("click", () => {
-        this.toggleFullscreen();
-      });
-
-      actions.appendChild(this.resetBtn);
-      actions.appendChild(this.fullscreenBtn);
-
-      topBar.appendChild(title);
-      topBar.appendChild(actions);
 
       this.preview = document.createElement("div");
       this.preview.className = "videoSynthPreview";
@@ -263,11 +354,11 @@
       this.logoCropRect.addEventListener("pointerdown", (event) => {
         if (!this.logoCropModeActive) return;
         if (event.target === this.logoCropHandle) return;
-        this.beginLogoCropDrag(event, "move");
+        this.handleLogoCropPointerDown(event, "move");
       });
       this.logoCropHandle.addEventListener("pointerdown", (event) => {
         if (!this.logoCropModeActive) return;
-        this.beginLogoCropDrag(event, "resize");
+        this.handleLogoCropPointerDown(event, "resize");
       });
 
       this.preview.appendChild(this.canvas);
@@ -414,7 +505,7 @@
           step: 1,
         }),
       );
-      controlsColB.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "hue",
           label: "hue",
@@ -485,6 +576,49 @@
         }),
       );
 
+      const textFlipRow = document.createElement("div");
+      textFlipRow.className = "videoSynthTextFlipRow";
+
+      const textFlipHField = document.createElement("label");
+      textFlipHField.className = "field videoSynthFlipToggleField";
+      const textFlipHLabel = document.createElement("span");
+      textFlipHLabel.className = "fieldLabel";
+      textFlipHLabel.textContent = "flip horizontal";
+      this.textFlipHBtn = document.createElement("button");
+      this.textFlipHBtn.type = "button";
+      this.textFlipHBtn.className = "switchToggle";
+      this.textFlipHBtn.setAttribute("aria-label", "flip text horizontal");
+      this.textFlipHBtn.setAttribute("aria-pressed", "false");
+      this.textFlipHBtn.title = "flip text horizontal: off";
+      this.textFlipHBtn.addEventListener("click", () => {
+        this.params.textFlipH = !this.params.textFlipH;
+        this.syncToggleButtons();
+      });
+      textFlipHField.appendChild(textFlipHLabel);
+      textFlipHField.appendChild(this.textFlipHBtn);
+
+      const textFlipVField = document.createElement("label");
+      textFlipVField.className = "field videoSynthFlipToggleField";
+      const textFlipVLabel = document.createElement("span");
+      textFlipVLabel.className = "fieldLabel";
+      textFlipVLabel.textContent = "flip vertical";
+      this.textFlipVBtn = document.createElement("button");
+      this.textFlipVBtn.type = "button";
+      this.textFlipVBtn.className = "switchToggle";
+      this.textFlipVBtn.setAttribute("aria-label", "flip text vertical");
+      this.textFlipVBtn.setAttribute("aria-pressed", "false");
+      this.textFlipVBtn.title = "flip text vertical: off";
+      this.textFlipVBtn.addEventListener("click", () => {
+        this.params.textFlipV = !this.params.textFlipV;
+        this.syncToggleButtons();
+      });
+      textFlipVField.appendChild(textFlipVLabel);
+      textFlipVField.appendChild(this.textFlipVBtn);
+
+      textFlipRow.appendChild(textFlipHField);
+      textFlipRow.appendChild(textFlipVField);
+      controlsColB.appendChild(textFlipRow);
+
       controls.appendChild(controlsColA);
       controls.appendChild(controlsColB);
 
@@ -544,7 +678,6 @@
       toggleRow.appendChild(this.logoVideoBackgroundBtn);
       toggleRow.appendChild(this.logoVideoCropBtn);
 
-      this.shell.appendChild(topBar);
       this.shell.appendChild(presetPanel);
       this.shell.appendChild(this.preview);
       this.shell.appendChild(controls);
@@ -673,7 +806,7 @@
       this.presetSaveBtn.className = "btn";
       this.presetSaveBtn.textContent = "save";
       this.presetSaveBtn.addEventListener("click", () => {
-        this.saveCurrentPreset({ statusLabel: "saved", showPresetStatus: true });
+        this.saveCurrentPreset({ statusLabel: "saving", showPresetStatus: true });
       });
 
       this.presetLoadBtn = document.createElement("button");
@@ -708,6 +841,26 @@
       actions.appendChild(this.presetSaveBtn);
       actions.appendChild(this.presetLoadBtn);
       actions.appendChild(this.presetDefaultBtn);
+
+      const utilActions = document.createElement("div");
+      utilActions.className = "controls settingsRow videoSynthPresetActions";
+
+      this.resetBtn = document.createElement("button");
+      this.resetBtn.type = "button";
+      this.resetBtn.className = "btn";
+      this.resetBtn.textContent = "reset";
+      this.resetBtn.addEventListener("click", () => this.resetParams());
+
+      this.fullscreenBtn = document.createElement("button");
+      this.fullscreenBtn.type = "button";
+      this.fullscreenBtn.className = "btn";
+      this.fullscreenBtn.textContent = "fullscreen";
+      this.fullscreenBtn.addEventListener("click", () => {
+        this.toggleFullscreen();
+      });
+
+      utilActions.appendChild(this.resetBtn);
+      utilActions.appendChild(this.fullscreenBtn);
 
       this.songIo = document.createElement("details");
       this.songIo.className = "songIo videoSynthSongIo";
@@ -796,6 +949,7 @@
 
       panel.appendChild(grid);
       panel.appendChild(actions);
+      panel.appendChild(utilActions);
       panel.appendChild(this.songIo);
 
       this.refreshPresetSelect();
@@ -1026,6 +1180,7 @@
       if (!this.logoCropOverlay || !this.logoCropRect || !this.preview) return;
       const active = this.logoVideoBackgroundEnabled && this.logoCropModeActive;
       this.logoCropOverlay.classList.toggle("is-active", active);
+      this.preview.classList.toggle("is-crop-active", active);
       if (!active) return;
 
       const previewRect = this.preview.getBoundingClientRect();
@@ -1042,6 +1197,38 @@
       this.syncLogoVideoCropUi();
     }
 
+    resetLogoCropToDefault() {
+      this.emitLogoCropChange(50, 60, 88);
+      this.setPresetStatus("crop reset");
+    }
+
+    handleLogoCropPointerDown(event, mode) {
+      // Mobile affordance: quick double tap on crop box resets to default crop.
+      if (mode === "move" && event.pointerType === "touch") {
+        const now =
+          typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
+        const dt = now - this.logoCropLastTapAtMs;
+        const dx = event.clientX - this.logoCropLastTapX;
+        const dy = event.clientY - this.logoCropLastTapY;
+        const distSq = (dx * dx) + (dy * dy);
+
+        this.logoCropLastTapAtMs = now;
+        this.logoCropLastTapX = event.clientX;
+        this.logoCropLastTapY = event.clientY;
+
+        if (dt > 0 && dt <= 320 && distSq <= (26 * 26)) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.resetLogoCropToDefault();
+          return;
+        }
+      }
+
+      this.beginLogoCropDrag(event, mode);
+    }
+
     beginLogoCropDrag(event, mode) {
       if (!this.logoCropModeActive || !this.preview) return;
       if (event.button != null && event.button !== 0) return;
@@ -1053,6 +1240,11 @@
       const geo = this.getLogoCropGeometry(previewRect.width, previewRect.height);
       this.logoCropDragState = {
         mode,
+        pointerId: event.pointerId,
+        captureTarget:
+          event.target && typeof event.target.setPointerCapture === "function"
+            ? event.target
+            : null,
         startPointerX: event.clientX,
         startPointerY: event.clientY,
         startRectX: geo.rectX,
@@ -1069,6 +1261,18 @@
         minRectW: geo.maxRectW * 0.3,
         aspect: geo.aspect,
       };
+      if (
+        this.logoCropDragState.captureTarget
+        && this.logoCropDragState.pointerId != null
+      ) {
+        try {
+          this.logoCropDragState.captureTarget.setPointerCapture(
+            this.logoCropDragState.pointerId,
+          );
+        } catch {
+          // ignore
+        }
+      }
       if (this.logoCropRect) {
         this.logoCropRect.classList.toggle("is-dragging", mode === "move");
         this.logoCropRect.classList.toggle("is-resizing", mode === "resize");
@@ -1079,15 +1283,17 @@
     }
 
     clampNumber(value, min, max) {
-      return Math.min(max, Math.max(min, value));
+      return sharedClampNumber(value, min, max);
     }
 
     numberOrFallback(value, fallback) {
-      const n = Number(value);
-      return Number.isFinite(n) ? n : fallback;
+      return sharedNumberOrFallback(value, fallback);
     }
 
     getDefaultParams() {
+      if (this.loadedDefaults) {
+        return { ...this.loadedDefaults };
+      }
       return {
         mode: 0,
         formula: 0,
@@ -1112,6 +1318,8 @@
         textSize: 62,
         textMix: 70,
         textColor: "#f4ecff",
+        textFlipH: false,
+        textFlipV: false,
       };
     }
 
@@ -1246,6 +1454,14 @@
           100,
         ),
         textColor: this.normalizeHexColor(source.textColor, safeBase.textColor),
+        textFlipH:
+          typeof source.textFlipH === "boolean"
+            ? source.textFlipH
+            : Boolean(safeBase.textFlipH),
+        textFlipV:
+          typeof source.textFlipV === "boolean"
+            ? source.textFlipV
+            : Boolean(safeBase.textFlipV),
       };
     }
 
@@ -1261,12 +1477,36 @@
           "aria-pressed",
           this.params.audioReactive ? "true" : "false",
         );
+        this.audioToggleBtn.title = this.params.audioReactive
+          ? "audio react: on"
+          : "audio react: off";
       }
       if (this.invertToggleBtn) {
         this.invertToggleBtn.setAttribute(
           "aria-pressed",
           this.params.invert ? "true" : "false",
         );
+        this.invertToggleBtn.title = this.params.invert
+          ? "invert: on"
+          : "invert: off";
+      }
+      if (this.textFlipHBtn) {
+        this.textFlipHBtn.setAttribute(
+          "aria-pressed",
+          this.params.textFlipH ? "true" : "false",
+        );
+        this.textFlipHBtn.title = this.params.textFlipH
+          ? "flip text horizontal: on"
+          : "flip text horizontal: off";
+      }
+      if (this.textFlipVBtn) {
+        this.textFlipVBtn.setAttribute(
+          "aria-pressed",
+          this.params.textFlipV ? "true" : "false",
+        );
+        this.textFlipVBtn.title = this.params.textFlipV
+          ? "flip text vertical: on"
+          : "flip text vertical: off";
       }
     }
 
@@ -1427,13 +1667,11 @@
     }
 
     makeUniquePresetName(base) {
-      const baseName = this.sanitizePresetName(base) || "video synth";
-      const existing = new Set(this.getAllPresetNames());
-      if (!existing.has(baseName)) return baseName;
-
-      let i = 2;
-      while (existing.has(`${baseName} ${i}`)) i += 1;
-      return `${baseName} ${i}`;
+      return sharedMakeUniquePresetName(
+        this.sanitizePresetName(base),
+        this.getAllPresetNames(),
+        "video synth",
+      );
     }
 
     refreshPresetSelect(preferredValue = "") {
@@ -1475,46 +1713,15 @@
     }
 
     safeJsonParse(text) {
-      try {
-        return { ok: true, value: JSON.parse(text) };
-      } catch (error) {
-        return { ok: false, error };
-      }
+      return sharedSafeJsonParse(text);
     }
 
     fileSafeStem(value, fallback = "video-synth") {
-      const stem = String(value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-_ ]+/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      return stem || fallback;
-    }
-
-    escapeHtml(text) {
-      return String(text)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+      return sharedFileSafeStem(value, fallback);
     }
 
     highlightJson(text) {
-      const escaped = this.escapeHtml(text);
-      const token =
-        /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
-      return escaped.replace(token, (match) => {
-        let cls = "json-number";
-        if (match.startsWith('"')) {
-          cls = match.endsWith(":") ? "json-key" : "json-string";
-        } else if (match === "true" || match === "false") {
-          cls = "json-boolean";
-        } else if (match === "null") {
-          cls = "json-null";
-        }
-        return `<span class="${cls}">${match}</span>`;
-      });
+      return sharedHighlightJson(text);
     }
 
     syncJsonScroll() {
@@ -1542,15 +1749,7 @@
     }
 
     isQuotaExceededError(error) {
-      if (!error) return false;
-      const code = Number(error.code);
-      const name = String(error.name || "");
-      return (
-        name === "QuotaExceededError" ||
-        name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-        code === 22 ||
-        code === 1014
-      );
+      return sharedIsQuotaExceededError(error);
     }
 
     setLastPresetSaveError(error) {
@@ -1566,67 +1765,22 @@
     }
 
     setPresetStatus(message, { busy = false, ok = true } = {}) {
-      if (!this.presetStatus) return;
-
-      if (this.presetStatusTimer) {
-        window.clearTimeout(this.presetStatusTimer);
-        this.presetStatusTimer = null;
-      }
-
-      const now =
-        typeof performance !== "undefined" && performance.now
-          ? performance.now()
-          : Date.now();
-
-      const label = String(message || "").trim();
-      this.presetStatus.textContent = label;
-      this.presetStatus.title = !ok && message ? String(message || "") : "";
-      this.presetStatus.classList.toggle("is-ok", Boolean(ok) && !busy);
-      this.presetStatus.classList.toggle("is-error", !ok && !busy);
-
-      if (busy) {
-        this.presetStatusBusySince = now;
-        this.presetStatus.classList.add("is-busy");
+      const hub = window.AelonyoriStatus;
+      if (hub && typeof hub.set === "function") {
+        hub.set(message, { busy, ok });
         return;
       }
-
-      if (this.presetStatusBusySince == null) {
-        this.presetStatusBusySince = now;
-        this.presetStatus.classList.add("is-busy");
-      }
-
-      const minBusyMs = 520;
-      const elapsed = now - this.presetStatusBusySince;
-      const remaining = Math.max(0, minBusyMs - elapsed);
-      const holdMs = ok ? 1700 : 3200;
-
-      this.presetStatusTimer = window.setTimeout(() => {
-        if (!this.presetStatus) return;
-        this.presetStatus.classList.remove("is-busy", "is-ok", "is-error");
-        this.presetStatus.textContent = "";
-        this.presetStatus.title = "";
-        this.presetStatusBusySince = null;
-        this.presetStatusTimer = null;
-      }, remaining + holdMs);
     }
 
     normalizeAutosaveInterval(value) {
-      const allowed = [1, 5, 10, 15, 30, 60];
       const fallback = Number.isFinite(this.autosaveIntervalMinutes)
         ? this.autosaveIntervalMinutes
         : 5;
-      const next = Math.round(this.numberOrFallback(value, fallback));
-      if (allowed.includes(next)) return next;
-      let best = allowed[0];
-      let bestDist = Math.abs(next - best);
-      for (let i = 1; i < allowed.length; i += 1) {
-        const dist = Math.abs(next - allowed[i]);
-        if (dist < bestDist) {
-          best = allowed[i];
-          bestDist = dist;
-        }
-      }
-      return best;
+      return sharedNormalizeIntervalChoice(
+        value,
+        [1, 5, 10, 15, 30, 60],
+        fallback,
+      );
     }
 
     readAutosaveConfig() {
@@ -1705,7 +1859,7 @@
       if (this.songIo?.open) this.syncJsonEditorFromSession();
     }
 
-    saveCurrentPreset({ statusLabel = "saved", showPresetStatus = true } = {}) {
+    saveCurrentPreset({ statusLabel = "saving", showPresetStatus = true } = {}) {
       if (showPresetStatus) this.setPresetStatus("", { busy: true });
 
       const state = this.exportState();
@@ -1734,7 +1888,7 @@
     runAutosave() {
       if (!this.autosaveEnabled) return;
       const ok = this.saveCurrentPreset({
-        statusLabel: "autosaved",
+        statusLabel: "autosaving",
         showPresetStatus: true,
       });
       if (!ok) this.setPresetStatus("autosave failed", { ok: false });
@@ -1759,7 +1913,7 @@
       if (this.presetNameInput) this.presetNameInput.value = cleanName;
       this.refreshPresetSelect(cleanName);
       if (this.presetSelect) this.presetSelect.value = cleanName;
-      if (showStatus) this.setPresetStatus("loaded");
+      if (showStatus) this.setPresetStatus("loading");
       return true;
     }
 
@@ -1842,16 +1996,8 @@
         || this.sanitizePresetName(session.selectedPreset)
         || "video synth";
       const filename = `${this.fileSafeStem(sourceName)}.aelonyori-video-synth.json`;
-      const blob = new Blob([text], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      this.setPresetStatus("downloaded json");
+      sharedTriggerBlobDownload(text, filename, "application/json");
+      this.setPresetStatus("downloading json");
     }
 
     requestSessionJsonUpload(event) {
@@ -1878,7 +2024,7 @@
           this.updateJsonHighlight();
         }
         this.applySessionJsonFromEditor();
-        this.setPresetStatus("uploaded json");
+        this.setPresetStatus("uploading json");
       } catch (error) {
         console.warn("Unable to read uploaded video synth JSON", error);
         this.setPresetStatus("upload failed", { ok: false });
@@ -1894,9 +2040,16 @@
 
     applyState(state) {
       if (!state || typeof state !== "object") return false;
-      const source = state.params && typeof state.params === "object"
-        ? state.params
-        : state;
+      // Support plain params, { version, params } state format, and legacy
+      // { currentState, presets, ... } session format for backward compat.
+      const source =
+        state.params && typeof state.params === "object"
+          ? state.params
+          : state.currentState && typeof state.currentState === "object"
+            ? (state.currentState.params && typeof state.currentState.params === "object"
+                ? state.currentState.params
+                : state.currentState)
+            : state;
       this.applyParams(source);
       return true;
     }
@@ -2134,6 +2287,7 @@
 
       const gl = this.gl;
       gl.bindTexture(gl.TEXTURE_2D, this.textTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -2213,6 +2367,8 @@
       gl.uniform1f(this.uTextEnabled, textEnabled ? 1 : 0);
       gl.uniform1f(this.uTextMix, this.params.textMix / 100);
       gl.uniform3f(this.uTextColor, textColor[0], textColor[1], textColor[2]);
+      gl.uniform1f(this.uTextFlipH, this.params.textFlipH ? 1 : 0);
+      gl.uniform1f(this.uTextFlipV, this.params.textFlipV ? 1 : 0);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.audioTexture);
@@ -2283,6 +2439,8 @@ uniform sampler2D u_textTex;
 uniform float u_textEnabled;
 uniform float u_textMix;
 uniform vec3 u_textColor;
+uniform float u_textFlipH;
+uniform float u_textFlipV;
 
 float hash21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -2403,7 +2561,11 @@ void main() {
   vec2 splitVec = vec2(split * (0.8 + u_glitchOffset * 0.7), split * 0.26);
 
   vec2 textUv = clamp(uv + vec2(lineJitterA * 0.45, lineJitterB * 0.22), 0.0, 1.0);
-  float textMask = texture2D(u_textTex, textUv).r * u_textEnabled;
+  vec2 textSampleUv = vec2(
+    mix(textUv.x, 1.0 - textUv.x, u_textFlipH),
+    mix(1.0 - textUv.y, textUv.y, u_textFlipV)
+  );
+  float textMask = texture2D(u_textTex, textSampleUv).r * u_textEnabled;
 
   float patternCore = patternAt(uv, signal, t, aspect);
   float patternGhostA = patternAt(uv + splitVec, signal, t, aspect);
@@ -2432,7 +2594,7 @@ void main() {
   color += u_colorA * patternGhostA * (u_split * 0.45 + u_glitch * 0.12);
   color += u_colorB * patternGhostB * (u_split * 0.62 + u_glitchLayer * 0.2);
   color = mix(color, u_colorB * (0.18 + patternCore * 0.64), patternGhostB * 0.16);
-  color = mix(color, u_textColor, textMask * (0.22 + u_textMix * 0.52));
+  color = mix(color, u_textColor, textMask * u_textMix);
 
   color *= scan;
 
@@ -2492,6 +2654,8 @@ void main() {
       this.uTextEnabled = gl.getUniformLocation(program, "u_textEnabled");
       this.uTextMix = gl.getUniformLocation(program, "u_textMix");
       this.uTextColor = gl.getUniformLocation(program, "u_textColor");
+      this.uTextFlipH = gl.getUniformLocation(program, "u_textFlipH");
+      this.uTextFlipV = gl.getUniformLocation(program, "u_textFlipV");
 
       this.audioTexture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.audioTexture);
@@ -2629,11 +2793,6 @@ void main() {
       this.stop();
       this.detachAudioTap();
       this.clearAutosaveTimer();
-
-      if (this.presetStatusTimer) {
-        window.clearTimeout(this.presetStatusTimer);
-        this.presetStatusTimer = null;
-      }
 
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
       document.removeEventListener(

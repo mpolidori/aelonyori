@@ -92,13 +92,40 @@
   let padLongPressTimer = null;
   const activeSources = new Set();
 
-  function numberOrFallback(value, fallback) {
+  const shared = window.AelonyoriShared || {};
+  const numberOrFallback = shared.numberOrFallback || ((value, fallback) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
-  }
+  });
+  const clampNumberSafe = shared.clampNumberSafe || ((value, min, max) => {
+    const next = numberOrFallback(value, min);
+    return Math.min(max, Math.max(min, next));
+  });
+  const fileSafeStem = shared.fileSafeStem || ((value, fallback = "sample-pack") => {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  });
+  const triggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
+    const type = String(mimeType || "application/json");
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = String(filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
 
   function clampNumber(value, min, max) {
-    return Math.max(min, Math.min(max, numberOrFallback(value, min)));
+    return clampNumberSafe(value, min, max);
   }
 
   function sanitizeRatchet(value) {
@@ -128,6 +155,12 @@
     if (Math.abs(n - 0.25) < 0.01) return "1/4";
     if (Math.abs(n - 0.5) < 0.01) return "1/2";
     return String(n).replace(/\.0$/, "");
+  }
+
+  function setGlobalStatus(message, { busy = false, ok = true } = {}) {
+    const hub = window.AelonyoriStatus;
+    if (!hub || typeof hub.set !== "function") return;
+    hub.set(message, { busy, ok });
   }
 
   function formatCornerLabel(cornerIndex) {
@@ -213,17 +246,6 @@
 
   function getSamplerPackNameFromUi() {
     return String(samplerPackNameInput?.value || "").trim();
-  }
-
-  function fileSafeStem(value, fallback = "sample-pack") {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
   }
 
   function normalizePatternCell(cell) {
@@ -340,22 +362,15 @@
   function downloadCurrentSamplerPack() {
     const hasAnyLoadedSample = buffers.some((buf) => Boolean(buf));
     if (!hasAnyLoadedSample) {
-      window.alert("No samples loaded to download.");
+      setGlobalStatus("no samples loaded", { ok: false });
       return;
     }
 
     const name = getSamplerPackNameFromUi();
     const stem = fileSafeStem(name || "sample-pack", "sample-pack");
     const text = buildCurrentSamplerPackJson();
-    const blob = new Blob([text], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${stem}.aelonyori-pack.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(text, `${stem}.aelonyori-pack.json`, "application/json");
+    setGlobalStatus("downloading pack");
   }
 
   function requestSamplerPackUpload() {
@@ -372,12 +387,14 @@
         : null;
     if (!file) return;
 
+    setGlobalStatus("loading pack", { busy: true });
+
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const ok = await applySamplerPackData(parsed);
       if (!ok) {
-        window.alert("Invalid sample pack file.");
+        setGlobalStatus("invalid pack", { ok: false });
         return;
       }
 
@@ -388,9 +405,10 @@
       if (samplerPackNameInput) {
         samplerPackNameInput.value = inferredName || getSamplerPackNameFromUi();
       }
+      setGlobalStatus("pack loaded");
     } catch (error) {
       console.warn("Unable to import sample pack", error);
-      window.alert("Unable to import sample pack.");
+      setGlobalStatus("pack import failed", { ok: false });
     }
   }
 
@@ -398,15 +416,7 @@
     if (!buffers[index]) return;
     try {
       const wav = audioBufferToWav(buffers[index]);
-      const blob = new Blob([wav], { type: "audio/wav" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pad-${index + 1}.wav`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(wav, `pad-${index + 1}.wav`, "audio/wav");
     } catch {
       // ignore download errors
     }
@@ -1434,6 +1444,24 @@
   setSteps(stepsCount);
   setBeat(beatSteps);
   setRecordingMode(false);
+
+  (async () => {
+    try {
+      const res = await fetch("configs/sampler/defaults.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const cfg = await res.json();
+      if (!cfg || typeof cfg !== "object") return;
+      const nextBpm = clampNumber(Math.round(numberOrFallback(cfg.bpm, bpm)), 20, 360);
+      const nextSteps = clampNumber(Math.round(numberOrFallback(cfg.steps, stepsCount)), 4, 256);
+      const nextBeat = clampNumber(Math.round(numberOrFallback(cfg.beat, beatSteps)), 1, 16);
+      setBpm(nextBpm);
+      setSteps(nextSteps);
+      setBeat(nextBeat);
+    } catch {
+      // ignore — use hardcoded defaults
+    }
+  })();
+
   setPadRatchetPanelOpen(false);
   setActiveTab("pads");
   setSelectedPad(0);
