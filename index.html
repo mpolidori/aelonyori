@@ -397,27 +397,29 @@
             </div>
 
             <div class="settingsSection" aria-label="auto expand">
-                <label class="field settingsField">
-                    <span class="fieldLabel">auto expand</span>
-                    <button type="button" class="switchToggle" id="autoExpandToggleBtn" aria-label="auto expand" aria-pressed="false"></button>
-                </label>
-
-                <div class="field settingsField settingsFieldRange" id="autoExpandSpeedRow" aria-label="auto expand speed" hidden>
-                    <span class="rangeEdgeLabel">slower</span>
-                    <input id="autoExpandSpeed" type="range" min="0" max="200" step="1" value="100" aria-label="auto expand slower to faster" />
-                    <span class="rangeEdgeLabel rangeEdgeLabelEnd">faster</span>
-                    <input id="autoExpandSpeedOut" class="num rangeValueMirror" type="number" min="0" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
+                <div class="settingsInlineRow" id="autoExpandToggleRow">
+                    <label class="field settingsField">
+                        <span class="fieldLabel">auto expand</span>
+                        <button type="button" class="switchToggle" id="autoExpandToggleBtn" aria-label="auto expand" aria-pressed="false"></button>
+                    </label>
+                    <a href="/docs/" id="settingsDocsLink" class="settingsDocsLinkInline" target="_blank" rel="noopener">documentation ↗</a>
                 </div>
-            </div>
 
-            <div class="settingsDocLink">
-                <a href="/docs/" id="settingsDocsLink" target="_blank" rel="noopener">documentation ↗</a>
+                <div class="settingsInlineRow" id="autoExpandSpeedRow" aria-label="auto expand speed" hidden>
+                    <div class="field settingsField settingsFieldRange settingsInlineRowFill">
+                        <span class="rangeEdgeLabel">slower</span>
+                        <input id="autoExpandSpeed" type="range" min="0" max="200" step="1" value="100" aria-label="auto expand slower to faster" />
+                        <span class="rangeEdgeLabel rangeEdgeLabelEnd">faster</span>
+                        <input id="autoExpandSpeedOut" class="num rangeValueMirror" type="number" min="0" max="200" step="1" value="100" aria-hidden="true" tabindex="-1" />
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="autosaveStatus" class="status autosaveStatus" aria-live="polite" hidden>saving</div>
 
+    <script src="js/shared-utils.js?v=1" defer></script>
     <script src="js/status-hub.js?v=1" defer></script>
     <script src="js/sampler.js?v=4" defer></script>
     <script src="js/video-synth.js?v=4" defer></script>

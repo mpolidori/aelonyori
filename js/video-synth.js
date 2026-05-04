@@ -5,6 +5,79 @@
   const VIDEO_SYNTH_PRESET_STORAGE_PREFIX = "aelonyori.video-synth.preset.";
   const VIDEO_SYNTH_AUTOSAVE_KEY = "aelonyori.video-synth.autosave";
 
+  const shared = window.AelonyoriShared || {};
+  const sharedClampNumber = shared.clampNumber || ((value, min, max) => Math.min(max, Math.max(min, value)));
+  const sharedNumberOrFallback = shared.numberOrFallback || ((value, fallback) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  });
+  const sharedSafeJsonParse = shared.safeJsonParse || ((text) => {
+    try {
+      return { ok: true, value: JSON.parse(text) };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  });
+  const sharedFileSafeStem = shared.fileSafeStem || ((value, fallback = "video-synth") => {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  });
+  const sharedHighlightJson = shared.highlightJson || ((text) => String(text));
+  const sharedIsQuotaExceededError = shared.isQuotaExceededError || ((error) => {
+    if (!error) return false;
+    const code = Number(error.code);
+    const name = String(error.name || "");
+    return (
+      name === "QuotaExceededError" ||
+      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      code === 22 ||
+      code === 1014
+    );
+  });
+  const sharedNormalizeIntervalChoice = shared.normalizeIntervalChoice || ((value, allowed, fallback) => {
+    const options = Array.isArray(allowed) && allowed.length > 0
+      ? allowed
+      : [1, 5, 10, 15, 30, 60];
+    const next = Math.round(sharedNumberOrFallback(value, fallback));
+    if (options.includes(next)) return next;
+    let best = options[0];
+    let bestDist = Math.abs(next - best);
+    for (let i = 1; i < options.length; i += 1) {
+      const dist = Math.abs(next - options[i]);
+      if (dist < bestDist) {
+        best = options[i];
+        bestDist = dist;
+      }
+    }
+    return best;
+  });
+  const sharedMakeUniquePresetName = shared.makeUniquePresetName || ((base, existingNames, defaultBase) => {
+    const baseName = String(base || "").trim() || String(defaultBase || "preset");
+    const existing = new Set(existingNames);
+    if (!existing.has(baseName)) return baseName;
+    let i = 2;
+    while (existing.has(`${baseName} ${i}`)) i += 1;
+    return `${baseName} ${i}`;
+  });
+  const sharedTriggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
+    const type = String(mimeType || "application/json");
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = String(filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
   class VideoSynthPlugin {
     constructor({ mount }) {
       this.mount = mount || null;
@@ -255,37 +328,8 @@
       this.shell = document.createElement("section");
       this.shell.className = "videoSynthShell";
 
-      const topBar = document.createElement("header");
-      topBar.className = "videoSynthTopBar";
-
-      const title = document.createElement("h2");
-      title.className = "videoSynthTitle";
-      title.textContent = "video synth";
-
-      const actions = document.createElement("div");
-      actions.className = "videoSynthActions";
-
   const presetPanel = this.buildPresetPanel();
 
-      this.resetBtn = document.createElement("button");
-      this.resetBtn.type = "button";
-      this.resetBtn.className = "btn";
-      this.resetBtn.textContent = "reset";
-      this.resetBtn.addEventListener("click", () => this.resetParams());
-
-      this.fullscreenBtn = document.createElement("button");
-      this.fullscreenBtn.type = "button";
-      this.fullscreenBtn.className = "btn";
-      this.fullscreenBtn.textContent = "fullscreen";
-      this.fullscreenBtn.addEventListener("click", () => {
-        this.toggleFullscreen();
-      });
-
-      actions.appendChild(this.resetBtn);
-      actions.appendChild(this.fullscreenBtn);
-
-      topBar.appendChild(title);
-      topBar.appendChild(actions);
 
       this.preview = document.createElement("div");
       this.preview.className = "videoSynthPreview";
@@ -461,7 +505,7 @@
           step: 1,
         }),
       );
-      controlsColB.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "hue",
           label: "hue",
@@ -634,7 +678,6 @@
       toggleRow.appendChild(this.logoVideoBackgroundBtn);
       toggleRow.appendChild(this.logoVideoCropBtn);
 
-      this.shell.appendChild(topBar);
       this.shell.appendChild(presetPanel);
       this.shell.appendChild(this.preview);
       this.shell.appendChild(controls);
@@ -763,7 +806,7 @@
       this.presetSaveBtn.className = "btn";
       this.presetSaveBtn.textContent = "save";
       this.presetSaveBtn.addEventListener("click", () => {
-        this.saveCurrentPreset({ statusLabel: "saved", showPresetStatus: true });
+        this.saveCurrentPreset({ statusLabel: "saving", showPresetStatus: true });
       });
 
       this.presetLoadBtn = document.createElement("button");
@@ -798,6 +841,26 @@
       actions.appendChild(this.presetSaveBtn);
       actions.appendChild(this.presetLoadBtn);
       actions.appendChild(this.presetDefaultBtn);
+
+      const utilActions = document.createElement("div");
+      utilActions.className = "controls settingsRow videoSynthPresetActions";
+
+      this.resetBtn = document.createElement("button");
+      this.resetBtn.type = "button";
+      this.resetBtn.className = "btn";
+      this.resetBtn.textContent = "reset";
+      this.resetBtn.addEventListener("click", () => this.resetParams());
+
+      this.fullscreenBtn = document.createElement("button");
+      this.fullscreenBtn.type = "button";
+      this.fullscreenBtn.className = "btn";
+      this.fullscreenBtn.textContent = "fullscreen";
+      this.fullscreenBtn.addEventListener("click", () => {
+        this.toggleFullscreen();
+      });
+
+      utilActions.appendChild(this.resetBtn);
+      utilActions.appendChild(this.fullscreenBtn);
 
       this.songIo = document.createElement("details");
       this.songIo.className = "songIo videoSynthSongIo";
@@ -886,6 +949,7 @@
 
       panel.appendChild(grid);
       panel.appendChild(actions);
+      panel.appendChild(utilActions);
       panel.appendChild(this.songIo);
 
       this.refreshPresetSelect();
@@ -1219,12 +1283,11 @@
     }
 
     clampNumber(value, min, max) {
-      return Math.min(max, Math.max(min, value));
+      return sharedClampNumber(value, min, max);
     }
 
     numberOrFallback(value, fallback) {
-      const n = Number(value);
-      return Number.isFinite(n) ? n : fallback;
+      return sharedNumberOrFallback(value, fallback);
     }
 
     getDefaultParams() {
@@ -1604,13 +1667,11 @@
     }
 
     makeUniquePresetName(base) {
-      const baseName = this.sanitizePresetName(base) || "video synth";
-      const existing = new Set(this.getAllPresetNames());
-      if (!existing.has(baseName)) return baseName;
-
-      let i = 2;
-      while (existing.has(`${baseName} ${i}`)) i += 1;
-      return `${baseName} ${i}`;
+      return sharedMakeUniquePresetName(
+        this.sanitizePresetName(base),
+        this.getAllPresetNames(),
+        "video synth",
+      );
     }
 
     refreshPresetSelect(preferredValue = "") {
@@ -1652,46 +1713,15 @@
     }
 
     safeJsonParse(text) {
-      try {
-        return { ok: true, value: JSON.parse(text) };
-      } catch (error) {
-        return { ok: false, error };
-      }
+      return sharedSafeJsonParse(text);
     }
 
     fileSafeStem(value, fallback = "video-synth") {
-      const stem = String(value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-_ ]+/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      return stem || fallback;
-    }
-
-    escapeHtml(text) {
-      return String(text)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+      return sharedFileSafeStem(value, fallback);
     }
 
     highlightJson(text) {
-      const escaped = this.escapeHtml(text);
-      const token =
-        /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
-      return escaped.replace(token, (match) => {
-        let cls = "json-number";
-        if (match.startsWith('"')) {
-          cls = match.endsWith(":") ? "json-key" : "json-string";
-        } else if (match === "true" || match === "false") {
-          cls = "json-boolean";
-        } else if (match === "null") {
-          cls = "json-null";
-        }
-        return `<span class="${cls}">${match}</span>`;
-      });
+      return sharedHighlightJson(text);
     }
 
     syncJsonScroll() {
@@ -1719,15 +1749,7 @@
     }
 
     isQuotaExceededError(error) {
-      if (!error) return false;
-      const code = Number(error.code);
-      const name = String(error.name || "");
-      return (
-        name === "QuotaExceededError" ||
-        name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-        code === 22 ||
-        code === 1014
-      );
+      return sharedIsQuotaExceededError(error);
     }
 
     setLastPresetSaveError(error) {
@@ -1751,22 +1773,14 @@
     }
 
     normalizeAutosaveInterval(value) {
-      const allowed = [1, 5, 10, 15, 30, 60];
       const fallback = Number.isFinite(this.autosaveIntervalMinutes)
         ? this.autosaveIntervalMinutes
         : 5;
-      const next = Math.round(this.numberOrFallback(value, fallback));
-      if (allowed.includes(next)) return next;
-      let best = allowed[0];
-      let bestDist = Math.abs(next - best);
-      for (let i = 1; i < allowed.length; i += 1) {
-        const dist = Math.abs(next - allowed[i]);
-        if (dist < bestDist) {
-          best = allowed[i];
-          bestDist = dist;
-        }
-      }
-      return best;
+      return sharedNormalizeIntervalChoice(
+        value,
+        [1, 5, 10, 15, 30, 60],
+        fallback,
+      );
     }
 
     readAutosaveConfig() {
@@ -1845,7 +1859,7 @@
       if (this.songIo?.open) this.syncJsonEditorFromSession();
     }
 
-    saveCurrentPreset({ statusLabel = "saved", showPresetStatus = true } = {}) {
+    saveCurrentPreset({ statusLabel = "saving", showPresetStatus = true } = {}) {
       if (showPresetStatus) this.setPresetStatus("", { busy: true });
 
       const state = this.exportState();
@@ -1874,7 +1888,7 @@
     runAutosave() {
       if (!this.autosaveEnabled) return;
       const ok = this.saveCurrentPreset({
-        statusLabel: "autosaved",
+        statusLabel: "autosaving",
         showPresetStatus: true,
       });
       if (!ok) this.setPresetStatus("autosave failed", { ok: false });
@@ -1899,7 +1913,7 @@
       if (this.presetNameInput) this.presetNameInput.value = cleanName;
       this.refreshPresetSelect(cleanName);
       if (this.presetSelect) this.presetSelect.value = cleanName;
-      if (showStatus) this.setPresetStatus("loaded");
+      if (showStatus) this.setPresetStatus("loading");
       return true;
     }
 
@@ -1982,16 +1996,8 @@
         || this.sanitizePresetName(session.selectedPreset)
         || "video synth";
       const filename = `${this.fileSafeStem(sourceName)}.aelonyori-video-synth.json`;
-      const blob = new Blob([text], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      this.setPresetStatus("downloaded json");
+      sharedTriggerBlobDownload(text, filename, "application/json");
+      this.setPresetStatus("downloading json");
     }
 
     requestSessionJsonUpload(event) {
@@ -2018,7 +2024,7 @@
           this.updateJsonHighlight();
         }
         this.applySessionJsonFromEditor();
-        this.setPresetStatus("uploaded json");
+        this.setPresetStatus("uploading json");
       } catch (error) {
         console.warn("Unable to read uploaded video synth JSON", error);
         this.setPresetStatus("upload failed", { ok: false });

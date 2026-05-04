@@ -1,4 +1,4 @@
-# User Guide
+# DAW Guide
 
 This guide covers day-to-day usage of the aelonyori DAW, sampler, and video synth app.
 
@@ -74,7 +74,7 @@ Core sampler actions:
 4. Long-press compose cells for corner-ratchet picker.
 5. Start playback from sampler play control.
 
-See the dedicated [sampler-guide.md](sampler-guide.md) for detailed workflow documentation.
+See the dedicated [sampler guide](../sampler/guide.md) for detailed workflow documentation.
 
 ## 6. Sample Pack Workflow
 
@@ -137,4 +137,4 @@ Quick start:
 
 If you save a DAW preset after adjusting the video synth, the DAW preset will also restore that current video synth state on load. The video synth page still keeps its own standalone preset buttons for synth-only saves.
 
-See the dedicated [video-synth-guide.md](video-synth-guide.md) for full control documentation.
+See the dedicated [video synthesis guide](../video/guide.md) for full control documentation.

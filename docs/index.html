@@ -36,7 +36,6 @@
     }
 
     .nav {
-      border-right: 1px solid var(--line);
       padding: 1rem;
       position: sticky;
       top: 0;
@@ -47,7 +46,8 @@
 
     .nav h1 {
       margin: 0 0 0.75rem;
-      font-size: 0.92rem;
+      font-size: 1.42rem;
+      font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: lowercase;
       color: var(--muted);
@@ -61,9 +61,58 @@
       gap: 0.25rem;
     }
 
+    .navSection {
+      display: grid;
+      gap: 0.3rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .navSectionLabel {
+      font-size: 1.14rem;
+      letter-spacing: 0.05em;
+      text-transform: lowercase;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 0.2rem 0.35rem;
+    }
+
+    .nav .navSectionList {
+      margin: 0;
+      padding: 0 0 0 1ch;
+      list-style: none;
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .navSharedDoc {
+      margin-left: 0;
+    }
+
+    .navApp {
+      display: grid;
+      gap: 0.15rem;
+      margin-left: 0;
+    }
+
+    .navAppLabel {
+      font-size: 1.02rem;
+      text-transform: lowercase;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 0.12rem 0.35rem;
+    }
+
+    .nav .navAppList {
+      margin: 0;
+      padding: 0 0 0 2ch;
+      list-style: none;
+      display: grid;
+      gap: 0.2rem;
+    }
+
     .nav a {
       text-decoration: none;
-      font-size: 0.88rem;
+      font-size: 0.92rem;
       padding: 0.25rem 0.35rem;
       border: 1px solid transparent;
       display: block;
@@ -97,6 +146,7 @@
     main {
       min-width: 0;
       padding: 1rem;
+      border-left: 1px solid var(--line);
     }
 
     .doc {
@@ -222,19 +272,31 @@
 
   <script>
     (function () {
-      const docs = [
-        { file: "README.md", label: "overview" },
-        { file: "user/user-guide.md", label: "user guide" },
-        { file: "user/ui-controls-reference.md", label: "ui controls" },
-        { file: "user/sampler-guide.md", label: "sampler guide" },
-        { file: "user/video-synth-guide.md", label: "video synth guide" },
-        { file: "technical/architecture-overview.md", label: "architecture" },
-        { file: "technical/code-map.md", label: "code map" },
-        { file: "technical/config-json-reference.md", label: "config.json" },
-        { file: "technical/defaults-json-reference.md", label: "defaults.json" },
-        { file: "technical/synthesis.md", label: "synthesis" },
-        { file: "technical/video-synth.md", label: "video synth technical" }
+      const docsTree = [
+        {
+          title: "usage",
+          docs: [
+            { file: "README.md", label: "overview" },
+            { file: "ui-controls-reference.md", label: "ui controls" },
+            { file: "daw/guide.md", label: "daw" },
+            { file: "sampler/guide.md", label: "sampler" },
+            { file: "video/guide.md", label: "video" },
+          ],
+        },
+        {
+          title: "development",
+          docs: [
+            { file: "technical/architecture-overview.md", label: "architecture" },
+            { file: "daw/audio-synthesis.md", label: "audio synthesis" },
+            { file: "technical/code-map.md", label: "code map" },
+            { file: "technical/config-json-reference.md", label: "config.json" },
+            { file: "technical/defaults-json-reference.md", label: "defaults.json" },
+            { file: "video/synthesis.md", label: "video synthesis" },
+          ],
+        },
       ];
+
+      const docs = docsTree.flatMap((section) => section.docs || []);
 
       const navEl = document.getElementById("docNav");
       const docEl = document.getElementById("doc");
@@ -507,15 +569,41 @@
 
       function makeNav(currentFile) {
         navEl.innerHTML = "";
-        for (const entry of docs) {
+
+        const navList = document.createElement("ul");
+
+        function makeDocItem(entry, className) {
           const li = document.createElement("li");
+          if (className) li.className = className;
           const a = document.createElement("a");
           a.href = buildDocHref(entry.file);
           a.textContent = entry.label;
           if (entry.file === currentFile) a.setAttribute("aria-current", "page");
           li.appendChild(a);
-          navEl.appendChild(li);
+          return li;
         }
+
+        for (const section of docsTree) {
+          const sectionLi = document.createElement("li");
+          sectionLi.className = "navSection";
+
+          const sectionLabel = document.createElement("span");
+          sectionLabel.className = "navSectionLabel";
+          sectionLabel.textContent = section.title;
+          sectionLi.appendChild(sectionLabel);
+
+          const sectionList = document.createElement("ul");
+          sectionList.className = "navSectionList";
+
+          for (const entry of section.docs || []) {
+            sectionList.appendChild(makeDocItem(entry, null));
+          }
+
+          sectionLi.appendChild(sectionList);
+          navList.appendChild(sectionLi);
+        }
+
+        navEl.appendChild(navList);
       }
 
       async function loadDoc(file) {

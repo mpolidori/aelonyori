@@ -1,4 +1,4 @@
-# Video Synth Technical Reference
+# Video Synthesis
 
 This document describes the video synthesis system introduced as a third interactive page in the project.
 

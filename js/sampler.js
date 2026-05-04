@@ -92,13 +92,40 @@
   let padLongPressTimer = null;
   const activeSources = new Set();
 
-  function numberOrFallback(value, fallback) {
+  const shared = window.AelonyoriShared || {};
+  const numberOrFallback = shared.numberOrFallback || ((value, fallback) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
-  }
+  });
+  const clampNumberSafe = shared.clampNumberSafe || ((value, min, max) => {
+    const next = numberOrFallback(value, min);
+    return Math.min(max, Math.max(min, next));
+  });
+  const fileSafeStem = shared.fileSafeStem || ((value, fallback = "sample-pack") => {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  });
+  const triggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
+    const type = String(mimeType || "application/json");
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = String(filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
 
   function clampNumber(value, min, max) {
-    return Math.max(min, Math.min(max, numberOrFallback(value, min)));
+    return clampNumberSafe(value, min, max);
   }
 
   function sanitizeRatchet(value) {
@@ -219,17 +246,6 @@
 
   function getSamplerPackNameFromUi() {
     return String(samplerPackNameInput?.value || "").trim();
-  }
-
-  function fileSafeStem(value, fallback = "sample-pack") {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
   }
 
   function normalizePatternCell(cell) {
@@ -353,16 +369,8 @@
     const name = getSamplerPackNameFromUi();
     const stem = fileSafeStem(name || "sample-pack", "sample-pack");
     const text = buildCurrentSamplerPackJson();
-    const blob = new Blob([text], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${stem}.aelonyori-pack.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setGlobalStatus("pack downloaded");
+    triggerBlobDownload(text, `${stem}.aelonyori-pack.json`, "application/json");
+    setGlobalStatus("downloading pack");
   }
 
   function requestSamplerPackUpload() {
@@ -408,15 +416,7 @@
     if (!buffers[index]) return;
     try {
       const wav = audioBufferToWav(buffers[index]);
-      const blob = new Blob([wav], { type: "audio/wav" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pad-${index + 1}.wav`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(wav, `pad-${index + 1}.wav`, "audio/wav");
     } catch {
       // ignore download errors
     }

@@ -1,4 +1,78 @@
 (async () => {
+  const shared = window.AelonyoriShared || {};
+  const clampNumber = shared.clampNumber || ((value, min, max) => Math.min(max, Math.max(min, value)));
+  const numberOrFallback = shared.numberOrFallback || ((value, fallback) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  });
+  const safeJsonParse = shared.safeJsonParse || ((text) => {
+    try {
+      return { ok: true, value: JSON.parse(text) };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  });
+  const fileSafeStem = shared.fileSafeStem || ((value, fallback = "song") => {
+    const stem = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_ ]+/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return stem || fallback;
+  });
+  const highlightJson = shared.highlightJson || ((text) => String(text));
+  const isQuotaExceededError = shared.isQuotaExceededError || ((error) => {
+    if (!error) return false;
+    const code = Number(error.code);
+    const name = String(error.name || "");
+    return (
+      name === "QuotaExceededError" ||
+      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      code === 22 ||
+      code === 1014
+    );
+  });
+  const normalizeIntervalChoice = shared.normalizeIntervalChoice || ((value, allowed, fallback) => {
+    const options = Array.isArray(allowed) && allowed.length > 0
+      ? allowed
+      : [1, 5, 10, 15, 30, 60];
+    const next = Math.round(numberOrFallback(value, fallback));
+    if (options.includes(next)) return next;
+    let best = options[0];
+    let bestDist = Math.abs(next - best);
+    for (let i = 1; i < options.length; i += 1) {
+      const dist = Math.abs(next - options[i]);
+      if (dist < bestDist) {
+        best = options[i];
+        bestDist = dist;
+      }
+    }
+    return best;
+  });
+
+  const makeUniquePresetName = shared.makeUniquePresetName || ((base, existingNames, defaultBase) => {
+    const baseName = String(base || "").trim() || String(defaultBase || "preset");
+    const existing = new Set(existingNames);
+    if (!existing.has(baseName)) return baseName;
+    let i = 2;
+    while (existing.has(`${baseName} ${i}`)) i += 1;
+    return `${baseName} ${i}`;
+  });
+  const triggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
+    const type = String(mimeType || "application/json");
+    const blob = new Blob([data], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = String(filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
   const userAgent = String(navigator.userAgent || "");
   const isAndroidChrome =
     /Android/i.test(userAgent) &&
@@ -87,10 +161,12 @@
   const bumpBounceInput = document.getElementById("bumpBounce");
   const bumpBounceOut = document.getElementById("bumpBounceOut");
   const autoExpandToggleBtn = document.getElementById("autoExpandToggleBtn");
+  const autoExpandToggleRow = document.getElementById("autoExpandToggleRow");
   const autoExpandSpeedRow = document.getElementById("autoExpandSpeedRow");
   const autoExpandSpeedInput = document.getElementById("autoExpandSpeed");
   const autoExpandSpeedOut = document.getElementById("autoExpandSpeedOut");
   const samplePadToggleBtn = document.getElementById("samplePadToggleBtn");
+  const settingsDocsLink = document.getElementById("settingsDocsLink");
   const subtitlesToggleBtn = document.getElementById("subtitlesToggleBtn");
   const subtitlesSpeedRow = document.getElementById("subtitlesSpeedRow");
   const subtitlesSpeedInput = document.getElementById("subtitlesSpeed");
@@ -120,7 +196,6 @@
 
   const settingsModal = document.getElementById("settingsModal");
   const settingsPanel = document.getElementById("settingsPanel");
-  const settingsDocsLink = document.getElementById("settingsDocsLink");
   const settingsThemeControlsMount = document.getElementById(
     "settingsThemeControlsMount",
   );
@@ -1117,15 +1192,6 @@
   const PRESET_DEFAULT_KEY = "aelonyori.preset.default";
   const PRESET_STORAGE_PREFIX = "aelonyori.preset.";
 
-  function clampNumber(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
-  function numberOrFallback(value, fallback) {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-  }
-
   function normalizePattern(pattern) {
     if (!Array.isArray(pattern)) return new Array(stepsCount).fill(0);
 
@@ -1310,14 +1376,6 @@
     updateTransportBar();
   }
 
-  function safeJsonParse(text) {
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch (err) {
-      return { ok: false, error: err };
-    }
-  }
-
   function cloneSongExtensions(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return Object.create(null);
@@ -1367,17 +1425,6 @@
         videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
       }
     }
-  }
-
-  function fileSafeStem(value, fallback = "song") {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
   }
 
   function presetStorageKey(name) {
@@ -1458,16 +1505,6 @@
     return true;
   }
 
-  function makeUniquePresetName(base) {
-    const baseName = String(base || "").trim() || "song";
-    const existing = new Set(readPresetIndex());
-    if (!existing.has(baseName)) return baseName;
-
-    let i = 2;
-    while (existing.has(`${baseName} ${i}`)) i += 1;
-    return `${baseName} ${i}`;
-  }
-
   function showSongIo() {
     if (!songIo) return;
     songIo.open = true;
@@ -1477,30 +1514,6 @@
   function hideSongIo() {
     if (!songIo) return;
     songIo.open = false;
-  }
-
-  function escapeHtml(text) {
-    return String(text)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
-  }
-
-  function highlightJson(text) {
-    const escaped = escapeHtml(text);
-    const token =
-      /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
-    return escaped.replace(token, (match) => {
-      let cls = "json-number";
-      if (match.startsWith('"')) {
-        cls = match.endsWith(":") ? "json-key" : "json-string";
-      } else if (match === "true" || match === "false") {
-        cls = "json-boolean";
-      } else if (match === "null") {
-        cls = "json-null";
-      }
-      return `<span class="${cls}">${match}</span>`;
-    });
   }
 
   function syncSongJsonScroll() {
@@ -1516,18 +1529,6 @@
   }
 
   let lastPresetSaveErrorMessage = "";
-
-  function isQuotaExceededError(error) {
-    if (!error) return false;
-    const code = Number(error.code);
-    const name = String(error.name || "");
-    return (
-      name === "QuotaExceededError" ||
-      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-      code === 22 ||
-      code === 1014
-    );
-  }
 
   function setLastPresetSaveError(error) {
     if (isQuotaExceededError(error)) {
@@ -1550,19 +1551,11 @@
   }
 
   function normalizeAutosaveInterval(value) {
-    const allowed = [1, 5, 10, 15, 30, 60];
-    const next = Math.round(numberOrFallback(value, autosaveIntervalMinutes));
-    if (allowed.includes(next)) return next;
-    let best = allowed[0];
-    let bestDist = Math.abs(next - best);
-    for (let i = 1; i < allowed.length; i += 1) {
-      const dist = Math.abs(next - allowed[i]);
-      if (dist < bestDist) {
-        best = allowed[i];
-        bestDist = dist;
-      }
-    }
-    return best;
+    return normalizeIntervalChoice(
+      value,
+      [1, 5, 10, 15, 30, 60],
+      autosaveIntervalMinutes,
+    );
   }
 
   function clearAutosaveTimer() {
@@ -1591,7 +1584,7 @@
   }
 
   function saveCurrentSongPreset({
-    statusLabel = "saved",
+    statusLabel = "saving",
     showPresetStatus = true,
   } = {}) {
     if (showPresetStatus) {
@@ -1601,7 +1594,7 @@
     const song = getSongObject();
     const requestedName = String(presetNameInput.value || "").trim();
     const selectedName = String(presetSelect.value || "").trim();
-    const name = requestedName || selectedName || makeUniquePresetName("song");
+    const name = requestedName || selectedName || makeUniquePresetName("song", readPresetIndex(), "song");
 
     const ok = savePreset(name, song);
     if (!ok) {
@@ -8578,7 +8571,7 @@
     presetNameInput.value = defaultPreset;
     refreshPresetSelect();
     presetSelect.value = defaultPreset;
-    setPresetStatus("loaded");
+    setPresetStatus("loading");
     return true;
   }
 
@@ -9771,6 +9764,14 @@
       autoExpandSpeedRow.hidden = !autoExpandEnabled;
     }
 
+    if (settingsDocsLink) {
+      if (autoExpandEnabled && autoExpandSpeedRow) {
+        autoExpandSpeedRow.appendChild(settingsDocsLink);
+      } else if (autoExpandToggleRow) {
+        autoExpandToggleRow.appendChild(settingsDocsLink);
+      }
+    }
+
     scheduleSettingsPanelLayout();
 
     if (!autoExpandEnabled) {
@@ -10101,7 +10102,7 @@
       // ignore clipboard failures
     }
 
-    setPresetStatus("copied json");
+    setPresetStatus("copying json");
   }
 
   function applySongJsonFromEditor(event) {
@@ -10133,7 +10134,7 @@
       presetNameInput.value = nameFromSong;
     }
     refreshPresetSelect();
-    setPresetStatus("applied json");
+    setPresetStatus("applying json");
   }
 
   function downloadSongJsonFile(event) {
@@ -10154,16 +10155,8 @@
 
     const sourceName = String(presetNameInput.value || song.name || "song");
     const filename = `${fileSafeStem(sourceName, "song")}.aelonyori-song.json`;
-    const blob = new Blob([text], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setPresetStatus("downloaded json");
+    triggerBlobDownload(text, filename, "application/json");
+    setPresetStatus("downloading json");
   }
 
   function requestSongJsonUpload(event) {
@@ -10191,7 +10184,7 @@
       songJson.value = text;
       updateSongJsonHighlight();
       applySongJsonFromEditor();
-      setPresetStatus("uploaded json");
+      setPresetStatus("uploading json");
     } catch (error) {
       console.warn("Unable to read uploaded JSON", error);
       setPresetStatus("upload failed", { ok: false });
@@ -10233,7 +10226,7 @@
   }
 
   presetSaveBtn.addEventListener("click", () => {
-    saveCurrentSongPreset({ statusLabel: "saved", showPresetStatus: true });
+    saveCurrentSongPreset({ statusLabel: "saving", showPresetStatus: true });
   });
 
   if (presetNewBtn) {
@@ -10260,7 +10253,7 @@
     }
     applySongObject(song);
     presetNameInput.value = name;
-    setPresetStatus("loaded");
+    setPresetStatus("loading");
   });
 
   presetDefaultBtn.addEventListener("click", () => {

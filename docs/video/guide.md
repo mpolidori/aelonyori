@@ -1,4 +1,4 @@
-# Video Synth Guide
+# Video Synthesis Guide
 
 The video synth is a real-time generative visual page driven by WebGL shaders and optionally reacting to the audio playing in the main DAW.
 

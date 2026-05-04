@@ -49,7 +49,7 @@ Key responsibilities:
 - Logo video background capture and interactive crop overlay.
 - Standalone preset/autosave system plus DAW-song state import/export compatibility.
 
-See [video-synth.md](video-synth.md) for full technical reference.
+See [video/synthesis.md](../video/synthesis.md) for full technical reference.
 
 ## 2. Data Model Layers
 
