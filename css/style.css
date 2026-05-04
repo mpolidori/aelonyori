@@ -53,6 +53,10 @@ html {
   scrollbar-width: thin;
 }
 
+html.is-video-synth-view {
+  overflow-y: hidden;
+}
+
 *::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -1578,6 +1582,25 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
     -2px 2px 0 var(--t-fg, #ffffff),
     0 2px 0 var(--t-fg, #ffffff),
     2px 2px 0 var(--t-fg, #ffffff);
+}
+
+body.is-logo-video-bg .logo .letter,
+body.is-logo-video-bg .logo .letter:not(.is-selected),
+body.is-logo-video-bg .logo .letter.is-selected,
+body.is-logo-video-bg .logo .letter:hover,
+body.is-logo-video-bg .logo .letter:focus-visible {
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
+  line-height: 1.1 !important;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+}
+
+body.is-logo-video-bg .logo .letter::before {
+  color: transparent !important;
 }
 
 html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:hover,

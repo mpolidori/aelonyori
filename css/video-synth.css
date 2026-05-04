@@ -2,6 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 55;
+  --accent: currentColor;
   background: var(--page-bg, #ffffff);
   color: rgba(0, 0, 0, 0.86);
   transform: translateX(-100%);
@@ -49,6 +50,66 @@ body.is-video-synth-view .videoSynthRoot {
   gap: 0.45rem;
 }
 
+.videoSynthLibrary {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.55rem 0.62rem;
+}
+
+.videoSynthLibraryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.44rem 0.68rem;
+  align-items: start;
+}
+
+.videoSynthMetaField {
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.videoSynthMetaField .fieldLabel {
+  font-size: 0.66rem;
+  text-transform: lowercase;
+}
+
+.videoSynthMetaFieldAutoSave {
+  grid-template-columns: 7ch max-content max-content;
+}
+
+.videoSynthMetaFieldAutoSave .switchToggle {
+  justify-self: start;
+}
+
+.videoSynthMetaFieldAutoSave select {
+  width: 9ch;
+  justify-self: start;
+}
+
+.videoSynthMetaInput {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.videoSynthNameField .videoSynthPresetStatus {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.videoSynthPresetActions {
+  margin-top: 0.25rem;
+}
+
+.videoSynthSongIo {
+  margin-top: 0.25rem;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
 .videoSynthPreview {
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -61,6 +122,47 @@ body.is-video-synth-view .videoSynthRoot {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.videoSynthCropOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.videoSynthCropOverlay.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.videoSynthCropRect {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
+  cursor: grab;
+  touch-action: none;
+}
+
+.videoSynthCropRect.is-dragging {
+  cursor: grabbing;
+}
+
+.videoSynthCropRect.is-resizing {
+  cursor: nwse-resize;
+}
+
+.videoSynthCropHandle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.65);
+  cursor: nwse-resize;
+  touch-action: none;
 }
 
 .videoSynthHud {
@@ -94,6 +196,13 @@ html.is-theme .videoSynthHud {
   gap: 0.44rem 0.68rem;
 }
 
+.videoSynthControlColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.44rem;
+}
+
 .videoSynthGroup {
   min-width: 0;
   display: flex;
@@ -111,7 +220,7 @@ html.is-theme .videoSynthHud {
   display: grid;
   grid-template-columns: 7ch minmax(0, 1fr) 5.3ch;
   align-items: center;
-  gap: 0.38rem;
+  gap: 0.45rem;
 }
 
 .videoSynthField .fieldLabel {
@@ -125,48 +234,35 @@ html.is-theme .videoSynthHud {
   min-width: 0;
 }
 
-.videoSynthField .num {
-  width: 100%;
-}
-
-.videoSynthField input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 0.82rem;
-  background: transparent;
-}
-
-.videoSynthField input[type="range"]::-webkit-slider-runnable-track {
-  height: 3px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.videoSynthField input[type="range"]::-moz-range-track {
-  height: 3px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.videoSynthField input[type="range"]::-moz-range-progress {
-  height: 3px;
-  background: rgba(0, 0, 0, 0.45);
+.videoSynthSelect {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: auto;
+  background-image: none !important;
+  padding-right: 0.45rem;
 }
 
 .videoSynthField input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  background: rgba(0, 0, 0, 0.9);
-  margin-top: -4.5px;
+  background: rgba(0, 0, 0, 0.72);
+  border-color: rgba(0, 0, 0, 0.28);
 }
 
 .videoSynthField input[type="range"]::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.72);
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
+.videoSynthTextField {
+  grid-template-columns: 7ch minmax(0, 1fr);
+}
+
+.videoSynthTextInput {
+  min-width: 0;
+  width: 100%;
+}
+
+.videoSynthField .num {
+  width: 100%;
 }
 
 .videoSynthColorField {
@@ -227,10 +323,40 @@ html.is-theme body.is-video-synth-view .edgeNav {
 }
 
 html.is-theme .videoSynthTopBar,
+html.is-theme .videoSynthLibrary,
 html.is-theme .videoSynthControls,
 html.is-theme .videoSynthToggles {
   border-color: var(--t-22, rgba(255, 255, 255, 0.22));
   background: var(--t-3, rgba(255, 255, 255, 0.03));
+}
+
+html.is-theme .videoSynthMetaInput {
+  background: var(--t-3, rgba(255, 255, 255, 0.03));
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--t-18, rgba(255, 255, 255, 0.18));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-moz-range-track,
+html.is-theme .videoSynthField input[type="range"]::-moz-range-progress {
+  background: var(--t-18, rgba(255, 255, 255, 0.18));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-webkit-slider-thumb {
+  background: var(--t-fg, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .videoSynthField input[type="range"]::-moz-range-thumb {
+  background: var(--t-fg, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
+html.is-theme .videoSynthSongIo {
+  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
 }
 
 html.is-theme .videoSynthHint {
@@ -239,24 +365,13 @@ html.is-theme .videoSynthHint {
   color: var(--t-90, rgba(255, 255, 255, 0.9));
 }
 
-html.is-theme .videoSynthField input[type="range"]::-webkit-slider-runnable-track,
-html.is-theme .videoSynthField input[type="range"]::-moz-range-track,
-html.is-theme .videoSynthField input[type="range"]::-moz-range-progress {
-  background: var(--t-22, rgba(255, 255, 255, 0.22));
-}
-
-html.is-theme .videoSynthField input[type="range"]::-webkit-slider-thumb,
-html.is-theme .videoSynthField input[type="range"]::-moz-range-thumb {
-  border-color: var(--t-28, rgba(255, 255, 255, 0.28));
-  background: var(--t-fg, rgba(255, 255, 255, 0.92));
-}
-
 html.is-theme .videoSynthColorInput {
   border-color: var(--t-28, rgba(255, 255, 255, 0.28));
   background: var(--t-3, rgba(255, 255, 255, 0.03));
 }
 
 @media (max-width: 760px) {
+  .videoSynthLibraryGrid,
   .videoSynthControls {
     grid-template-columns: 1fr;
   }
@@ -270,6 +385,10 @@ body.is-video-synth-view #wordPlaySubtitleStack {
   transform: translateX(100vw);
   opacity: 0;
   pointer-events: none;
+}
+
+body.is-video-synth-view {
+  overflow: hidden;
 }
 
 body.is-video-synth-view #settingsModal {

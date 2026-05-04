@@ -69,6 +69,9 @@
   const gradientAnimationToggleBtn = document.getElementById(
     "gradientAnimationToggleBtn",
   );
+  const logoVideoBackgroundToggleBtn = document.getElementById(
+    "logoVideoBackgroundToggleBtn",
+  );
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
   const starBounceAlwaysToggleBtn = document.getElementById(
@@ -297,6 +300,10 @@
       autosaveIntervalMinutes: 5,
       autoscrollEnabled: true,
       gradientAnimationEnabled: true,
+      logoVideoBackgroundEnabled: false,
+      logoVideoCropX: 50,
+      logoVideoCropY: 60,
+      logoVideoCropSize: 88,
       themeEnabled: false,
       bumpEnabled: false,
       bumpHeight: 0,
@@ -845,6 +852,7 @@
   let audio = null;
   let master = null;
   let videoSynthPlugin = null;
+  let loadedSongExtensions = Object.create(null);
   let noiseBuffer = null;
 
   let isPlaying = false;
@@ -871,6 +879,22 @@
     typeof appDefaults.ui.gradientAnimationEnabled === "boolean"
       ? appDefaults.ui.gradientAnimationEnabled
       : true;
+  let logoVideoBackgroundEnabled = Boolean(appDefaults.ui.logoVideoBackgroundEnabled);
+  let logoVideoCropX = clampNumber(
+    Math.round(numberOrFallback(appDefaults.ui.logoVideoCropX, 50)),
+    0,
+    100,
+  );
+  let logoVideoCropY = clampNumber(
+    Math.round(numberOrFallback(appDefaults.ui.logoVideoCropY, 60)),
+    0,
+    100,
+  );
+  let logoVideoCropSize = clampNumber(
+    Math.round(numberOrFallback(appDefaults.ui.logoVideoCropSize, 88)),
+    30,
+    100,
+  );
 
   let themeEnabled = Boolean(appDefaults.ui.themeEnabled);
   let bumpEnabled = Boolean(appDefaults.ui.bumpEnabled);
@@ -909,6 +933,11 @@
   let subtitleLastText = "";
   let autosaveTimerId = null;
   let autosaveStatusTimer = null;
+  let logoVideoBgRaf = null;
+  let logoVideoBgIntervalId = null;
+  let logoVideoBgLastSampleAt = 0;
+  let logoVideoBgSampleCanvas = null;
+  let logoVideoBgSampleCtx = null;
   const samplePadHoldStates = new Map();
   let themeColorThrottleTimerId = null;
   let queuedThemeColorA = null;
@@ -935,6 +964,10 @@
     autosaveIntervalMinutes,
     autoscrollEnabled,
     gradientAnimationEnabled,
+    logoVideoBackgroundEnabled,
+    logoVideoCropX,
+    logoVideoCropY,
+    logoVideoCropSize,
     themeEnabled,
     bumpEnabled,
     bumpHeight,
@@ -1284,6 +1317,57 @@
       return { ok: true, value: JSON.parse(text) };
     } catch (err) {
       return { ok: false, error: err };
+    }
+  }
+
+  function cloneSongExtensions(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return Object.create(null);
+    }
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return { ...value };
+    }
+  }
+
+  function getCurrentSongExtensions() {
+    const extensions = cloneSongExtensions(loadedSongExtensions);
+    if (
+      videoSynthPlugin
+      && typeof videoSynthPlugin.exportSession === "function"
+    ) {
+      const videoSynthSession = videoSynthPlugin.exportSession();
+      if (videoSynthSession && typeof videoSynthSession === "object") {
+        extensions.videoSynth = videoSynthSession;
+      } else {
+        delete extensions.videoSynth;
+      }
+    }
+    return Object.keys(extensions).length > 0 ? extensions : undefined;
+  }
+
+  function applySongExtensions(extensions) {
+    loadedSongExtensions = cloneSongExtensions(extensions);
+
+    const videoSynthSession =
+      loadedSongExtensions.videoSynth
+      && typeof loadedSongExtensions.videoSynth === "object"
+        ? loadedSongExtensions.videoSynth
+        : null;
+
+    if (
+      videoSynthPlugin
+      && typeof videoSynthPlugin.importSession === "function"
+    ) {
+      if (videoSynthSession) {
+        videoSynthPlugin.importSession(videoSynthSession);
+      } else if (typeof videoSynthPlugin.resetSession === "function") {
+        videoSynthPlugin.resetSession();
+      }
+      if (typeof videoSynthPlugin.setLogoFeedActive === "function") {
+        videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
+      }
     }
   }
 
@@ -1726,6 +1810,22 @@
       ),
       autoscrollEnabled: Boolean(autoscrollEnabled),
       gradientAnimationEnabled: Boolean(gradientAnimationEnabled),
+      logoVideoBackgroundEnabled: Boolean(logoVideoBackgroundEnabled),
+      logoVideoCropX: clampNumber(
+        Math.round(numberOrFallback(logoVideoCropX, 0)),
+        0,
+        100,
+      ),
+      logoVideoCropY: clampNumber(
+        Math.round(numberOrFallback(logoVideoCropY, 0)),
+        0,
+        100,
+      ),
+      logoVideoCropSize: clampNumber(
+        Math.round(numberOrFallback(logoVideoCropSize, 88)),
+        30,
+        100,
+      ),
       starBounceEnabled: Boolean(starBounceEnabled),
       starBounceAlwaysEnabled: Boolean(starBounceAlwaysEnabled),
       themeEnabled: Boolean(themeEnabled),
@@ -1752,6 +1852,8 @@
       loopEnabled: Boolean(loopEnabled),
     };
 
+    const extensions = getCurrentSongExtensions();
+
     return {
       version: 1,
       name: name || undefined,
@@ -1765,6 +1867,11 @@
       tracks: trackStates,
       activeKeys,
       ui,
+      extensions,
+      videoSynth:
+        extensions && extensions.videoSynth
+          ? cloneSongExtensions(extensions.videoSynth)
+          : undefined,
     };
   }
 
@@ -1773,6 +1880,12 @@
     const globals =
       song.globals && typeof song.globals === "object" ? song.globals : {};
     const ui = song.ui && typeof song.ui === "object" ? song.ui : {};
+    const songExtensions =
+      song.extensions && typeof song.extensions === "object"
+        ? song.extensions
+        : song.videoSynth && typeof song.videoSynth === "object"
+          ? { videoSynth: song.videoSynth }
+        : null;
     const nextTempo = clampNumber(
       numberOrFallback(globals.tempo, tempo),
       20,
@@ -1906,6 +2019,41 @@
         ? ui.gradientAnimationEnabled
         : INITIAL_UI.gradientAnimationEnabled;
     setGradientAnimationEnabled(nextGradientAnimationEnabled);
+
+    const nextLogoVideoBackgroundEnabled =
+      typeof ui.logoVideoBackgroundEnabled === "boolean"
+        ? ui.logoVideoBackgroundEnabled
+        : INITIAL_UI.logoVideoBackgroundEnabled;
+
+    const nextLogoVideoCropX = clampNumber(
+      Math.round(numberOrFallback(ui.logoVideoCropX, logoVideoCropX)),
+      0,
+      100,
+    );
+    const nextLogoVideoCropY = clampNumber(
+      Math.round(numberOrFallback(ui.logoVideoCropY, logoVideoCropY)),
+      0,
+      100,
+    );
+    const nextLogoVideoCropSize = clampNumber(
+      Math.round(
+        numberOrFallback(
+          ui.logoVideoCropSize,
+          Math.min(
+            numberOrFallback(ui.logoVideoCropW, logoVideoCropSize),
+            numberOrFallback(ui.logoVideoCropH, logoVideoCropSize),
+          ),
+        ),
+      ),
+      30,
+      100,
+    );
+    setLogoVideoCrop(
+      nextLogoVideoCropX,
+      nextLogoVideoCropY,
+      nextLogoVideoCropSize,
+    );
+    setLogoVideoBackgroundEnabled(nextLogoVideoBackgroundEnabled);
 
     const nextStarBounceEnabled =
       typeof ui.starBounceEnabled === "boolean"
@@ -2057,6 +2205,7 @@
     }
 
     setLoopEnabled(Boolean(ui.loopEnabled));
+    applySongExtensions(songExtensions);
 
     updateSoloSuppression();
     return true;
@@ -2094,6 +2243,7 @@
     stop();
     clearAllTracks();
     states.clear();
+    loadedSongExtensions = Object.create(null);
 
     applyStepsCount(INITIAL_GLOBALS.stepsCount);
     applyBeatSteps(INITIAL_GLOBALS.beatSteps);
@@ -2121,6 +2271,12 @@
     setAutoExpandEnabled(INITIAL_UI.autoExpandEnabled);
     setAutoscrollEnabled(INITIAL_UI.autoscrollEnabled);
     setGradientAnimationEnabled(INITIAL_UI.gradientAnimationEnabled);
+    setLogoVideoCrop(
+      INITIAL_UI.logoVideoCropX,
+      INITIAL_UI.logoVideoCropY,
+      INITIAL_UI.logoVideoCropSize,
+    );
+    setLogoVideoBackgroundEnabled(INITIAL_UI.logoVideoBackgroundEnabled);
     setStarBounceEnabled(INITIAL_UI.starBounceEnabled);
     setStarBounceAlwaysEnabled(INITIAL_UI.starBounceAlwaysEnabled);
     setBumpHeight(INITIAL_UI.bumpHeight);
@@ -2133,6 +2289,10 @@
 
     setAutosaveInterval(INITIAL_UI.autosaveIntervalMinutes);
     setAutosaveEnabled(INITIAL_UI.autosaveEnabled);
+
+    if (videoSynthPlugin && typeof videoSynthPlugin.resetSession === "function") {
+      videoSynthPlugin.resetSession();
+    }
 
     tempo = INITIAL_GLOBALS.tempo;
     tempoInput.value = String(tempo);
@@ -2751,17 +2911,294 @@
 
   function applyLetterHitAccentPalette() {
     if (!Array.isArray(letters) || letters.length < 2) return;
+    if (logoVideoBackgroundEnabled) return;
 
     if (themeEnabled) {
       for (const btn of letters) {
+        btn.style.removeProperty("--accent");
         btn.style.setProperty("--hit", "var(--t-50)");
       }
       return;
     }
 
     for (const btn of letters) {
+      btn.style.removeProperty("--accent");
       btn.style.setProperty("--hit", "#000000");
     }
+  }
+
+  function emitLogoVideoState() {
+    document.dispatchEvent(
+      new CustomEvent("video-synth:logo-video-state", {
+        detail: {
+          enabled: Boolean(logoVideoBackgroundEnabled),
+          cropX: logoVideoCropX,
+          cropY: logoVideoCropY,
+          cropSize: logoVideoCropSize,
+        },
+      }),
+    );
+  }
+
+  function setLogoVideoCrop(nextX, nextY, nextSize) {
+    logoVideoCropX = clampNumber(
+      Math.round(numberOrFallback(nextX, logoVideoCropX)),
+      0,
+      100,
+    );
+    logoVideoCropY = clampNumber(
+      Math.round(numberOrFallback(nextY, logoVideoCropY)),
+      0,
+      100,
+    );
+    logoVideoCropSize = clampNumber(
+      Math.round(numberOrFallback(nextSize, logoVideoCropSize)),
+      30,
+      100,
+    );
+
+    emitLogoVideoState();
+
+    if (logoVideoBackgroundEnabled) {
+      logoVideoBgLastSampleAt = 0;
+      sampleLogoVideoPalette();
+    }
+  }
+
+  function resetLogoVideoPalette() {
+    const logoEl = letters[0] && letters[0].closest(".logo");
+    if (logoEl instanceof HTMLElement) {
+      logoEl.style.removeProperty("--logo-video-frame");
+    }
+    for (const btn of letters) {
+      btn.style.removeProperty("--accent");
+      btn.style.removeProperty("--hit");
+      btn.style.removeProperty("color");
+      btn.style.removeProperty("text-shadow");
+      btn.style.removeProperty("-webkit-text-fill-color");
+      btn.style.removeProperty("-webkit-background-clip");
+      btn.style.removeProperty("background-clip");
+      btn.style.removeProperty("background-size");
+      btn.style.removeProperty("background-position");
+    }
+    applyLetterHitAccentPalette();
+  }
+
+  function sampleLogoColorsFromCanvas(count) {
+    const canvas = document.querySelector(".videoSynthCanvas");
+    if (!(canvas instanceof HTMLCanvasElement)) return null;
+    if (canvas.width <= 0 || canvas.height <= 0) return null;
+
+    const targetCount = clampNumber(
+      Math.round(numberOrFallback(count, letters.length || 9)),
+      1,
+      24,
+    );
+    const targetW = Math.max(64, targetCount * 12);
+    const targetH = 32;
+
+    if (!logoVideoBgSampleCanvas) {
+      logoVideoBgSampleCanvas = document.createElement("canvas");
+    }
+    if (
+      logoVideoBgSampleCanvas.width !== targetW
+      || logoVideoBgSampleCanvas.height !== targetH
+    ) {
+      logoVideoBgSampleCanvas.width = targetW;
+      logoVideoBgSampleCanvas.height = targetH;
+      logoVideoBgSampleCtx = null;
+    }
+    if (!logoVideoBgSampleCtx) {
+      logoVideoBgSampleCtx = logoVideoBgSampleCanvas.getContext("2d", {
+        willReadFrequently: true,
+      });
+    }
+    if (!logoVideoBgSampleCtx) return null;
+
+    logoVideoBgSampleCtx.drawImage(canvas, 0, 0, targetW, targetH);
+    const image = logoVideoBgSampleCtx.getImageData(0, 0, targetW, targetH).data;
+    const colors = [];
+    for (let i = 0; i < targetCount; i += 1) {
+      const x = clampNumber(
+        Math.round(((i + 0.5) / targetCount) * (targetW - 1)),
+        0,
+        targetW - 1,
+      );
+      const y = Math.round(targetH * 0.5);
+      const idx = (y * targetW + x) * 4;
+      const r = image[idx] ?? 0;
+      const g = image[idx + 1] ?? 0;
+      const b = image[idx + 2] ?? 0;
+      colors.push(`#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+    }
+    return colors;
+  }
+
+  function liftLogoSampleColor(hexColor) {
+    const raw = String(hexColor || "").trim();
+    const match = raw.match(/^#([0-9a-fA-F]{6})$/);
+    if (!match) return themeEnabled ? "#c0c0c0" : "#2c2c2c";
+    const value = match[1];
+    const r = Number.parseInt(value.slice(0, 2), 16);
+    const g = Number.parseInt(value.slice(2, 4), 16);
+    const b = Number.parseInt(value.slice(4, 6), 16);
+    const lift = (channel) => {
+      const n = numberOrFallback(channel, 0);
+      const gain = themeEnabled ? 0.55 : 0.72;
+      const floor = themeEnabled ? 132 : 52;
+      return clampNumber(Math.round(n * gain + floor), 0, 255);
+    };
+    const rr = lift(r).toString(16).padStart(2, "0");
+    const gg = lift(g).toString(16).padStart(2, "0");
+    const bb = lift(b).toString(16).padStart(2, "0");
+    return `#${rr}${gg}${bb}`;
+  }
+
+  function sampleLogoVideoPalette() {
+    if (!logoVideoBackgroundEnabled) return;
+
+    const logoEl = letters[0] && letters[0].closest(".logo");
+    const videoCanvas = document.querySelector(".videoSynthCanvas");
+    if (!logoEl || !(videoCanvas instanceof HTMLCanvasElement)) return;
+    if (videoCanvas.width <= 0 || videoCanvas.height <= 0) return;
+
+    const logoRect = logoEl.getBoundingClientRect();
+    const logoW = Math.round(logoRect.width);
+    const logoH = Math.round(logoRect.height);
+    if (logoW <= 0 || logoH <= 0) return;
+
+    if (!logoVideoBgSampleCanvas) {
+      logoVideoBgSampleCanvas = document.createElement("canvas");
+    }
+    if (
+      logoVideoBgSampleCanvas.width !== logoW
+      || logoVideoBgSampleCanvas.height !== logoH
+    ) {
+      logoVideoBgSampleCanvas.width = logoW;
+      logoVideoBgSampleCanvas.height = logoH;
+      logoVideoBgSampleCtx = null;
+    }
+    if (!logoVideoBgSampleCtx) {
+      logoVideoBgSampleCtx = logoVideoBgSampleCanvas.getContext("2d");
+    }
+    if (!logoVideoBgSampleCtx) return;
+
+    const sourceW = Math.max(1, videoCanvas.width);
+    const sourceH = Math.max(1, videoCanvas.height);
+    const logoAspect = logoW / logoH;
+
+    let maxCropW = sourceW;
+    let maxCropH = sourceH;
+    const sourceAspect = sourceW / sourceH;
+    if (sourceAspect > logoAspect) {
+      maxCropH = sourceH;
+      maxCropW = maxCropH * logoAspect;
+    } else {
+      maxCropW = sourceW;
+      maxCropH = maxCropW / logoAspect;
+    }
+
+    const sizeRatio =
+      clampNumber(numberOrFallback(logoVideoCropSize, 88), 30, 100) / 100;
+    const sw = Math.max(1, maxCropW * sizeRatio);
+    const sh = Math.max(1, maxCropH * sizeRatio);
+    const sx = (sourceW - sw)
+      * (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
+    const sy = (sourceH - sh)
+      * (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
+
+    logoVideoBgSampleCtx.drawImage(
+      videoCanvas,
+      sx,
+      sy,
+      sw,
+      sh,
+      0,
+      0,
+      logoW,
+      logoH,
+    );
+    const dataUrl = logoVideoBgSampleCanvas.toDataURL("image/jpeg", 0.58);
+    logoEl.style.setProperty("--logo-video-frame", `url("${dataUrl}")`);
+
+    for (const btn of letters) {
+      const btnRect = btn.getBoundingClientRect();
+      const offsetX = btnRect.left - logoRect.left;
+      const offsetY = btnRect.top - logoRect.top;
+      btn.style.setProperty("-webkit-background-clip", "text");
+      btn.style.setProperty("background-clip", "text");
+      btn.style.setProperty("background-size", `${logoW}px ${logoH}px`);
+      btn.style.setProperty("background-position", `-${offsetX}px -${offsetY}px`);
+      btn.style.setProperty("color", "transparent");
+      btn.style.setProperty("-webkit-text-fill-color", "transparent");
+      btn.style.setProperty("text-shadow", "none");
+    }
+  }
+
+  function stopLogoVideoPaletteLoop() {
+    if (logoVideoBgRaf != null) {
+      window.cancelAnimationFrame(logoVideoBgRaf);
+      logoVideoBgRaf = null;
+    }
+    if (logoVideoBgIntervalId != null) {
+      window.clearInterval(logoVideoBgIntervalId);
+      logoVideoBgIntervalId = null;
+    }
+  }
+
+  function runLogoVideoPaletteLoop() {
+    stopLogoVideoPaletteLoop();
+    if (!logoVideoBackgroundEnabled) return;
+
+    // Prime immediately so the toggle feels responsive.
+    logoVideoBgLastSampleAt = 0;
+    sampleLogoVideoPalette();
+
+    const tick = (ts) => {
+      if (!logoVideoBackgroundEnabled) return;
+      const now = Number.isFinite(ts) ? ts : Date.now();
+      if (now - logoVideoBgLastSampleAt >= 42) {
+        logoVideoBgLastSampleAt = now;
+        sampleLogoVideoPalette();
+      }
+      logoVideoBgRaf = window.requestAnimationFrame(tick);
+    };
+    logoVideoBgRaf = window.requestAnimationFrame(tick);
+  }
+
+  function setLogoVideoBackgroundEnabled(nextEnabled, options = {}) {
+    const skipBumpSync = Boolean(options.skipBumpSync);
+    logoVideoBackgroundEnabled = Boolean(nextEnabled);
+    if (logoVideoBackgroundEnabled && bumpEnabled && !skipBumpSync) {
+      setBumpEnabled(false, { skipVideoBackgroundSync: true });
+    }
+    document.body.classList.toggle("is-logo-video-bg", logoVideoBackgroundEnabled);
+    if (logoVideoBackgroundToggleBtn) {
+      logoVideoBackgroundToggleBtn.setAttribute(
+        "aria-pressed",
+        logoVideoBackgroundEnabled ? "true" : "false",
+      );
+      logoVideoBackgroundToggleBtn.title = logoVideoBackgroundEnabled
+        ? "video background: on"
+        : "video background: off";
+    }
+
+    if (
+      videoSynthPlugin
+      && typeof videoSynthPlugin.setLogoFeedActive === "function"
+    ) {
+      videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
+    }
+
+    if (logoVideoBackgroundEnabled) {
+      logoVideoBgLastSampleAt = 0;
+      runLogoVideoPaletteLoop();
+    } else {
+      stopLogoVideoPaletteLoop();
+      resetLogoVideoPalette();
+    }
+
+    emitLogoVideoState();
   }
 
   applyLetterHitAccentPalette();
@@ -3313,6 +3750,7 @@
       setSamplerViewOpen(false);
     }
     document.body.classList.toggle("is-video-synth-view", open);
+    document.documentElement.classList.toggle("is-video-synth-view", open);
 
     if (navToDawFromVideoBtn) {
       navToDawFromVideoBtn.hidden = false;
@@ -8230,6 +8668,13 @@
     videoSynthPlugin.init();
     videoSynthPlugin.setActive(false);
     if (master) videoSynthPlugin.setAudioSource(master);
+    applySongExtensions(loadedSongExtensions);
+    if (typeof videoSynthPlugin.setLogoFeedActive === "function") {
+      videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
+    }
+    if (logoVideoBackgroundEnabled) {
+      runLogoVideoPaletteLoop();
+    }
   }
 
   if (navToVideoSynthBtn) {
@@ -8268,6 +8713,26 @@
       setGradientAnimationEnabled(!gradientAnimationEnabled);
     });
   }
+
+  if (logoVideoBackgroundToggleBtn) {
+    logoVideoBackgroundToggleBtn.addEventListener("click", () => {
+      setLogoVideoBackgroundEnabled(!logoVideoBackgroundEnabled);
+    });
+  }
+
+  document.addEventListener("video-synth:set-logo-video-background", (event) => {
+    const nextEnabled = Boolean(event?.detail?.enabled);
+    setLogoVideoBackgroundEnabled(nextEnabled);
+  });
+
+  document.addEventListener("video-synth:set-logo-video-crop", (event) => {
+    const detail = event?.detail || {};
+    setLogoVideoCrop(
+      detail.cropX,
+      detail.cropY,
+      detail.cropSize,
+    );
+  });
 
   if (starBounceToggleBtn) {
     starBounceToggleBtn.addEventListener("click", () => {
@@ -9036,8 +9501,12 @@
     syncStarBounceClass();
   }
 
-  function setBumpEnabled(nextEnabled) {
+  function setBumpEnabled(nextEnabled, options = {}) {
+    const skipVideoBackgroundSync = Boolean(options.skipVideoBackgroundSync);
     bumpEnabled = Boolean(nextEnabled);
+    if (bumpEnabled && logoVideoBackgroundEnabled && !skipVideoBackgroundSync) {
+      setLogoVideoBackgroundEnabled(false, { skipBumpSync: true });
+    }
     if (bumpToggleBtn) {
       bumpToggleBtn.setAttribute(
         "aria-pressed",
@@ -9362,6 +9831,12 @@
   setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
   setGradientAnimationEnabled(gradientAnimationEnabled);
+  setLogoVideoCrop(
+    logoVideoCropX,
+    logoVideoCropY,
+    logoVideoCropSize,
+  );
+  setLogoVideoBackgroundEnabled(logoVideoBackgroundEnabled);
   setStarBounceEnabled(starBounceEnabled);
   setStarBounceAlwaysEnabled(starBounceAlwaysEnabled);
   setBumpHeight(bumpHeight);

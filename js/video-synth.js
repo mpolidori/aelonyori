@@ -1,4 +1,9 @@
 (() => {
+  const VIDEO_SYNTH_PRESET_INDEX_KEY = "aelonyori.video-synth.preset.index";
+  const VIDEO_SYNTH_PRESET_DEFAULT_KEY = "aelonyori.video-synth.preset.default";
+  const VIDEO_SYNTH_PRESET_STORAGE_PREFIX = "aelonyori.video-synth.preset.";
+  const VIDEO_SYNTH_AUTOSAVE_KEY = "aelonyori.video-synth.autosave";
+
   class VideoSynthPlugin {
     constructor({ mount }) {
       this.mount = mount || null;
@@ -10,14 +15,37 @@
       this.formulaSelect = null;
       this.fullscreenBtn = null;
       this.resetBtn = null;
-      this.cyberpunkBtn = null;
       this.audioToggleBtn = null;
       this.invertToggleBtn = null;
       this.colorAInput = null;
       this.colorBInput = null;
       this.colorAHexInput = null;
       this.colorBHexInput = null;
+      this.presetSelect = null;
+      this.presetNameInput = null;
+      this.presetStatus = null;
+      this.presetNewBtn = null;
+      this.presetSaveBtn = null;
+      this.presetLoadBtn = null;
+      this.presetDefaultBtn = null;
+      this.autosaveToggleBtn = null;
+      this.autosaveIntervalSelect = null;
+      this.songIo = null;
+      this.songJson = null;
+      this.songJsonHighlight = null;
+      this.songJsonCopyBtn = null;
+      this.songJsonApplyBtn = null;
+      this.songJsonDownloadBtn = null;
+      this.songJsonUploadBtn = null;
+      this.songJsonUploadInput = null;
       this.rangeInputs = new Map();
+      this.logoVideoBackgroundBtn = null;
+      this.logoVideoCropBtn = null;
+      this.logoCropOverlay = null;
+      this.logoCropRect = null;
+      this.logoCropHandle = null;
+      this.embeddedPresets = Object.create(null);
+      this.embeddedDefaultPresetName = "";
 
       this.gl = null;
       this.program = null;
@@ -44,16 +72,40 @@
       this.uNoiseAmt = null;
       this.uColorA = null;
       this.uColorB = null;
+      this.uTextTex = null;
+      this.uTextEnabled = null;
+      this.uTextMix = null;
+      this.uTextColor = null;
 
       this.audioNode = null;
       this.analyser = null;
       this.audioFrame = null;
       this.audioTextureFrame = null;
+      this.textCanvas = null;
+      this.textCtx = null;
+      this.textTexture = null;
+      this.textTextureDirty = true;
+
+      this.logoFeedActive = false;
+      this.logoSampleCanvas = null;
+      this.logoSampleCtx = null;
 
       this.textureSize = 256;
       this.rafId = null;
       this.active = false;
       this.initialized = false;
+      this.playbackTimeSeconds = 0;
+      this.lastFrameTimestampMs = null;
+      this.autosaveTimerId = null;
+      this.presetStatusTimer = null;
+      this.presetStatusBusySince = null;
+      this.lastPresetSaveErrorMessage = "";
+      this.logoVideoBackgroundEnabled = false;
+      this.logoVideoCropX = 50;
+      this.logoVideoCropY = 60;
+      this.logoVideoCropSize = 88;
+      this.logoCropModeActive = false;
+      this.logoCropDragState = null;
 
       this.params = {
         mode: 0,
@@ -68,21 +120,83 @@
         pixel: 14,
         hue: 0,
         drift: 44,
+        videoSpeed: 70,
         audioMix: 62,
         autoMix: 68,
         audioReactive: true,
         invert: false,
         colorA: "#6600ff",
         colorB: "#ff0077",
+        textContent: "",
+        textSize: 62,
+        textMix: 70,
+        textColor: "#f4ecff",
       };
+
+      const autosaveConfig = this.readAutosaveConfig();
+      this.autosaveEnabled = Boolean(autosaveConfig.enabled);
+      this.autosaveIntervalMinutes = autosaveConfig.intervalMinutes;
 
       this.onResize = this.resize.bind(this);
       this.onVisibilityChange = () => {
         if (document.hidden) {
           this.stop();
-        } else if (this.active) {
+        } else if (this.shouldRun()) {
           this.start();
         }
+      };
+      this.onLogoVideoStateChange = (event) => {
+        const detail = event?.detail || {};
+        this.setLogoVideoBackgroundState(
+          detail.enabled,
+          detail.cropX,
+          detail.cropY,
+          detail.cropSize,
+        );
+      };
+      this.onLogoCropPointerMove = (event) => {
+        if (!this.logoCropDragState) return;
+        const state = this.logoCropDragState;
+        const dx = event.clientX - state.startPointerX;
+        const dy = event.clientY - state.startPointerY;
+
+        if (state.mode === "move") {
+          const maxX = Math.max(0, state.previewW - state.startRectW);
+          const maxY = Math.max(0, state.previewH - state.startRectH);
+          const nextRectX = this.clampNumber(state.startRectX + dx, 0, maxX);
+          const nextRectY = this.clampNumber(state.startRectY + dy, 0, maxY);
+          const nextCropX = maxX > 0 ? (nextRectX / maxX) * 100 : state.startCropX;
+          const nextCropY = maxY > 0 ? (nextRectY / maxY) * 100 : state.startCropY;
+          this.emitLogoCropChange(nextCropX, nextCropY, state.startCropSize);
+          return;
+        }
+
+        const desiredWFromX = state.startRectW + dx;
+        const desiredWFromY = (state.startRectH + dy) * state.aspect;
+        const desiredW = Math.abs(dx) >= Math.abs(dy * state.aspect)
+          ? desiredWFromX
+          : desiredWFromY;
+        const boundW = Math.max(
+          state.minRectW,
+          Math.min(
+            state.maxRectW,
+            state.previewW - state.startRectX,
+            (state.previewH - state.startRectY) * state.aspect,
+          ),
+        );
+        const nextRectW = this.clampNumber(desiredW, state.minRectW, boundW);
+        const nextCropSize = (nextRectW / state.maxRectW) * 100;
+        this.emitLogoCropChange(state.startCropX, state.startCropY, nextCropSize);
+      };
+      this.onLogoCropPointerUp = () => {
+        if (!this.logoCropDragState) return;
+        this.logoCropDragState = null;
+        if (this.logoCropRect) {
+          this.logoCropRect.classList.remove("is-dragging", "is-resizing");
+        }
+        window.removeEventListener("pointermove", this.onLogoCropPointerMove);
+        window.removeEventListener("pointerup", this.onLogoCropPointerUp);
+        window.removeEventListener("pointercancel", this.onLogoCropPointerUp);
       };
     }
 
@@ -104,17 +218,13 @@
       const actions = document.createElement("div");
       actions.className = "videoSynthActions";
 
+  const presetPanel = this.buildPresetPanel();
+
       this.resetBtn = document.createElement("button");
       this.resetBtn.type = "button";
       this.resetBtn.className = "btn";
       this.resetBtn.textContent = "reset";
       this.resetBtn.addEventListener("click", () => this.resetParams());
-
-      this.cyberpunkBtn = document.createElement("button");
-      this.cyberpunkBtn.type = "button";
-      this.cyberpunkBtn.className = "btn";
-      this.cyberpunkBtn.textContent = "cyberpunk";
-      this.cyberpunkBtn.addEventListener("click", () => this.applyCyberpunkPreset());
 
       this.fullscreenBtn = document.createElement("button");
       this.fullscreenBtn.type = "button";
@@ -125,7 +235,6 @@
       });
 
       actions.appendChild(this.resetBtn);
-      actions.appendChild(this.cyberpunkBtn);
       actions.appendChild(this.fullscreenBtn);
 
       topBar.appendChild(title);
@@ -141,11 +250,38 @@
       this.hud.className = "videoSynthHud";
       this.hud.textContent = "waveform";
 
+      this.logoCropOverlay = document.createElement("div");
+      this.logoCropOverlay.className = "videoSynthCropOverlay";
+      this.logoCropRect = document.createElement("div");
+      this.logoCropRect.className = "videoSynthCropRect";
+      this.logoCropHandle = document.createElement("div");
+      this.logoCropHandle.className = "videoSynthCropHandle";
+      this.logoCropHandle.setAttribute("aria-hidden", "true");
+      this.logoCropRect.appendChild(this.logoCropHandle);
+      this.logoCropOverlay.appendChild(this.logoCropRect);
+
+      this.logoCropRect.addEventListener("pointerdown", (event) => {
+        if (!this.logoCropModeActive) return;
+        if (event.target === this.logoCropHandle) return;
+        this.beginLogoCropDrag(event, "move");
+      });
+      this.logoCropHandle.addEventListener("pointerdown", (event) => {
+        if (!this.logoCropModeActive) return;
+        this.beginLogoCropDrag(event, "resize");
+      });
+
       this.preview.appendChild(this.canvas);
+      this.preview.appendChild(this.logoCropOverlay);
       this.preview.appendChild(this.hud);
 
       const controls = document.createElement("section");
       controls.className = "videoSynthControls";
+
+      const controlsColA = document.createElement("div");
+      controlsColA.className = "videoSynthControlColumn";
+
+      const controlsColB = document.createElement("div");
+      controlsColB.className = "videoSynthControlColumn";
 
       const modeField = document.createElement("label");
       modeField.className = "field videoSynthField";
@@ -177,7 +313,7 @@
       modeField.appendChild(modeLabel);
       modeField.appendChild(this.modeSelect);
       modeField.appendChild(modeSpacer);
-      controls.appendChild(modeField);
+      controlsColA.appendChild(modeField);
 
       const formulaField = document.createElement("label");
       formulaField.className = "field videoSynthField";
@@ -203,20 +339,19 @@
       formulaField.appendChild(formulaLabel);
       formulaField.appendChild(this.formulaSelect);
       formulaField.appendChild(formulaSpacer);
-      controls.appendChild(formulaField);
+      controlsColA.appendChild(formulaField);
 
-      controls.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
-          key: "intensity",
-          label: "intensity",
+          key: "videoSpeed",
+          label: "video speed",
           min: 0,
           max: 100,
           step: 1,
         }),
       );
-      const glitchGroup = document.createElement("div");
-      glitchGroup.className = "videoSynthGroup videoSynthGroup-glitch";
-      glitchGroup.appendChild(
+
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "glitch",
           label: "glitch a",
@@ -225,7 +360,7 @@
           step: 1,
         }),
       );
-      glitchGroup.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "glitchLayer",
           label: "glitch b",
@@ -234,8 +369,7 @@
           step: 1,
         }),
       );
-      controls.appendChild(glitchGroup);
-      controls.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "glitchOffset",
           label: "offset",
@@ -244,7 +378,7 @@
           step: 1,
         }),
       );
-      controls.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "split",
           label: "rgb split",
@@ -253,25 +387,7 @@
           step: 1,
         }),
       );
-      controls.appendChild(
-        this.makeRangeField({
-          key: "noiseAmt",
-          label: "noise",
-          min: 0,
-          max: 100,
-          step: 1,
-        }),
-      );
-      controls.appendChild(
-        this.makeRangeField({
-          key: "scan",
-          label: "scan",
-          min: 0,
-          max: 100,
-          step: 1,
-        }),
-      );
-      controls.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "pixel",
           label: "pixel",
@@ -280,16 +396,7 @@
           step: 1,
         }),
       );
-      controls.appendChild(
-        this.makeRangeField({
-          key: "hue",
-          label: "hue",
-          min: 0,
-          max: 100,
-          step: 1,
-        }),
-      );
-      controls.appendChild(
+      controlsColA.appendChild(
         this.makeRangeField({
           key: "drift",
           label: "drift",
@@ -298,7 +405,34 @@
           step: 1,
         }),
       );
-      controls.appendChild(
+      controlsColA.appendChild(
+        this.makeRangeField({
+          key: "scan",
+          label: "scan",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColB.appendChild(
+        this.makeRangeField({
+          key: "hue",
+          label: "hue",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColB.appendChild(
+        this.makeRangeField({
+          key: "noiseAmt",
+          label: "noise",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColB.appendChild(
         this.makeRangeField({
           key: "audioMix",
           label: "audio mix",
@@ -307,7 +441,7 @@
           step: 1,
         }),
       );
-      controls.appendChild(
+      controlsColB.appendChild(
         this.makeRangeField({
           key: "autoMix",
           label: "auto mix",
@@ -316,20 +450,43 @@
           step: 1,
         }),
       );
-
-      const colorGroup = document.createElement("div");
-      colorGroup.className = "videoSynthGroup videoSynthGroup-colors";
-      colorGroup.appendChild(
+      controlsColB.appendChild(
         this.makeColorField({ key: "colorA", label: "color a" }),
       );
-      colorGroup.appendChild(
+      controlsColB.appendChild(
         this.makeColorField({ key: "colorB", label: "color b" }),
       );
-      controls.appendChild(colorGroup);
+      controlsColB.appendChild(
+        this.makeTextField({
+          key: "textContent",
+          label: "text",
+          placeholder: "type text",
+        }),
+      );
+      controlsColB.appendChild(
+        this.makeColorField({ key: "textColor", label: "text color" }),
+      );
+      controlsColB.appendChild(
+        this.makeRangeField({
+          key: "textSize",
+          label: "text size",
+          min: 10,
+          max: 160,
+          step: 1,
+        }),
+      );
+      controlsColB.appendChild(
+        this.makeRangeField({
+          key: "textMix",
+          label: "text mix",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
 
-      const hint = document.createElement("p");
-      hint.className = "videoSynthHint";
-      hint.textContent = "a/b colors tint the main image and ghost split. glitch a/b control two distortion layers, while rgb split offsets color ghosts.";
+      controls.appendChild(controlsColA);
+      controls.appendChild(controlsColB);
 
       const toggleRow = document.createElement("div");
       toggleRow.className = "videoSynthToggles";
@@ -352,18 +509,52 @@
         this.syncToggleButtons();
       });
 
+      this.logoVideoBackgroundBtn = document.createElement("button");
+      this.logoVideoBackgroundBtn.type = "button";
+      this.logoVideoBackgroundBtn.className = "btn btn-toggle";
+      this.logoVideoBackgroundBtn.textContent = "video background";
+      this.logoVideoBackgroundBtn.setAttribute("aria-pressed", "false");
+      this.logoVideoBackgroundBtn.addEventListener("click", () => {
+        const nextEnabled = !this.logoVideoBackgroundEnabled;
+        document.dispatchEvent(
+          new CustomEvent("video-synth:set-logo-video-background", {
+            detail: { enabled: nextEnabled },
+          }),
+        );
+      });
+
+      this.logoVideoCropBtn = document.createElement("button");
+      this.logoVideoCropBtn.type = "button";
+      this.logoVideoCropBtn.className = "btn btn-toggle";
+      this.logoVideoCropBtn.textContent = "crop";
+      this.logoVideoCropBtn.setAttribute("aria-pressed", "false");
+      this.logoVideoCropBtn.addEventListener("click", () => {
+        if (!this.logoVideoBackgroundEnabled) {
+          document.dispatchEvent(
+            new CustomEvent("video-synth:set-logo-video-background", {
+              detail: { enabled: true },
+            }),
+          );
+        }
+        this.setLogoCropModeActive(!this.logoCropModeActive);
+      });
+
       toggleRow.appendChild(this.audioToggleBtn);
       toggleRow.appendChild(this.invertToggleBtn);
+      toggleRow.appendChild(this.logoVideoBackgroundBtn);
+      toggleRow.appendChild(this.logoVideoCropBtn);
 
       this.shell.appendChild(topBar);
+      this.shell.appendChild(presetPanel);
       this.shell.appendChild(this.preview);
       this.shell.appendChild(controls);
-      this.shell.appendChild(hint);
       this.shell.appendChild(toggleRow);
       this.mount.appendChild(this.shell);
 
       this.syncHudLabel();
       this.syncToggleButtons();
+      this.syncParamInputs();
+      this.syncLogoVideoCropUi();
 
       const gl = this.canvas.getContext("webgl", {
         alpha: false,
@@ -385,6 +576,233 @@
       this.resize();
       window.addEventListener("resize", this.onResize);
       document.addEventListener("visibilitychange", this.onVisibilityChange);
+      document.addEventListener(
+        "video-synth:logo-video-state",
+        this.onLogoVideoStateChange,
+      );
+    }
+
+    buildPresetPanel() {
+      const panel = document.createElement("section");
+      panel.className = "videoSynthLibrary";
+      panel.setAttribute("aria-label", "video synth presets");
+
+      const grid = document.createElement("div");
+      grid.className = "videoSynthLibraryGrid";
+
+      const presetField = document.createElement("label");
+      presetField.className = "field videoSynthMetaField";
+      const presetLabel = document.createElement("span");
+      presetLabel.className = "fieldLabel";
+      presetLabel.textContent = "preset";
+      this.presetSelect = document.createElement("select");
+      this.presetSelect.className = "videoSynthSelect videoSynthMetaInput";
+      this.presetSelect.setAttribute("aria-label", "video synth preset select");
+      this.presetSelect.addEventListener("change", () => {
+        const name = String(this.presetSelect.value || "").trim();
+        if (name && this.presetNameInput) this.presetNameInput.value = name;
+      });
+      presetField.appendChild(presetLabel);
+      presetField.appendChild(this.presetSelect);
+
+      const nameField = document.createElement("label");
+      nameField.className = "field videoSynthMetaField videoSynthNameField";
+      const nameLabel = document.createElement("span");
+      nameLabel.className = "fieldLabel";
+      nameLabel.textContent = "name";
+      this.presetNameInput = document.createElement("input");
+      this.presetNameInput.type = "text";
+      this.presetNameInput.className = "videoSynthMetaInput videoSynthNameInput";
+      this.presetNameInput.inputMode = "text";
+      this.presetNameInput.autocomplete = "off";
+      this.presetNameInput.spellcheck = false;
+      this.presetNameInput.placeholder = "video synth";
+      this.presetStatus = document.createElement("span");
+      this.presetStatus.className = "status videoSynthPresetStatus";
+      this.presetStatus.setAttribute("aria-live", "polite");
+      nameField.appendChild(nameLabel);
+      nameField.appendChild(this.presetNameInput);
+      nameField.appendChild(this.presetStatus);
+
+      const autosaveField = document.createElement("label");
+      autosaveField.className = "field videoSynthMetaField videoSynthMetaFieldAutoSave";
+      const autosaveLabel = document.createElement("span");
+      autosaveLabel.className = "fieldLabel";
+      autosaveLabel.textContent = "autosave";
+      this.autosaveToggleBtn = document.createElement("button");
+      this.autosaveToggleBtn.type = "button";
+      this.autosaveToggleBtn.className = "switchToggle";
+      this.autosaveToggleBtn.setAttribute("aria-label", "video synth autosave");
+      this.autosaveToggleBtn.addEventListener("click", () => {
+        this.setAutosaveEnabled(!this.autosaveEnabled);
+      });
+      this.autosaveIntervalSelect = document.createElement("select");
+      this.autosaveIntervalSelect.className = "videoSynthSelect";
+      this.autosaveIntervalSelect.setAttribute("aria-label", "video synth autosave interval");
+      [1, 5, 10, 15, 30, 60].forEach((minutes) => {
+        const option = document.createElement("option");
+        option.value = String(minutes);
+        option.textContent = `${minutes} min`;
+        this.autosaveIntervalSelect.appendChild(option);
+      });
+      this.autosaveIntervalSelect.addEventListener("change", () => {
+        this.setAutosaveInterval(this.autosaveIntervalSelect.value);
+      });
+      autosaveField.appendChild(autosaveLabel);
+      autosaveField.appendChild(this.autosaveToggleBtn);
+      autosaveField.appendChild(this.autosaveIntervalSelect);
+
+      grid.appendChild(presetField);
+      grid.appendChild(nameField);
+      grid.appendChild(autosaveField);
+
+      const actions = document.createElement("div");
+      actions.className = "controls settingsRow videoSynthPresetActions";
+
+      this.presetNewBtn = document.createElement("button");
+      this.presetNewBtn.type = "button";
+      this.presetNewBtn.className = "btn";
+      this.presetNewBtn.textContent = "new";
+      this.presetNewBtn.addEventListener("click", () => {
+        this.resetSession();
+        this.setPresetStatus("new");
+      });
+
+      this.presetSaveBtn = document.createElement("button");
+      this.presetSaveBtn.type = "button";
+      this.presetSaveBtn.className = "btn";
+      this.presetSaveBtn.textContent = "save";
+      this.presetSaveBtn.addEventListener("click", () => {
+        this.saveCurrentPreset({ statusLabel: "saved", showPresetStatus: true });
+      });
+
+      this.presetLoadBtn = document.createElement("button");
+      this.presetLoadBtn.type = "button";
+      this.presetLoadBtn.className = "btn";
+      this.presetLoadBtn.textContent = "load";
+      this.presetLoadBtn.addEventListener("click", () => {
+        const name = String(this.presetSelect?.value || "").trim();
+        if (!name) {
+          this.setPresetStatus("no preset", { ok: false });
+          return;
+        }
+        this.loadPresetByName(name);
+      });
+
+      this.presetDefaultBtn = document.createElement("button");
+      this.presetDefaultBtn.type = "button";
+      this.presetDefaultBtn.className = "btn";
+      this.presetDefaultBtn.textContent = "default";
+      this.presetDefaultBtn.addEventListener("click", () => {
+        const name = String(this.presetSelect?.value || "").trim();
+        if (!name) {
+          this.setPresetStatus("no preset", { ok: false });
+          return;
+        }
+        this.setDefaultPresetName(name);
+        this.refreshPresetSelect(name);
+        this.setPresetStatus("default");
+      });
+
+      actions.appendChild(this.presetNewBtn);
+      actions.appendChild(this.presetSaveBtn);
+      actions.appendChild(this.presetLoadBtn);
+      actions.appendChild(this.presetDefaultBtn);
+
+      this.songIo = document.createElement("details");
+      this.songIo.className = "songIo videoSynthSongIo";
+
+      const summary = document.createElement("summary");
+      summary.className = "songIoSummary";
+      summary.setAttribute("aria-label", "toggle video synth JSON");
+
+      this.songJsonCopyBtn = document.createElement("button");
+      this.songJsonCopyBtn.type = "button";
+      this.songJsonCopyBtn.className = "btn";
+      this.songJsonCopyBtn.textContent = "copy json";
+      this.songJsonCopyBtn.addEventListener("click", (event) => {
+        this.copySessionJsonToClipboard(event);
+      });
+
+      this.songJsonApplyBtn = document.createElement("button");
+      this.songJsonApplyBtn.type = "button";
+      this.songJsonApplyBtn.className = "btn";
+      this.songJsonApplyBtn.textContent = "apply json";
+      this.songJsonApplyBtn.addEventListener("click", (event) => {
+        this.applySessionJsonFromEditor(event);
+      });
+
+      this.songJsonDownloadBtn = document.createElement("button");
+      this.songJsonDownloadBtn.type = "button";
+      this.songJsonDownloadBtn.className = "btn";
+      this.songJsonDownloadBtn.textContent = "download json";
+      this.songJsonDownloadBtn.addEventListener("click", (event) => {
+        this.downloadSessionJsonFile(event);
+      });
+
+      this.songJsonUploadBtn = document.createElement("button");
+      this.songJsonUploadBtn.type = "button";
+      this.songJsonUploadBtn.className = "btn";
+      this.songJsonUploadBtn.textContent = "upload json";
+      this.songJsonUploadBtn.addEventListener("click", (event) => {
+        this.requestSessionJsonUpload(event);
+      });
+
+      this.songJsonUploadInput = document.createElement("input");
+      this.songJsonUploadInput.type = "file";
+      this.songJsonUploadInput.accept = "application/json,.json";
+      this.songJsonUploadInput.hidden = true;
+      this.songJsonUploadInput.addEventListener("change", () => {
+        this.handleSessionJsonUploadInput();
+      });
+
+      const toggle = document.createElement("span");
+      toggle.className = "btn songIoToggle";
+      toggle.textContent = "JSON";
+
+      summary.appendChild(this.songJsonCopyBtn);
+      summary.appendChild(this.songJsonApplyBtn);
+      summary.appendChild(this.songJsonDownloadBtn);
+      summary.appendChild(this.songJsonUploadBtn);
+      summary.appendChild(this.songJsonUploadInput);
+      summary.appendChild(toggle);
+
+      const body = document.createElement("div");
+      body.className = "songIoBody";
+      const wrap = document.createElement("div");
+      wrap.className = "songJsonWrap";
+      this.songJsonHighlight = document.createElement("pre");
+      this.songJsonHighlight.className = "songJsonHighlight";
+      this.songJsonHighlight.setAttribute("aria-hidden", "true");
+      this.songJson = document.createElement("textarea");
+      this.songJson.className = "songJson";
+      this.songJson.rows = 5;
+      this.songJson.spellcheck = false;
+      this.songJson.autocomplete = "off";
+      this.songJson.autocapitalize = "off";
+      this.songJson.setAttribute("aria-label", "video synth json");
+      this.songJson.placeholder = "paste video synth JSON here";
+      this.songJson.addEventListener("input", () => this.updateJsonHighlight());
+      this.songJson.addEventListener("scroll", () => this.syncJsonScroll());
+      wrap.appendChild(this.songJsonHighlight);
+      wrap.appendChild(this.songJson);
+      body.appendChild(wrap);
+
+      this.songIo.appendChild(summary);
+      this.songIo.appendChild(body);
+      this.songIo.addEventListener("toggle", () => {
+        if (this.songIo.open) this.syncJsonEditorFromSession();
+      });
+
+      panel.appendChild(grid);
+      panel.appendChild(actions);
+      panel.appendChild(this.songIo);
+
+      this.refreshPresetSelect();
+      this.setAutosaveInterval(this.autosaveIntervalMinutes);
+      this.setAutosaveEnabled(this.autosaveEnabled);
+
+      return panel;
     }
 
     makeColorField({ key, label }) {
@@ -409,6 +827,7 @@
       const syncValue = (raw) => {
         const normalized = this.normalizeHexColor(raw, this.params[key]);
         this.params[key] = normalized;
+        if (key === "textColor") this.textTextureDirty = true;
         color.value = normalized;
         hex.value = normalized;
       };
@@ -418,6 +837,7 @@
 
       if (key === "colorA") { this.colorAInput = color; this.colorAHexInput = hex; }
       if (key === "colorB") { this.colorBInput = color; this.colorBHexInput = hex; }
+      if (key === "textColor") { this.textColorInput = color; this.textColorHexInput = hex; }
 
       field.appendChild(labelEl);
       field.appendChild(color);
@@ -455,6 +875,7 @@
           ? Math.max(min, Math.min(max, next))
           : this.params[key];
         this.params[key] = safe;
+        if (key === "textSize" || key === "textMix") this.textTextureDirty = true;
         range.value = String(safe);
         num.value = String(safe);
       };
@@ -469,6 +890,369 @@
       field.appendChild(num);
 
       return field;
+    }
+
+    makeTextField({ key, label, placeholder = "" }) {
+      const field = document.createElement("label");
+      field.className = "field videoSynthField videoSynthTextField";
+
+      const labelEl = document.createElement("span");
+      labelEl.className = "fieldLabel";
+      labelEl.textContent = label;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "videoSynthTextInput";
+      input.placeholder = placeholder;
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.value = String(this.params[key] || "");
+
+      input.addEventListener("input", () => {
+        this.params[key] = String(input.value || "");
+        this.textTextureDirty = true;
+      });
+
+      field.appendChild(labelEl);
+      field.appendChild(input);
+      return field;
+    }
+
+    setLogoVideoBackgroundState(nextEnabled, nextCropX, nextCropY, nextCropSize) {
+      if (typeof nextEnabled === "boolean") {
+        this.logoVideoBackgroundEnabled = nextEnabled;
+      }
+      if (Number.isFinite(Number(nextCropX))) {
+        this.logoVideoCropX = this.clampNumber(Math.round(Number(nextCropX)), 0, 100);
+      }
+      if (Number.isFinite(Number(nextCropY))) {
+        this.logoVideoCropY = this.clampNumber(Math.round(Number(nextCropY)), 0, 100);
+      }
+      if (Number.isFinite(Number(nextCropSize))) {
+        this.logoVideoCropSize = this.clampNumber(
+          Math.round(Number(nextCropSize)),
+          30,
+          100,
+        );
+      }
+      if (!this.logoVideoBackgroundEnabled && this.logoCropModeActive) {
+        this.setLogoCropModeActive(false);
+      }
+      this.syncLogoVideoCropUi();
+    }
+
+    syncLogoVideoCropUi() {
+      if (this.logoVideoBackgroundBtn) {
+        this.logoVideoBackgroundBtn.setAttribute(
+          "aria-pressed",
+          this.logoVideoBackgroundEnabled ? "true" : "false",
+        );
+      }
+      if (this.logoVideoCropBtn) {
+        this.logoVideoCropBtn.setAttribute(
+          "aria-pressed",
+          this.logoCropModeActive ? "true" : "false",
+        );
+      }
+      this.updateLogoCropOverlay();
+    }
+
+    emitLogoCropChange(nextCropX, nextCropY, nextCropSize) {
+      this.logoVideoCropX = this.clampNumber(Math.round(nextCropX), 0, 100);
+      this.logoVideoCropY = this.clampNumber(Math.round(nextCropY), 0, 100);
+      this.logoVideoCropSize = this.clampNumber(
+        Math.round(nextCropSize),
+        30,
+        100,
+      );
+      this.updateLogoCropOverlay();
+      document.dispatchEvent(
+        new CustomEvent("video-synth:set-logo-video-crop", {
+          detail: {
+            cropX: this.logoVideoCropX,
+            cropY: this.logoVideoCropY,
+            cropSize: this.logoVideoCropSize,
+          },
+        }),
+      );
+    }
+
+    getLogoAspectRatio() {
+      const logo = document.querySelector(".logo");
+      if (!logo) return 3;
+      const rect = logo.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        return rect.width / rect.height;
+      }
+      return 3;
+    }
+
+    getLogoCropGeometry(previewW, previewH) {
+      const w = Math.max(1, Number(previewW) || 1);
+      const h = Math.max(1, Number(previewH) || 1);
+      const targetAspect = this.getLogoAspectRatio();
+      const previewAspect = w / h;
+
+      let maxRectW = w;
+      let maxRectH = h;
+      if (previewAspect > targetAspect) {
+        maxRectH = h;
+        maxRectW = maxRectH * targetAspect;
+      } else {
+        maxRectW = w;
+        maxRectH = maxRectW / targetAspect;
+      }
+
+      const sizeRatio = this.clampNumber(this.logoVideoCropSize, 30, 100) / 100;
+      const rectW = Math.max(1, maxRectW * sizeRatio);
+      const rectH = Math.max(1, maxRectH * sizeRatio);
+      const maxX = Math.max(0, w - rectW);
+      const maxY = Math.max(0, h - rectH);
+      const rectX = maxX * (this.clampNumber(this.logoVideoCropX, 0, 100) / 100);
+      const rectY = maxY * (this.clampNumber(this.logoVideoCropY, 0, 100) / 100);
+
+      return {
+        rectX,
+        rectY,
+        rectW,
+        rectH,
+        maxRectW,
+        maxRectH,
+        aspect: targetAspect,
+      };
+    }
+
+    updateLogoCropOverlay() {
+      if (!this.logoCropOverlay || !this.logoCropRect || !this.preview) return;
+      const active = this.logoVideoBackgroundEnabled && this.logoCropModeActive;
+      this.logoCropOverlay.classList.toggle("is-active", active);
+      if (!active) return;
+
+      const previewRect = this.preview.getBoundingClientRect();
+      const geo = this.getLogoCropGeometry(previewRect.width, previewRect.height);
+      this.logoCropRect.style.left = `${geo.rectX}px`;
+      this.logoCropRect.style.top = `${geo.rectY}px`;
+      this.logoCropRect.style.width = `${geo.rectW}px`;
+      this.logoCropRect.style.height = `${geo.rectH}px`;
+    }
+
+    setLogoCropModeActive(nextActive) {
+      const active = Boolean(nextActive) && this.logoVideoBackgroundEnabled;
+      this.logoCropModeActive = active;
+      this.syncLogoVideoCropUi();
+    }
+
+    beginLogoCropDrag(event, mode) {
+      if (!this.logoCropModeActive || !this.preview) return;
+      if (event.button != null && event.button !== 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const previewRect = this.preview.getBoundingClientRect();
+      const geo = this.getLogoCropGeometry(previewRect.width, previewRect.height);
+      this.logoCropDragState = {
+        mode,
+        startPointerX: event.clientX,
+        startPointerY: event.clientY,
+        startRectX: geo.rectX,
+        startRectY: geo.rectY,
+        startRectW: geo.rectW,
+        startRectH: geo.rectH,
+        startCropX: this.logoVideoCropX,
+        startCropY: this.logoVideoCropY,
+        startCropSize: this.logoVideoCropSize,
+        previewW: Math.max(1, previewRect.width),
+        previewH: Math.max(1, previewRect.height),
+        maxRectW: geo.maxRectW,
+        maxRectH: geo.maxRectH,
+        minRectW: geo.maxRectW * 0.3,
+        aspect: geo.aspect,
+      };
+      if (this.logoCropRect) {
+        this.logoCropRect.classList.toggle("is-dragging", mode === "move");
+        this.logoCropRect.classList.toggle("is-resizing", mode === "resize");
+      }
+      window.addEventListener("pointermove", this.onLogoCropPointerMove);
+      window.addEventListener("pointerup", this.onLogoCropPointerUp);
+      window.addEventListener("pointercancel", this.onLogoCropPointerUp);
+    }
+
+    clampNumber(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    numberOrFallback(value, fallback) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    getDefaultParams() {
+      return {
+        mode: 0,
+        formula: 0,
+        intensity: 72,
+        glitch: 58,
+        glitchLayer: 54,
+        glitchOffset: 58,
+        split: 72,
+        noiseAmt: 36,
+        scan: 32,
+        pixel: 14,
+        hue: 0,
+        drift: 44,
+        videoSpeed: 70,
+        audioMix: 62,
+        autoMix: 68,
+        audioReactive: true,
+        invert: false,
+        colorA: "#6600ff",
+        colorB: "#ff0077",
+        textContent: "",
+        textSize: 62,
+        textMix: 70,
+        textColor: "#f4ecff",
+      };
+    }
+
+    getCyberpunkParams() {
+      return {
+        mode: 0,
+        formula: 0,
+        intensity: 78,
+        glitch: 66,
+        glitchLayer: 62,
+        glitchOffset: 66,
+        split: 82,
+        noiseAmt: 38,
+        scan: 36,
+        pixel: 12,
+        hue: 0,
+        drift: 48,
+        videoSpeed: 74,
+        audioMix: 68,
+        autoMix: 72,
+        audioReactive: true,
+        invert: false,
+        colorA: "#5500ff",
+        colorB: "#ff0055",
+        textContent: "",
+        textSize: 66,
+        textMix: 76,
+        textColor: "#ffd8ff",
+      };
+    }
+
+    normalizeParams(raw, fallback = this.getDefaultParams()) {
+      const source = raw && typeof raw === "object" ? raw : {};
+      const safeBase = fallback && typeof fallback === "object"
+        ? fallback
+        : this.getDefaultParams();
+      return {
+        mode: this.clampNumber(
+          Math.round(this.numberOrFallback(source.mode, safeBase.mode)),
+          0,
+          5,
+        ),
+        formula: this.clampNumber(
+          Math.round(this.numberOrFallback(source.formula, safeBase.formula)),
+          0,
+          5,
+        ),
+        intensity: this.clampNumber(
+          Math.round(this.numberOrFallback(source.intensity, safeBase.intensity)),
+          0,
+          100,
+        ),
+        glitch: this.clampNumber(
+          Math.round(this.numberOrFallback(source.glitch, safeBase.glitch)),
+          0,
+          100,
+        ),
+        glitchLayer: this.clampNumber(
+          Math.round(this.numberOrFallback(source.glitchLayer, safeBase.glitchLayer)),
+          0,
+          100,
+        ),
+        glitchOffset: this.clampNumber(
+          Math.round(this.numberOrFallback(source.glitchOffset, safeBase.glitchOffset)),
+          0,
+          100,
+        ),
+        split: this.clampNumber(
+          Math.round(this.numberOrFallback(source.split, safeBase.split)),
+          0,
+          100,
+        ),
+        noiseAmt: this.clampNumber(
+          Math.round(this.numberOrFallback(source.noiseAmt, safeBase.noiseAmt)),
+          0,
+          100,
+        ),
+        scan: this.clampNumber(
+          Math.round(this.numberOrFallback(source.scan, safeBase.scan)),
+          0,
+          100,
+        ),
+        pixel: this.clampNumber(
+          Math.round(this.numberOrFallback(source.pixel, safeBase.pixel)),
+          0,
+          100,
+        ),
+        hue: this.clampNumber(
+          Math.round(this.numberOrFallback(source.hue, safeBase.hue)),
+          0,
+          100,
+        ),
+        drift: this.clampNumber(
+          Math.round(this.numberOrFallback(source.drift, safeBase.drift)),
+          0,
+          100,
+        ),
+        videoSpeed: this.clampNumber(
+          Math.round(this.numberOrFallback(source.videoSpeed, safeBase.videoSpeed)),
+          0,
+          100,
+        ),
+        audioMix: this.clampNumber(
+          Math.round(this.numberOrFallback(source.audioMix, safeBase.audioMix)),
+          0,
+          100,
+        ),
+        autoMix: this.clampNumber(
+          Math.round(this.numberOrFallback(source.autoMix, safeBase.autoMix)),
+          0,
+          100,
+        ),
+        audioReactive:
+          typeof source.audioReactive === "boolean"
+            ? source.audioReactive
+            : Boolean(safeBase.audioReactive),
+        invert:
+          typeof source.invert === "boolean"
+            ? source.invert
+            : Boolean(safeBase.invert),
+        colorA: this.normalizeHexColor(source.colorA, safeBase.colorA),
+        colorB: this.normalizeHexColor(source.colorB, safeBase.colorB),
+        textContent: String(source.textContent ?? safeBase.textContent ?? ""),
+        textSize: this.clampNumber(
+          Math.round(this.numberOrFallback(source.textSize, safeBase.textSize)),
+          10,
+          160,
+        ),
+        textMix: this.clampNumber(
+          Math.round(this.numberOrFallback(source.textMix, safeBase.textMix)),
+          0,
+          100,
+        ),
+        textColor: this.normalizeHexColor(source.textColor, safeBase.textColor),
+      };
+    }
+
+    applyParams(nextParams) {
+      this.params = this.normalizeParams(nextParams, this.getDefaultParams());
+      this.textTextureDirty = true;
+      this.syncParamInputs();
     }
 
     syncToggleButtons() {
@@ -500,26 +1284,7 @@
       this.hud.textContent = `${labels[this.params.mode] || "video synth"}${suffix}`;
     }
 
-    resetParams() {
-      this.params.mode = 0;
-      this.params.formula = 0;
-      this.params.intensity = 72;
-      this.params.glitch = 58;
-      this.params.glitchLayer = 54;
-      this.params.glitchOffset = 58;
-      this.params.split = 72;
-      this.params.noiseAmt = 36;
-      this.params.scan = 32;
-      this.params.pixel = 14;
-      this.params.hue = 0;
-      this.params.drift = 44;
-      this.params.audioMix = 62;
-      this.params.autoMix = 68;
-      this.params.audioReactive = true;
-      this.params.invert = false;
-      this.params.colorA = "#6600ff";
-      this.params.colorB = "#ff0077";
-
+    syncParamInputs() {
       if (this.modeSelect) this.modeSelect.value = String(this.params.mode);
       if (this.formulaSelect) {
         this.formulaSelect.value = String(this.params.formula);
@@ -533,45 +1298,690 @@
       if (this.colorAHexInput) this.colorAHexInput.value = this.params.colorA;
       if (this.colorBInput) this.colorBInput.value = this.params.colorB;
       if (this.colorBHexInput) this.colorBHexInput.value = this.params.colorB;
+      if (this.textColorInput) this.textColorInput.value = this.params.textColor;
+      if (this.textColorHexInput) this.textColorHexInput.value = this.params.textColor;
+
+      const textInput = this.shell
+        ? this.shell.querySelector(".videoSynthTextInput")
+        : null;
+      if (textInput) textInput.value = String(this.params.textContent || "");
+
       this.syncToggleButtons();
       this.syncHudLabel();
+      if (this.songIo?.open) this.syncJsonEditorFromSession();
+    }
+
+    resetParams() {
+      this.applyParams(this.getDefaultParams());
     }
 
     applyCyberpunkPreset() {
-      this.params.mode = 0;
-      this.params.formula = 0;
-      this.params.intensity = 78;
-      this.params.glitch = 66;
-      this.params.glitchLayer = 62;
-      this.params.glitchOffset = 66;
-      this.params.split = 82;
-      this.params.noiseAmt = 38;
-      this.params.scan = 36;
-      this.params.pixel = 12;
-      this.params.hue = 0;
-      this.params.drift = 48;
-      this.params.audioMix = 68;
-      this.params.autoMix = 72;
-      this.params.audioReactive = true;
-      this.params.invert = false;
-      this.params.colorA = "#5500ff";
-      this.params.colorB = "#ff0055";
+      this.applyParams(this.getCyberpunkParams());
+    }
 
-      if (this.modeSelect) this.modeSelect.value = String(this.params.mode);
-      if (this.formulaSelect) {
-        this.formulaSelect.value = String(this.params.formula);
+    sanitizePresetName(name) {
+      return String(name || "").trim();
+    }
+
+    presetStorageKey(name) {
+      return `${VIDEO_SYNTH_PRESET_STORAGE_PREFIX}${name}`;
+    }
+
+    readPresetIndex() {
+      try {
+        const raw = window.localStorage.getItem(VIDEO_SYNTH_PRESET_INDEX_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map((name) => this.sanitizePresetName(name))
+          .filter((name) => name.length > 0);
+      } catch {
+        return [];
       }
-      for (const [key, pair] of this.rangeInputs.entries()) {
-        if (!pair) continue;
-        pair.range.value = String(this.params[key]);
-        pair.num.value = String(this.params[key]);
+    }
+
+    writePresetIndex(names) {
+      try {
+        window.localStorage.setItem(
+          VIDEO_SYNTH_PRESET_INDEX_KEY,
+          JSON.stringify(names),
+        );
+      } catch {
+        // ignore
       }
-      if (this.colorAInput) this.colorAInput.value = this.params.colorA;
-      if (this.colorAHexInput) this.colorAHexInput.value = this.params.colorA;
-      if (this.colorBInput) this.colorBInput.value = this.params.colorB;
-      if (this.colorBHexInput) this.colorBHexInput.value = this.params.colorB;
-      this.syncToggleButtons();
-      this.syncHudLabel();
+    }
+
+    getDefaultPresetName() {
+      try {
+        const name = window.localStorage.getItem(VIDEO_SYNTH_PRESET_DEFAULT_KEY);
+        return name ? this.sanitizePresetName(name) : "";
+      } catch {
+        return "";
+      }
+    }
+
+    setDefaultPresetName(name) {
+      const cleanName = this.sanitizePresetName(name);
+      if (!cleanName) return;
+      try {
+        window.localStorage.setItem(VIDEO_SYNTH_PRESET_DEFAULT_KEY, cleanName);
+      } catch {
+        // ignore
+      }
+    }
+
+    getLocalPreset(name) {
+      const cleanName = this.sanitizePresetName(name);
+      if (!cleanName) return null;
+      try {
+        const raw = window.localStorage.getItem(this.presetStorageKey(cleanName));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    getPreset(name) {
+      const cleanName = this.sanitizePresetName(name);
+      if (!cleanName) return null;
+      const localPreset = this.getLocalPreset(cleanName);
+      if (localPreset) return localPreset;
+      return Object.prototype.hasOwnProperty.call(this.embeddedPresets, cleanName)
+        ? this.embeddedPresets[cleanName]
+        : null;
+    }
+
+    getAllPresetNames() {
+      const names = new Set(this.readPresetIndex());
+      Object.keys(this.embeddedPresets).forEach((name) => names.add(name));
+      return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+
+    savePreset(name, state) {
+      const cleanName = this.sanitizePresetName(name);
+      if (!cleanName) return false;
+
+      try {
+        this.clearLastPresetSaveError();
+        window.localStorage.setItem(
+          this.presetStorageKey(cleanName),
+          JSON.stringify(state),
+        );
+      } catch (error) {
+        this.setLastPresetSaveError(error);
+        return false;
+      }
+
+      const names = this.readPresetIndex();
+      if (!names.includes(cleanName)) {
+        names.push(cleanName);
+        names.sort((a, b) => a.localeCompare(b));
+        this.writePresetIndex(names);
+      }
+
+      if (!this.getDefaultPresetName()) this.setDefaultPresetName(cleanName);
+      return true;
+    }
+
+    makeUniquePresetName(base) {
+      const baseName = this.sanitizePresetName(base) || "video synth";
+      const existing = new Set(this.getAllPresetNames());
+      if (!existing.has(baseName)) return baseName;
+
+      let i = 2;
+      while (existing.has(`${baseName} ${i}`)) i += 1;
+      return `${baseName} ${i}`;
+    }
+
+    refreshPresetSelect(preferredValue = "") {
+      if (!this.presetSelect) return;
+      const localNames = this.readPresetIndex();
+      const localSet = new Set(localNames);
+      const localDefault = this.getDefaultPresetName();
+      const embeddedDefault = this.embeddedDefaultPresetName;
+      const selected = this.sanitizePresetName(preferredValue || this.presetSelect.value);
+
+      this.presetSelect.innerHTML = "";
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "—";
+      this.presetSelect.appendChild(emptyOpt);
+
+      for (const name of this.getAllPresetNames()) {
+        const opt = document.createElement("option");
+        const isLocal = localSet.has(name);
+        const isEmbedded = Object.prototype.hasOwnProperty.call(this.embeddedPresets, name);
+        let label = name;
+        if (name === localDefault) label += " (default)";
+        else if (!isLocal && name === embeddedDefault) label += " (song default)";
+        else if (isEmbedded && !isLocal) label += " [song]";
+        opt.value = name;
+        opt.textContent = label;
+        this.presetSelect.appendChild(opt);
+      }
+
+      if (selected && this.getPreset(selected)) {
+        this.presetSelect.value = selected;
+      } else if (localDefault && this.getPreset(localDefault)) {
+        this.presetSelect.value = localDefault;
+      } else if (embeddedDefault && this.getPreset(embeddedDefault)) {
+        this.presetSelect.value = embeddedDefault;
+      } else {
+        this.presetSelect.value = "";
+      }
+    }
+
+    safeJsonParse(text) {
+      try {
+        return { ok: true, value: JSON.parse(text) };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    }
+
+    fileSafeStem(value, fallback = "video-synth") {
+      const stem = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_ ]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return stem || fallback;
+    }
+
+    escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    highlightJson(text) {
+      const escaped = this.escapeHtml(text);
+      const token =
+        /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
+      return escaped.replace(token, (match) => {
+        let cls = "json-number";
+        if (match.startsWith('"')) {
+          cls = match.endsWith(":") ? "json-key" : "json-string";
+        } else if (match === "true" || match === "false") {
+          cls = "json-boolean";
+        } else if (match === "null") {
+          cls = "json-null";
+        }
+        return `<span class="${cls}">${match}</span>`;
+      });
+    }
+
+    syncJsonScroll() {
+      if (!this.songJson || !this.songJsonHighlight) return;
+      this.songJsonHighlight.scrollTop = this.songJson.scrollTop;
+      this.songJsonHighlight.scrollLeft = this.songJson.scrollLeft;
+    }
+
+    updateJsonHighlight() {
+      if (!this.songJson || !this.songJsonHighlight) return;
+      this.songJsonHighlight.innerHTML = this.highlightJson(this.songJson.value);
+      this.syncJsonScroll();
+    }
+
+    syncJsonEditorFromSession() {
+      if (!this.songJson) return;
+      this.songJson.value = JSON.stringify(this.exportSession(), null, 2);
+      this.updateJsonHighlight();
+    }
+
+    showSongIo() {
+      if (!this.songIo) return;
+      this.songIo.open = true;
+      this.syncJsonEditorFromSession();
+    }
+
+    isQuotaExceededError(error) {
+      if (!error) return false;
+      const code = Number(error.code);
+      const name = String(error.name || "");
+      return (
+        name === "QuotaExceededError" ||
+        name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        code === 22 ||
+        code === 1014
+      );
+    }
+
+    setLastPresetSaveError(error) {
+      if (this.isQuotaExceededError(error)) {
+        this.lastPresetSaveErrorMessage = "save failed: storage full";
+        return;
+      }
+      this.lastPresetSaveErrorMessage = "save failed";
+    }
+
+    clearLastPresetSaveError() {
+      this.lastPresetSaveErrorMessage = "";
+    }
+
+    setPresetStatus(message, { busy = false, ok = true } = {}) {
+      if (!this.presetStatus) return;
+
+      if (this.presetStatusTimer) {
+        window.clearTimeout(this.presetStatusTimer);
+        this.presetStatusTimer = null;
+      }
+
+      const now =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+
+      const label = String(message || "").trim();
+      this.presetStatus.textContent = label;
+      this.presetStatus.title = !ok && message ? String(message || "") : "";
+      this.presetStatus.classList.toggle("is-ok", Boolean(ok) && !busy);
+      this.presetStatus.classList.toggle("is-error", !ok && !busy);
+
+      if (busy) {
+        this.presetStatusBusySince = now;
+        this.presetStatus.classList.add("is-busy");
+        return;
+      }
+
+      if (this.presetStatusBusySince == null) {
+        this.presetStatusBusySince = now;
+        this.presetStatus.classList.add("is-busy");
+      }
+
+      const minBusyMs = 520;
+      const elapsed = now - this.presetStatusBusySince;
+      const remaining = Math.max(0, minBusyMs - elapsed);
+      const holdMs = ok ? 1700 : 3200;
+
+      this.presetStatusTimer = window.setTimeout(() => {
+        if (!this.presetStatus) return;
+        this.presetStatus.classList.remove("is-busy", "is-ok", "is-error");
+        this.presetStatus.textContent = "";
+        this.presetStatus.title = "";
+        this.presetStatusBusySince = null;
+        this.presetStatusTimer = null;
+      }, remaining + holdMs);
+    }
+
+    normalizeAutosaveInterval(value) {
+      const allowed = [1, 5, 10, 15, 30, 60];
+      const fallback = Number.isFinite(this.autosaveIntervalMinutes)
+        ? this.autosaveIntervalMinutes
+        : 5;
+      const next = Math.round(this.numberOrFallback(value, fallback));
+      if (allowed.includes(next)) return next;
+      let best = allowed[0];
+      let bestDist = Math.abs(next - best);
+      for (let i = 1; i < allowed.length; i += 1) {
+        const dist = Math.abs(next - allowed[i]);
+        if (dist < bestDist) {
+          best = allowed[i];
+          bestDist = dist;
+        }
+      }
+      return best;
+    }
+
+    readAutosaveConfig() {
+      try {
+        const raw = window.localStorage.getItem(VIDEO_SYNTH_AUTOSAVE_KEY);
+        if (!raw) {
+          return { enabled: false, intervalMinutes: 5 };
+        }
+        const parsed = JSON.parse(raw);
+        return {
+          enabled: Boolean(parsed && parsed.enabled),
+          intervalMinutes: this.normalizeAutosaveInterval(
+            parsed && parsed.intervalMinutes,
+          ),
+        };
+      } catch {
+        return { enabled: false, intervalMinutes: 5 };
+      }
+    }
+
+    writeAutosaveConfig() {
+      try {
+        window.localStorage.setItem(
+          VIDEO_SYNTH_AUTOSAVE_KEY,
+          JSON.stringify({
+            enabled: Boolean(this.autosaveEnabled),
+            intervalMinutes: Number(this.autosaveIntervalMinutes),
+          }),
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    clearAutosaveTimer() {
+      if (this.autosaveTimerId == null) return;
+      window.clearInterval(this.autosaveTimerId);
+      this.autosaveTimerId = null;
+    }
+
+    syncAutosaveTimer() {
+      this.clearAutosaveTimer();
+      if (!this.autosaveEnabled) return;
+      this.autosaveTimerId = window.setInterval(
+        () => this.runAutosave(),
+        this.autosaveIntervalMinutes * 60 * 1000,
+      );
+    }
+
+    setAutosaveInterval(nextIntervalMinutes) {
+      this.autosaveIntervalMinutes = this.normalizeAutosaveInterval(nextIntervalMinutes);
+      if (this.autosaveIntervalSelect) {
+        this.autosaveIntervalSelect.value = String(this.autosaveIntervalMinutes);
+      }
+      this.writeAutosaveConfig();
+      this.syncAutosaveTimer();
+      if (this.songIo?.open) this.syncJsonEditorFromSession();
+    }
+
+    setAutosaveEnabled(nextEnabled) {
+      this.autosaveEnabled = Boolean(nextEnabled);
+      if (this.autosaveToggleBtn) {
+        this.autosaveToggleBtn.setAttribute(
+          "aria-pressed",
+          this.autosaveEnabled ? "true" : "false",
+        );
+        this.autosaveToggleBtn.title = this.autosaveEnabled
+          ? "autosave: on"
+          : "autosave: off";
+      }
+      if (this.autosaveIntervalSelect) {
+        this.autosaveIntervalSelect.disabled = !this.autosaveEnabled;
+      }
+      this.writeAutosaveConfig();
+      this.syncAutosaveTimer();
+      if (this.songIo?.open) this.syncJsonEditorFromSession();
+    }
+
+    saveCurrentPreset({ statusLabel = "saved", showPresetStatus = true } = {}) {
+      if (showPresetStatus) this.setPresetStatus("", { busy: true });
+
+      const state = this.exportState();
+      const requestedName = this.sanitizePresetName(this.presetNameInput?.value);
+      const selectedName = this.sanitizePresetName(this.presetSelect?.value);
+      const name = requestedName || selectedName || this.makeUniquePresetName("video synth");
+
+      const ok = this.savePreset(name, state);
+      if (!ok) {
+        if (showPresetStatus) {
+          this.setPresetStatus(this.lastPresetSaveErrorMessage || "save failed", {
+            ok: false,
+          });
+        }
+        return false;
+      }
+
+      if (this.presetNameInput) this.presetNameInput.value = name;
+      this.refreshPresetSelect(name);
+      if (this.presetSelect) this.presetSelect.value = name;
+      if (showPresetStatus) this.setPresetStatus(statusLabel);
+      if (this.songIo?.open) this.syncJsonEditorFromSession();
+      return true;
+    }
+
+    runAutosave() {
+      if (!this.autosaveEnabled) return;
+      const ok = this.saveCurrentPreset({
+        statusLabel: "autosaved",
+        showPresetStatus: true,
+      });
+      if (!ok) this.setPresetStatus("autosave failed", { ok: false });
+    }
+
+    loadPresetByName(name, { showStatus = true } = {}) {
+      const cleanName = this.sanitizePresetName(name);
+      if (!cleanName) {
+        if (showStatus) this.setPresetStatus("no preset", { ok: false });
+        return false;
+      }
+      const preset = this.getPreset(cleanName);
+      if (!preset) {
+        if (showStatus) this.setPresetStatus("missing", { ok: false });
+        return false;
+      }
+      const ok = this.applyState(preset);
+      if (!ok) {
+        if (showStatus) this.setPresetStatus("invalid preset", { ok: false });
+        return false;
+      }
+      if (this.presetNameInput) this.presetNameInput.value = cleanName;
+      this.refreshPresetSelect(cleanName);
+      if (this.presetSelect) this.presetSelect.value = cleanName;
+      if (showStatus) this.setPresetStatus("loaded");
+      return true;
+    }
+
+    async copySessionJsonToClipboard(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      this.setPresetStatus("", { busy: true });
+      const text = JSON.stringify(this.exportSession(), null, 2);
+      this.showSongIo();
+      if (this.songJson) {
+        this.songJson.value = text;
+        this.updateJsonHighlight();
+        this.songJson.focus();
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        }
+      } catch {
+        // ignore clipboard failures
+      }
+
+      this.setPresetStatus("copied json");
+    }
+
+    applySessionJsonFromEditor(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      this.showSongIo();
+      this.setPresetStatus("", { busy: true });
+      this.updateJsonHighlight();
+      const parsed = this.safeJsonParse(this.songJson?.value || "");
+      if (!parsed.ok) {
+        console.warn("Invalid video synth JSON", parsed.error);
+        this.setPresetStatus("invalid json", { ok: false });
+        return;
+      }
+
+      const isSessionShape =
+        parsed.value
+        && typeof parsed.value === "object"
+        && (
+          parsed.value.currentState
+          || parsed.value.presets
+          || parsed.value.selectedPreset
+          || parsed.value.currentName
+        );
+
+      const ok = isSessionShape
+        ? this.importSession(parsed.value)
+        : this.applyState(parsed.value);
+      if (!ok) {
+        this.setPresetStatus("invalid synth json", { ok: false });
+        return;
+      }
+      if (!isSessionShape && this.songIo?.open) this.syncJsonEditorFromSession();
+      this.setPresetStatus("applied json");
+    }
+
+    downloadSessionJsonFile(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      this.setPresetStatus("", { busy: true });
+      const session = this.exportSession();
+      const text = JSON.stringify(session, null, 2);
+      this.showSongIo();
+      if (this.songJson) {
+        this.songJson.value = text;
+        this.updateJsonHighlight();
+      }
+
+      const sourceName = this.sanitizePresetName(this.presetNameInput?.value)
+        || this.sanitizePresetName(session.selectedPreset)
+        || "video synth";
+      const filename = `${this.fileSafeStem(sourceName)}.aelonyori-video-synth.json`;
+      const blob = new Blob([text], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      this.setPresetStatus("downloaded json");
+    }
+
+    requestSessionJsonUpload(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      if (!this.songJsonUploadInput) return;
+      this.songJsonUploadInput.value = "";
+      this.songJsonUploadInput.click();
+    }
+
+    async handleSessionJsonUploadInput() {
+      if (!this.songJsonUploadInput) return;
+      const file = this.songJsonUploadInput.files?.[0] || null;
+      if (!file) return;
+
+      this.setPresetStatus("", { busy: true });
+      try {
+        const text = await file.text();
+        this.showSongIo();
+        if (this.songJson) {
+          this.songJson.value = text;
+          this.updateJsonHighlight();
+        }
+        this.applySessionJsonFromEditor();
+        this.setPresetStatus("uploaded json");
+      } catch (error) {
+        console.warn("Unable to read uploaded video synth JSON", error);
+        this.setPresetStatus("upload failed", { ok: false });
+      }
+    }
+
+    exportState() {
+      return {
+        version: 1,
+        params: this.normalizeParams(this.params, this.getDefaultParams()),
+      };
+    }
+
+    applyState(state) {
+      if (!state || typeof state !== "object") return false;
+      const source = state.params && typeof state.params === "object"
+        ? state.params
+        : state;
+      this.applyParams(source);
+      return true;
+    }
+
+    exportSession() {
+      const presets = {};
+      for (const name of this.getAllPresetNames()) {
+        const preset = this.getPreset(name);
+        if (preset) presets[name] = preset;
+      }
+      return {
+        version: 1,
+        currentName: this.sanitizePresetName(this.presetNameInput?.value) || undefined,
+        selectedPreset: this.sanitizePresetName(this.presetSelect?.value) || undefined,
+        defaultPreset: this.getDefaultPresetName() || this.embeddedDefaultPresetName || undefined,
+        autosaveEnabled: Boolean(this.autosaveEnabled),
+        autosaveIntervalMinutes: Number(this.autosaveIntervalMinutes),
+        currentState: this.exportState(),
+        presets,
+      };
+    }
+
+    importSession(session) {
+      if (!session || typeof session !== "object") return false;
+
+      const nextEmbeddedPresets = Object.create(null);
+      const rawPresets = session.presets && typeof session.presets === "object"
+        ? session.presets
+        : {};
+
+      for (const [rawName, value] of Object.entries(rawPresets)) {
+        const name = this.sanitizePresetName(rawName);
+        if (!name || !value || typeof value !== "object") continue;
+        nextEmbeddedPresets[name] = value;
+      }
+
+      this.embeddedPresets = nextEmbeddedPresets;
+      const embeddedDefault = this.sanitizePresetName(session.defaultPreset);
+      this.embeddedDefaultPresetName = nextEmbeddedPresets[embeddedDefault]
+        ? embeddedDefault
+        : "";
+
+      this.setAutosaveInterval(
+        this.numberOrFallback(session.autosaveIntervalMinutes, this.autosaveIntervalMinutes),
+      );
+      this.setAutosaveEnabled(
+        typeof session.autosaveEnabled === "boolean"
+          ? session.autosaveEnabled
+          : this.autosaveEnabled,
+      );
+
+      const selectedPreset = this.sanitizePresetName(session.selectedPreset);
+      const currentName = this.sanitizePresetName(session.currentName);
+
+      let applied = false;
+      if (selectedPreset && this.getPreset(selectedPreset)) {
+        applied = this.loadPresetByName(selectedPreset, { showStatus: false });
+      }
+      if (!applied && session.currentState) {
+        applied = this.applyState(session.currentState);
+      }
+      if (!applied) {
+        this.resetParams();
+      }
+
+      if (this.presetNameInput) {
+        this.presetNameInput.value = currentName || selectedPreset || "";
+      }
+      this.refreshPresetSelect(selectedPreset);
+      if (!selectedPreset && this.presetSelect) this.presetSelect.value = "";
+      if (this.songIo?.open) this.syncJsonEditorFromSession();
+      return true;
+    }
+
+    resetSession() {
+      this.embeddedPresets = Object.create(null);
+      this.embeddedDefaultPresetName = "";
+      this.resetParams();
+      if (this.presetNameInput) this.presetNameInput.value = "";
+      this.refreshPresetSelect();
+      if (this.presetSelect) this.presetSelect.value = "";
+      if (this.songJson) {
+        this.songJson.value = "";
+        this.updateJsonHighlight();
+      }
     }
 
     toggleFullscreen() {
@@ -604,13 +2014,37 @@
 
     setActive(nextActive) {
       this.active = Boolean(nextActive);
+      this.syncPlaybackState();
+    }
+
+    setLogoFeedActive(nextEnabled) {
+      this.logoFeedActive = Boolean(nextEnabled);
+      this.syncPlaybackState();
+    }
+
+    syncPlaybackState() {
       if (!this.initialized) return;
-      if (this.active) this.start();
+      if (this.shouldRun()) this.start();
       else this.stop();
     }
 
+    shouldRun() {
+      return Boolean((this.active || this.logoFeedActive) && !document.hidden);
+    }
+
+    getVideoSpeedFactor() {
+      const normalized = this.clampNumber(
+        this.numberOrFallback(this.params.videoSpeed, 70) / 100,
+        0,
+        1,
+      );
+      // Use quadratic scaling to give finer control at very slow speeds.
+      return 0.01 + normalized * normalized * 1.99;
+    }
+
     start() {
-      if (!this.initialized || this.rafId != null) return;
+      if (!this.initialized || this.rafId != null || !this.shouldRun()) return;
+      this.lastFrameTimestampMs = null;
       this.rafId = window.requestAnimationFrame((ts) => this.frame(ts));
     }
 
@@ -618,6 +2052,7 @@
       if (this.rafId == null) return;
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
+      this.lastFrameTimestampMs = null;
     }
 
     resize() {
@@ -630,16 +2065,84 @@
         this.canvas.height = h;
       }
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      this.updateLogoCropOverlay();
     }
 
     frame(timestampMs) {
       this.rafId = null;
-      if (!this.active || !this.gl || !this.program) return;
+      if (!this.shouldRun() || !this.gl || !this.program) return;
+
+      if (!Number.isFinite(this.lastFrameTimestampMs)) {
+        this.lastFrameTimestampMs = timestampMs;
+      }
+      const dtSeconds = this.clampNumber(
+        (timestampMs - this.lastFrameTimestampMs) / 1000,
+        0,
+        0.25,
+      );
+      this.lastFrameTimestampMs = timestampMs;
+      this.playbackTimeSeconds += dtSeconds * this.getVideoSpeedFactor();
 
       this.resize();
-      this.updateAudioTexture(timestampMs * 0.001);
-      this.render(timestampMs * 0.001);
+      this.updateAudioTexture(this.playbackTimeSeconds);
+      this.updateTextTexture();
+      this.render(this.playbackTimeSeconds);
       this.rafId = window.requestAnimationFrame((ts) => this.frame(ts));
+    }
+
+    updateTextTexture() {
+      if (!this.gl || !this.textTexture) return;
+      if (!this.textTextureDirty && this.textCanvas) return;
+
+      if (!this.textCanvas) {
+        this.textCanvas = document.createElement("canvas");
+        this.textCanvas.width = 1024;
+        this.textCanvas.height = 512;
+        this.textCtx = this.textCanvas.getContext("2d");
+      }
+
+      const ctx = this.textCtx;
+      if (!ctx) return;
+
+      const width = this.textCanvas.width;
+      const height = this.textCanvas.height;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, width, height);
+
+      const content = String(this.params.textContent || "").trim();
+      if (content) {
+        const sizePx = this.clampNumber(
+          Math.round(this.numberOrFallback(this.params.textSize, 62)),
+          10,
+          160,
+        );
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `700 ${sizePx}px sans-serif`;
+
+        const lines = content.split(/\n+/).slice(0, 3);
+        const lineGap = Math.max(10, Math.round(sizePx * 0.24));
+        const totalHeight = lines.length * sizePx + (lines.length - 1) * lineGap;
+        let y = (height - totalHeight) * 0.5 + sizePx * 0.52;
+        for (const line of lines) {
+          ctx.fillText(line, width * 0.5, y);
+          y += sizePx + lineGap;
+        }
+      }
+
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, this.textTexture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.LUMINANCE,
+        gl.LUMINANCE,
+        gl.UNSIGNED_BYTE,
+        this.textCanvas,
+      );
+      this.textTextureDirty = false;
     }
 
     updateAudioTexture(timeSeconds) {
@@ -685,6 +2188,8 @@
       const audioMix = this.params.audioReactive ? this.params.audioMix / 100 : 0;
       const colorA = this.hexToRgb01(this.params.colorA, [0.24, 0.45, 0.95]);
       const colorB = this.hexToRgb01(this.params.colorB, [0.96, 0.98, 1.0]);
+      const textColor = this.hexToRgb01(this.params.textColor, [0.95, 0.92, 1.0]);
+      const textEnabled = String(this.params.textContent || "").trim().length > 0;
 
       gl.uniform1f(this.uTime, timeSeconds);
       gl.uniform2f(this.uResolution, this.canvas.width, this.canvas.height);
@@ -705,10 +2210,17 @@
       gl.uniform1f(this.uInvert, this.params.invert ? 1 : 0);
       gl.uniform3f(this.uColorA, colorA[0], colorA[1], colorA[2]);
       gl.uniform3f(this.uColorB, colorB[0], colorB[1], colorB[2]);
+      gl.uniform1f(this.uTextEnabled, textEnabled ? 1 : 0);
+      gl.uniform1f(this.uTextMix, this.params.textMix / 100);
+      gl.uniform3f(this.uTextColor, textColor[0], textColor[1], textColor[2]);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.audioTexture);
       gl.uniform1i(this.uAudioTex, 0);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.textTexture);
+      gl.uniform1i(this.uTextTex, 1);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -767,6 +2279,10 @@ uniform float u_autoMix;
 uniform float u_invert;
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
+uniform sampler2D u_textTex;
+uniform float u_textEnabled;
+uniform float u_textMix;
+uniform vec3 u_textColor;
 
 float hash21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -886,6 +2402,9 @@ void main() {
   float split = u_split * 0.014;
   vec2 splitVec = vec2(split * (0.8 + u_glitchOffset * 0.7), split * 0.26);
 
+  vec2 textUv = clamp(uv + vec2(lineJitterA * 0.45, lineJitterB * 0.22), 0.0, 1.0);
+  float textMask = texture2D(u_textTex, textUv).r * u_textEnabled;
+
   float patternCore = patternAt(uv, signal, t, aspect);
   float patternGhostA = patternAt(uv + splitVec, signal, t, aspect);
   float patternGhostB = patternAt(uv - splitVec, signal, t, aspect);
@@ -898,6 +2417,11 @@ void main() {
   patternGhostA = clamp(patternGhostA, 0.0, 1.0);
   patternGhostB = clamp(patternGhostB, 0.0, 1.0);
 
+  float textBoost = textMask * (0.28 + u_textMix * 0.72);
+  patternCore = clamp(max(patternCore, textBoost), 0.0, 1.0);
+  patternGhostA = clamp(max(patternGhostA, textBoost * (0.4 + 0.4 * u_split)), 0.0, 1.0);
+  patternGhostB = clamp(max(patternGhostB, textBoost * (0.5 + 0.5 * u_split)), 0.0, 1.0);
+
   float scan = 1.0 - u_scan * (0.25 + 0.4 * sin(uv.y * u_resolution.y * 1.1));
 
   vec3 baseA = vec3(0.02, 0.03, 0.05);
@@ -908,6 +2432,7 @@ void main() {
   color += u_colorA * patternGhostA * (u_split * 0.45 + u_glitch * 0.12);
   color += u_colorB * patternGhostB * (u_split * 0.62 + u_glitchLayer * 0.2);
   color = mix(color, u_colorB * (0.18 + patternCore * 0.64), patternGhostB * 0.16);
+  color = mix(color, u_textColor, textMask * (0.22 + u_textMix * 0.52));
 
   color *= scan;
 
@@ -963,6 +2488,10 @@ void main() {
       this.uInvert = gl.getUniformLocation(program, "u_invert");
       this.uColorA = gl.getUniformLocation(program, "u_colorA");
       this.uColorB = gl.getUniformLocation(program, "u_colorB");
+      this.uTextTex = gl.getUniformLocation(program, "u_textTex");
+      this.uTextEnabled = gl.getUniformLocation(program, "u_textEnabled");
+      this.uTextMix = gl.getUniformLocation(program, "u_textMix");
+      this.uTextColor = gl.getUniformLocation(program, "u_textColor");
 
       this.audioTexture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.audioTexture);
@@ -988,7 +2517,64 @@ void main() {
         this.audioTextureFrame,
       );
 
+      this.textTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, this.textTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const blankTextFrame = new Uint8Array([0]);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.LUMINANCE,
+        1,
+        1,
+        0,
+        gl.LUMINANCE,
+        gl.UNSIGNED_BYTE,
+        blankTextFrame,
+      );
+
       return true;
+    }
+
+    sampleLogoAccentColors(count = 9) {
+      const targetCount = this.clampNumber(Math.round(this.numberOrFallback(count, 9)), 1, 24);
+      if (!this.canvas || this.canvas.width <= 0 || this.canvas.height <= 0) {
+        return null;
+      }
+
+      if (!this.logoSampleCanvas) {
+        this.logoSampleCanvas = document.createElement("canvas");
+      }
+      const targetW = Math.max(64, targetCount * 12);
+      const targetH = 32;
+      if (
+        this.logoSampleCanvas.width !== targetW
+        || this.logoSampleCanvas.height !== targetH
+      ) {
+        this.logoSampleCanvas.width = targetW;
+        this.logoSampleCanvas.height = targetH;
+      }
+      if (!this.logoSampleCtx) {
+        this.logoSampleCtx = this.logoSampleCanvas.getContext("2d", { willReadFrequently: true });
+      }
+      if (!this.logoSampleCtx) return null;
+
+      this.logoSampleCtx.drawImage(this.canvas, 0, 0, targetW, targetH);
+      const image = this.logoSampleCtx.getImageData(0, 0, targetW, targetH).data;
+      const colors = [];
+      for (let i = 0; i < targetCount; i += 1) {
+        const x = this.clampNumber(Math.round(((i + 0.5) / targetCount) * (targetW - 1)), 0, targetW - 1);
+        const y = Math.round(targetH * 0.5);
+        const idx = (y * targetW + x) * 4;
+        const r = image[idx] ?? 0;
+        const g = image[idx + 1] ?? 0;
+        const b = image[idx + 2] ?? 0;
+        colors.push(`#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+      }
+      return colors;
     }
 
     createProgram(vertexSource, fragmentSource) {
@@ -1042,8 +2628,21 @@ void main() {
     destroy() {
       this.stop();
       this.detachAudioTap();
+      this.clearAutosaveTimer();
+
+      if (this.presetStatusTimer) {
+        window.clearTimeout(this.presetStatusTimer);
+        this.presetStatusTimer = null;
+      }
 
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
+      document.removeEventListener(
+        "video-synth:logo-video-state",
+        this.onLogoVideoStateChange,
+      );
+      window.removeEventListener("pointermove", this.onLogoCropPointerMove);
+      window.removeEventListener("pointerup", this.onLogoCropPointerUp);
+      window.removeEventListener("pointercancel", this.onLogoCropPointerUp);
       window.removeEventListener("resize", this.onResize);
 
       if (this.canvas && this.canvas.parentElement) {
@@ -1057,6 +2656,23 @@ void main() {
       this.preview = null;
       this.canvas = null;
       this.hud = null;
+      this.presetSelect = null;
+      this.presetNameInput = null;
+      this.presetStatus = null;
+      this.songIo = null;
+      this.songJson = null;
+      this.songJsonHighlight = null;
+      this.logoVideoBackgroundBtn = null;
+      this.logoVideoCropBtn = null;
+      this.logoCropOverlay = null;
+      this.logoCropRect = null;
+      this.logoCropHandle = null;
+      this.logoCropDragState = null;
+      this.textCanvas = null;
+      this.textCtx = null;
+      this.textTexture = null;
+      this.logoSampleCanvas = null;
+      this.logoSampleCtx = null;
       this.rangeInputs.clear();
       this.program = null;
       this.gl = null;
