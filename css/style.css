@@ -1585,23 +1585,82 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
     2px 2px 0 var(--t-fg, #ffffff);
 }
 
-body.is-logo-video-bg .logo .letter,
-body.is-logo-video-bg .logo .letter:not(.is-selected),
-body.is-logo-video-bg .logo .letter.is-selected,
-body.is-logo-video-bg .logo .letter:hover,
-body.is-logo-video-bg .logo .letter:focus-visible {
-  background-image: var(--logo-video-frame) !important;
-  background-repeat: no-repeat !important;
+body.is-logo-video-bg .logo .letter {
   line-height: 1.1 !important;
   padding-bottom: 0.12em;
   margin-bottom: -0.12em;
+}
+
+body.is-logo-video-bg .logo .letter::before {
+  transition:
+    opacity 0s ease,
+    transform 0s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.is-logo-video-bg .logo .letter.is-selected,
+body.is-logo-video-bg .logo .letter.is-selected:hover,
+body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   text-shadow: none !important;
 }
 
-body.is-logo-video-bg .logo .letter::before {
+body.is-logo-video-bg .logo .letter.is-selected:hover,
+body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+  -webkit-text-stroke: 1px var(--t-fg, #ffffff) !important;
+}
+
+body.is-logo-video-bg .logo .letter.is-selected::before {
   color: transparent !important;
+}
+
+body.is-logo-video-bg .logo .letter.is-selected:hover::before,
+body.is-logo-video-bg .logo .letter.is-selected:focus-visible::before {
+  transform: translate(2.25px, 2.25px) !important;
+}
+
+body.is-logo-video-bg .logo .letter:not(.is-selected) {
+  color: var(--t-bg, #000000) !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: 1.5px var(--t-fg, #ffffff) !important;
+  text-shadow: none !important;
+  opacity: 1;
+}
+
+body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
+body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
+  color: var(--t-50, #808080) !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: 1.5px var(--t-fg, #ffffff) !important;
+  text-shadow: none !important;
+}
+
+body.is-logo-video-bg .logo .letter:not(.is-selected)::before {
+  color: transparent !important;
+  opacity: 0 !important;
+  transform: translate(0, 0) !important;
+}
+
+body.is-logo-video-bg .logo .letter:hover:not(.is-selected)::before,
+body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected)::before {
+  color: var(--t-fg, #ffffff) !important;
+  opacity: 1 !important;
+  transform: translate(2.25px, 2.25px) !important;
+}
+
+html:not(.is-theme) body.is-logo-video-bg .logo .letter:not(.is-selected) {
+  color: #000000 !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: 1.5px #ffffff !important;
+}
+
+html:not(.is-theme) body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
+html:not(.is-theme) body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
+  color: #242424 !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: 1.5px #ffffff !important;
 }
 
 html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:hover,

@@ -153,6 +153,10 @@
       this.uTextFlipH = null;
       this.uTextFlipV = null;
 
+      this.onFullscreenChange = () => {
+        this.syncHudVisibility();
+      };
+
       this.audioNode = null;
       this.analyser = null;
       this.audioFrame = null;
@@ -184,6 +188,12 @@
       this.logoCropLastTapX = 0;
       this.logoCropLastTapY = 0;
       this.loadedDefaults = null;
+
+      this._needsResize = true;
+      this._resizeObserver = null;
+      this._lastResizeDpr = window.devicePixelRatio || 1;
+      this._lastResizeW = 0;
+      this._lastResizeH = 0;
 
       this.params = {
         mode: 0,
@@ -217,7 +227,12 @@
       this.autosaveEnabled = Boolean(autosaveConfig.enabled);
       this.autosaveIntervalMinutes = autosaveConfig.intervalMinutes;
 
-      this.onResize = this.resize.bind(this);
+      this.onResize = () => {
+        this._needsResize = true;
+      };
+      this.onCanvasResize = () => {
+        this._needsResize = true;
+      };
       this.onVisibilityChange = () => {
         if (document.hidden) {
           this.stop();
@@ -627,8 +642,9 @@
 
       this.audioToggleBtn = document.createElement("button");
       this.audioToggleBtn.type = "button";
-      this.audioToggleBtn.className = "btn btn-toggle";
-      this.audioToggleBtn.textContent = "audio react";
+      this.audioToggleBtn.className = "switchToggle";
+      this.audioToggleBtn.setAttribute("aria-label", "audio react");
+      this.audioToggleBtn.setAttribute("aria-pressed", "false");
       this.audioToggleBtn.addEventListener("click", () => {
         this.params.audioReactive = !this.params.audioReactive;
         this.syncToggleButtons();
@@ -636,8 +652,9 @@
 
       this.invertToggleBtn = document.createElement("button");
       this.invertToggleBtn.type = "button";
-      this.invertToggleBtn.className = "btn btn-toggle";
-      this.invertToggleBtn.textContent = "invert";
+      this.invertToggleBtn.className = "switchToggle";
+      this.invertToggleBtn.setAttribute("aria-label", "invert");
+      this.invertToggleBtn.setAttribute("aria-pressed", "false");
       this.invertToggleBtn.addEventListener("click", () => {
         this.params.invert = !this.params.invert;
         this.syncToggleButtons();
@@ -645,8 +662,8 @@
 
       this.logoVideoBackgroundBtn = document.createElement("button");
       this.logoVideoBackgroundBtn.type = "button";
-      this.logoVideoBackgroundBtn.className = "btn btn-toggle";
-      this.logoVideoBackgroundBtn.textContent = "video background";
+      this.logoVideoBackgroundBtn.className = "switchToggle";
+      this.logoVideoBackgroundBtn.setAttribute("aria-label", "video background");
       this.logoVideoBackgroundBtn.setAttribute("aria-pressed", "false");
       this.logoVideoBackgroundBtn.addEventListener("click", () => {
         const nextEnabled = !this.logoVideoBackgroundEnabled;
@@ -659,8 +676,8 @@
 
       this.logoVideoCropBtn = document.createElement("button");
       this.logoVideoCropBtn.type = "button";
-      this.logoVideoCropBtn.className = "btn btn-toggle";
-      this.logoVideoCropBtn.textContent = "crop";
+      this.logoVideoCropBtn.className = "switchToggle";
+      this.logoVideoCropBtn.setAttribute("aria-label", "crop");
       this.logoVideoCropBtn.setAttribute("aria-pressed", "false");
       this.logoVideoCropBtn.addEventListener("click", () => {
         if (!this.logoVideoBackgroundEnabled) {
@@ -673,10 +690,30 @@
         this.setLogoCropModeActive(!this.logoCropModeActive);
       });
 
-      toggleRow.appendChild(this.audioToggleBtn);
-      toggleRow.appendChild(this.invertToggleBtn);
-      toggleRow.appendChild(this.logoVideoBackgroundBtn);
-      toggleRow.appendChild(this.logoVideoCropBtn);
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "audio react",
+          button: this.audioToggleBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "invert",
+          button: this.invertToggleBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "video background",
+          button: this.logoVideoBackgroundBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "crop",
+          button: this.logoVideoCropBtn,
+        }),
+      );
 
       this.shell.appendChild(presetPanel);
       this.shell.appendChild(this.preview);
@@ -706,13 +743,31 @@
       }
 
       this.initialized = true;
-      this.resize();
+      this._needsResize = true;
+      this.doResize();
       window.addEventListener("resize", this.onResize);
+      window.addEventListener("dpichange", this.onResize);
       document.addEventListener("visibilitychange", this.onVisibilityChange);
+      document.addEventListener("fullscreenchange", this.onFullscreenChange);
       document.addEventListener(
         "video-synth:logo-video-state",
         this.onLogoVideoStateChange,
       );
+      if (this.preview && typeof ResizeObserver !== "undefined") {
+        this._resizeObserver = new ResizeObserver(this.onCanvasResize);
+        this._resizeObserver.observe(this.preview);
+      }
+    }
+
+    makeSwitchToggleField({ label, button }) {
+      const field = document.createElement("label");
+      field.className = "field videoSynthToggleField";
+      const fieldLabel = document.createElement("span");
+      fieldLabel.className = "fieldLabel";
+      fieldLabel.textContent = label;
+      field.appendChild(fieldLabel);
+      field.appendChild(button);
+      return field;
     }
 
     buildPresetPanel() {
@@ -1101,12 +1156,18 @@
           "aria-pressed",
           this.logoVideoBackgroundEnabled ? "true" : "false",
         );
+        this.logoVideoBackgroundBtn.title = this.logoVideoBackgroundEnabled
+          ? "video background: on"
+          : "video background: off";
       }
       if (this.logoVideoCropBtn) {
         this.logoVideoCropBtn.setAttribute(
           "aria-pressed",
           this.logoCropModeActive ? "true" : "false",
         );
+        this.logoVideoCropBtn.title = this.logoCropModeActive
+          ? "crop: on"
+          : "crop: off";
       }
       this.updateLogoCropOverlay();
     }
@@ -1512,7 +1573,7 @@
 
     syncHudLabel() {
       if (!this.hud) return;
-      const labels = [
+      const modeLabels = [
         "waveform",
         "noise field",
         "grid fold",
@@ -1520,8 +1581,16 @@
         "bars",
         "plasma",
       ];
-      const suffix = this.params.audioReactive ? " · audio" : " · auto";
-      this.hud.textContent = `${labels[this.params.mode] || "video synth"}${suffix}`;
+      const formulaLabels = ["sine", "tangent", "fold", "pulse", "cheby", "xor"];
+      const modeLabel = modeLabels[this.params.mode] || "video synth";
+      const formulaLabel = formulaLabels[this.params.formula] || "formula";
+      this.hud.textContent = `${modeLabel} · ${formulaLabel}`;
+      this.syncHudVisibility();
+    }
+
+    syncHudVisibility() {
+      if (!this.hud) return;
+      this.hud.hidden = document.fullscreenElement === this.preview;
     }
 
     syncParamInputs() {
@@ -2208,7 +2277,7 @@
       this.lastFrameTimestampMs = null;
     }
 
-    resize() {
+    doResize() {
       if (!this.gl || !this.canvas) return;
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       const w = Math.max(1, Math.round(this.mount.clientWidth * dpr));
@@ -2219,6 +2288,9 @@
       }
       this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
       this.updateLogoCropOverlay();
+      this._lastResizeDpr = dpr;
+      this._lastResizeW = w;
+      this._lastResizeH = h;
     }
 
     frame(timestampMs) {
@@ -2236,7 +2308,10 @@
       this.lastFrameTimestampMs = timestampMs;
       this.playbackTimeSeconds += dtSeconds * this.getVideoSpeedFactor();
 
-      this.resize();
+      if (this._needsResize) {
+        this.doResize();
+        this._needsResize = false;
+      }
       this.updateAudioTexture(this.playbackTimeSeconds);
       this.updateTextTexture();
       this.render(this.playbackTimeSeconds);
@@ -2794,7 +2869,12 @@ void main() {
       this.detachAudioTap();
       this.clearAutosaveTimer();
 
+      if (this._resizeObserver) {
+        this._resizeObserver.disconnect();
+        this._resizeObserver = null;
+      }
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
+      document.removeEventListener("fullscreenchange", this.onFullscreenChange);
       document.removeEventListener(
         "video-synth:logo-video-state",
         this.onLogoVideoStateChange,
@@ -2803,6 +2883,7 @@ void main() {
       window.removeEventListener("pointerup", this.onLogoCropPointerUp);
       window.removeEventListener("pointercancel", this.onLogoCropPointerUp);
       window.removeEventListener("resize", this.onResize);
+      window.removeEventListener("dpichange", this.onResize);
 
       if (this.canvas && this.canvas.parentElement) {
         this.canvas.parentElement.removeChild(this.canvas);

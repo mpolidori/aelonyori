@@ -138,7 +138,7 @@ This reference lists user-facing controls currently rendered by the app UI.
 |---|---|
 | reset | Reset all params to defaults |
 | fullscreen | Enter fullscreen mode |
-| HUD label | Shows current mode and audio/auto status |
+| HUD label | Shows current mode and formula; hidden in fullscreen |
 
 ### Preset Panel
 
