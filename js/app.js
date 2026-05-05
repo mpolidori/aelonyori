@@ -9409,7 +9409,7 @@
   }
 
   function syncStarBounceDuration() {
-    const dur = (120 / tempo).toFixed(3);
+    const dur = (60 / tempo).toFixed(3);
     document.documentElement.style.setProperty("--star-bounce-dur", dur + "s");
   }
 
