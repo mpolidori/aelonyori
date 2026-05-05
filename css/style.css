@@ -1547,15 +1547,8 @@ html.is-theme .logo .letter.is-selected {
 
 html.is-theme .logo .letter.is-selected:hover,
 html.is-theme .logo .letter.is-selected:focus-visible {
-  text-shadow:
-    -2px -2px 0 var(--t-50, #808080),
-    0 -2px 0 var(--t-50, #808080),
-    2px -2px 0 var(--t-50, #808080),
-    -2px 0 0 var(--t-50, #808080),
-    2px 0 0 var(--t-50, #808080),
-    -2px 2px 0 var(--t-50, #808080),
-    0 2px 0 var(--t-50, #808080),
-    2px 2px 0 var(--t-50, #808080);
+  -webkit-text-stroke: 2px var(--t-50, #808080);
+  text-shadow: none;
 }
 
 html.is-theme .logo .letter:not(.is-selected) {
@@ -1618,6 +1611,8 @@ body.is-logo-video-bg .logo .letter.is-selected::before {
 
 body.is-logo-video-bg .logo .letter.is-selected:hover::before,
 body.is-logo-video-bg .logo .letter.is-selected:focus-visible::before {
+  color: var(--t-fg, #ffffff) !important;
+  opacity: 1 !important;
   transform: translate(2.25px, 2.25px) !important;
 }
 
@@ -1676,14 +1671,14 @@ html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible {
     1px 1px 0 var(--hit);
 }
 
-html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:hover::before,
+html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:hover::before,
 html.is-theme
-  body.has-daw:not(.is-bump-letters)
+  body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg)
   .logo
   .letter:focus-visible::before {
-  color: var(--hit);
-  opacity: 1;
-  transform: translate(3px, 3px);
+  color: transparent;
+  opacity: 0;
+  transform: translate(0, 0);
 }
 
 body.is-bump-letters .logo .letter.is-hit {
@@ -1698,7 +1693,7 @@ body.is-bump-letters .logo .letter.is-hit::after {
 }
 
 body.is-bump-letters .logo .letter::before {
-  color: var(--hit);
+  color: color-mix(in srgb, var(--hit) 92%, #ffffff);
   opacity: calc(
     var(--bump-letter-ghost-opacity, 0.34) * var(--bump-ghost-level, 0)
   );
@@ -1706,28 +1701,17 @@ body.is-bump-letters .logo .letter::before {
     0,
     calc(var(--bump-letter-lift, 3px) * var(--bump-ghost-level, 0))
   );
-  text-shadow:
-    calc(-1 * var(--bump-letter-shadow-spread, 2px))
-      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
-    0 calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
-    var(--bump-letter-shadow-spread, 2px)
-      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 var(--hit),
-    calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 0 var(--hit),
-    var(--bump-letter-shadow-spread, 2px) 0 0 var(--hit),
-    calc(-1 * var(--bump-letter-shadow-spread, 2px))
-      var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
-    0 var(--bump-letter-shadow-spread, 2px) 0 var(--hit),
-    var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px)
-      0 var(--hit);
+  text-shadow: 0 var(--bump-letter-shadow-spread, 2px) 0
+    color-mix(in srgb, var(--hit) 88%, #ffffff);
 }
 
 html.is-theme body.is-bump-letters .logo .letter::before {
-  color: color-mix(in srgb, var(--hit) 88%, #ffffff);
+  color: color-mix(in srgb, var(--hit) 90%, #ffffff);
   opacity: clamp(
     0,
     calc(
       var(--bump-letter-ghost-opacity, 0.68)
-        * 1.28
+        * 1.04
         * var(--bump-ghost-level, 0)
         * var(--bump-ghost-opacity-scale-theme, 1)
     ),
@@ -1738,67 +1722,20 @@ html.is-theme body.is-bump-letters .logo .letter::before {
 html:not(.is-theme) body.is-bump-letters .logo .letter::before {
   color: color-mix(
     in srgb,
-    var(--hit) var(--bump-ghost-hit-mix-nontheme, 42%),
+    var(--hit) var(--bump-ghost-hit-mix-nontheme, 78%),
     #ffffff
   );
   opacity: calc(
-    var(--bump-letter-ghost-opacity, 0.14)
+    var(--bump-letter-ghost-opacity, 0.08)
       * var(--bump-ghost-level, 0)
       * var(--bump-ghost-opacity-scale-nontheme, 1)
   );
-  text-shadow:
-    calc(-1 * var(--bump-letter-shadow-spread, 2px))
-      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    0 calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    var(--bump-letter-shadow-spread, 2px)
-      calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    calc(-1 * var(--bump-letter-shadow-spread, 2px)) 0 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    var(--bump-letter-shadow-spread, 2px) 0 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    calc(-1 * var(--bump-letter-shadow-spread, 2px))
-      var(--bump-letter-shadow-spread, 2px) 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    0 var(--bump-letter-shadow-spread, 2px) 0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      ),
-    var(--bump-letter-shadow-spread, 2px) var(--bump-letter-shadow-spread, 2px)
-      0
-      color-mix(
-        in srgb,
-        var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 36%),
-        #ffffff
-      );
+  text-shadow: 0 var(--bump-letter-shadow-spread, 2px) 0
+    color-mix(
+      in srgb,
+      var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 72%),
+      #ffffff
+    );
 }
 
 .logo .letter.is-muted {

@@ -4433,8 +4433,9 @@
               ? track.button.dataset.letter
               : track.key) || "",
           ).toLowerCase();
-          const instrument = String(state.sound || "").toLowerCase();
-          const label = `${letter} ${instrument}`.trim();
+          const soundOption = SOUND_OPTIONS.find((o) => o.value === state.sound);
+          const instrumentLabel = soundOption ? soundOption.label : String(state.sound || "").toLowerCase();
+          const label = `${letter} ${instrumentLabel}`.trim();
           if (!label) continue;
           chunks.push({ label, index: step });
         }
