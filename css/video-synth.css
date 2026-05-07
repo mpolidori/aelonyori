@@ -117,7 +117,7 @@ body.is-video-synth-view .videoSynthRoot {
 .videoSynthPreview {
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  background: #05070d;
+  background: transparent;
   height: clamp(220px, 44vh, 430px);
   overflow: hidden;
 }
@@ -194,6 +194,32 @@ body.is-video-synth-view .videoSynthRoot {
 html.is-theme .videoSynthHud {
   color: var(--t-92, rgba(255, 255, 255, 0.92));
   border-color: var(--t-32, rgba(255, 255, 255, 0.32));
+}
+
+body:not(.is-video-synth-view) .videoSynthAudioSourceStatus {
+  display: none !important;
+}
+
+.videoSynthAudioSourceStatus {
+  position: fixed;
+  left: calc(var(--cornerStatusSidePad, 0.8rem) + env(safe-area-inset-left, 0px));
+  top: calc(var(--cornerStatusTopPad, 0.68rem) + env(safe-area-inset-top, 0px));
+  z-index: 70;
+  pointer-events: none;
+  gap: 0.42rem;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.86);
+  letter-spacing: 0.03em;
+  text-transform: lowercase;
+}
+
+.videoSynthAudioSourceStatus::before {
+  display: none;
+}
+
+html.is-theme .videoSynthAudioSourceStatus {
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
 }
 
 .videoSynthControls {

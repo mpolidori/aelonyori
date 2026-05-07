@@ -85,11 +85,14 @@
       this.preview = null;
       this.canvas = null;
       this.hud = null;
+      this.audioSourceStatus = null;
       this.modeSelect = null;
       this.formulaSelect = null;
       this.fullscreenBtn = null;
       this.resetBtn = null;
-      this.audioToggleBtn = null;
+      this.audioPlaybackBtn = null;
+      this.audioEnvironmentBtn = null;
+      this.audioExternalBtn = null;
       this.invertToggleBtn = null;
       this.colorAInput = null;
       this.colorBInput = null;
@@ -137,6 +140,8 @@
       this.uPixel = null;
       this.uHue = null;
       this.uDrift = null;
+      this.uArtifact = null;
+      this.uMovingGrid = null;
       this.uAudioMix = null;
       this.uAutoMix = null;
       this.uInvert = null;
@@ -146,6 +151,8 @@
       this.uNoiseAmt = null;
       this.uColorA = null;
       this.uColorB = null;
+      this.uBgColor = null;
+      this.uBgOpacity = null;
       this.uTextTex = null;
       this.uTextEnabled = null;
       this.uTextMix = null;
@@ -161,6 +168,11 @@
       this.analyser = null;
       this.audioFrame = null;
       this.audioTextureFrame = null;
+      this.micStream = null;
+      this.micAudioCtx = null;
+      this.micAnalyser = null;
+      this.micAudioFrame = null;
+      this.micAdaptiveGain = 1;
       this.textCanvas = null;
       this.textCtx = null;
       this.textTexture = null;
@@ -208,11 +220,16 @@
         pixel: 14,
         hue: 0,
         drift: 44,
+        artifact: 0,
+        movingGrid: 0,
         videoSpeed: 70,
         audioMix: 62,
         autoMix: 68,
         audioReactive: true,
+        audioSource: "playback",
         invert: false,
+        bgColor: "#000000",
+        bgOpacity: 100,
         colorA: "#6600ff",
         colorB: "#ff0077",
         textContent: "",
@@ -355,6 +372,11 @@
       this.hud = document.createElement("div");
       this.hud.className = "videoSynthHud";
       this.hud.textContent = "waveform";
+
+      this.audioSourceStatus = document.createElement("span");
+      this.audioSourceStatus.className = "status videoSynthAudioSourceStatus";
+      this.audioSourceStatus.setAttribute("aria-live", "polite");
+      this.audioSourceStatus.setAttribute("aria-atomic", "true");
 
       this.logoCropOverlay = document.createElement("div");
       this.logoCropOverlay.className = "videoSynthCropOverlay";
@@ -513,6 +535,24 @@
       );
       controlsColA.appendChild(
         this.makeRangeField({
+          key: "artifact",
+          label: "artifact",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColA.appendChild(
+        this.makeRangeField({
+          key: "movingGrid",
+          label: "grid",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColA.appendChild(
+        this.makeRangeField({
           key: "scan",
           label: "scan",
           min: 0,
@@ -520,7 +560,7 @@
           step: 1,
         }),
       );
-      controlsColA.appendChild(
+      controlsColB.appendChild(
         this.makeRangeField({
           key: "hue",
           label: "hue",
@@ -551,6 +591,18 @@
         this.makeRangeField({
           key: "autoMix",
           label: "auto mix",
+          min: 0,
+          max: 100,
+          step: 1,
+        }),
+      );
+      controlsColB.appendChild(
+        this.makeColorField({ key: "bgColor", label: "background color" }),
+      );
+      controlsColB.appendChild(
+        this.makeRangeField({
+          key: "bgOpacity",
+          label: "background opacity",
           min: 0,
           max: 100,
           step: 1,
@@ -640,14 +692,31 @@
       const toggleRow = document.createElement("div");
       toggleRow.className = "videoSynthToggles";
 
-      this.audioToggleBtn = document.createElement("button");
-      this.audioToggleBtn.type = "button";
-      this.audioToggleBtn.className = "switchToggle";
-      this.audioToggleBtn.setAttribute("aria-label", "audio react");
-      this.audioToggleBtn.setAttribute("aria-pressed", "false");
-      this.audioToggleBtn.addEventListener("click", () => {
-        this.params.audioReactive = !this.params.audioReactive;
-        this.syncToggleButtons();
+      this.audioPlaybackBtn = document.createElement("button");
+      this.audioPlaybackBtn.type = "button";
+      this.audioPlaybackBtn.className = "switchToggle";
+      this.audioPlaybackBtn.setAttribute("aria-label", "playback audio react");
+      this.audioPlaybackBtn.setAttribute("aria-pressed", "false");
+      this.audioPlaybackBtn.addEventListener("click", () => {
+        this.setAudioSourceMode(this.params.audioSource === "playback" ? "off" : "playback");
+      });
+
+      this.audioEnvironmentBtn = document.createElement("button");
+      this.audioEnvironmentBtn.type = "button";
+      this.audioEnvironmentBtn.className = "switchToggle";
+      this.audioEnvironmentBtn.setAttribute("aria-label", "environment audio react");
+      this.audioEnvironmentBtn.setAttribute("aria-pressed", "false");
+      this.audioEnvironmentBtn.addEventListener("click", () => {
+        this.setAudioSourceMode(this.params.audioSource === "environment" ? "off" : "environment");
+      });
+
+      this.audioExternalBtn = document.createElement("button");
+      this.audioExternalBtn.type = "button";
+      this.audioExternalBtn.className = "switchToggle";
+      this.audioExternalBtn.setAttribute("aria-label", "external audio react");
+      this.audioExternalBtn.setAttribute("aria-pressed", "false");
+      this.audioExternalBtn.addEventListener("click", () => {
+        this.setAudioSourceMode(this.params.audioSource === "external" ? "off" : "external");
       });
 
       this.invertToggleBtn = document.createElement("button");
@@ -692,8 +761,20 @@
 
       toggleRow.appendChild(
         this.makeSwitchToggleField({
-          label: "audio react",
-          button: this.audioToggleBtn,
+          label: "playback audio react",
+          button: this.audioPlaybackBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "video background",
+          button: this.logoVideoBackgroundBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "external audio react",
+          button: this.audioExternalBtn,
         }),
       );
       toggleRow.appendChild(
@@ -704,8 +785,8 @@
       );
       toggleRow.appendChild(
         this.makeSwitchToggleField({
-          label: "video background",
-          button: this.logoVideoBackgroundBtn,
+          label: "environment audio react",
+          button: this.audioEnvironmentBtn,
         }),
       );
       toggleRow.appendChild(
@@ -720,6 +801,11 @@
       this.shell.appendChild(controls);
       this.shell.appendChild(toggleRow);
       this.mount.appendChild(this.shell);
+      if (document.body) {
+        document.body.appendChild(this.audioSourceStatus);
+      } else {
+        this.mount.appendChild(this.audioSourceStatus);
+      }
 
       this.syncHudLabel();
       this.syncToggleButtons();
@@ -727,7 +813,7 @@
       this.syncLogoVideoCropUi();
 
       const gl = this.canvas.getContext("webgl", {
-        alpha: false,
+        alpha: true,
         antialias: true,
         premultipliedAlpha: false,
       });
@@ -1047,6 +1133,7 @@
       if (key === "colorA") { this.colorAInput = color; this.colorAHexInput = hex; }
       if (key === "colorB") { this.colorBInput = color; this.colorBHexInput = hex; }
       if (key === "textColor") { this.textColorInput = color; this.textColorHexInput = hex; }
+      if (key === "bgColor") { this.bgColorInput = color; this.bgColorHexInput = hex; }
 
       field.appendChild(labelEl);
       field.appendChild(color);
@@ -1368,10 +1455,13 @@
         pixel: 14,
         hue: 0,
         drift: 44,
+        artifact: 0,
+        movingGrid: 0,
         videoSpeed: 70,
         audioMix: 62,
         autoMix: 68,
         audioReactive: true,
+        audioSource: "playback",
         invert: false,
         colorA: "#6600ff",
         colorB: "#ff0077",
@@ -1398,11 +1488,16 @@
         pixel: 12,
         hue: 0,
         drift: 48,
+        artifact: 0,
+        movingGrid: 0,
         videoSpeed: 74,
         audioMix: 68,
         autoMix: 72,
         audioReactive: true,
+        audioSource: "playback",
         invert: false,
+        bgColor: "#000000",
+        bgOpacity: 100,
         colorA: "#5500ff",
         colorB: "#ff0055",
         textContent: "",
@@ -1478,6 +1573,16 @@
           0,
           100,
         ),
+        artifact: this.clampNumber(
+          Math.round(this.numberOrFallback(source.artifact, safeBase.artifact)),
+          0,
+          100,
+        ),
+        movingGrid: this.clampNumber(
+          Math.round(this.numberOrFallback(source.movingGrid, safeBase.movingGrid)),
+          0,
+          100,
+        ),
         videoSpeed: this.clampNumber(
           Math.round(this.numberOrFallback(source.videoSpeed, safeBase.videoSpeed)),
           0,
@@ -1497,10 +1602,21 @@
           typeof source.audioReactive === "boolean"
             ? source.audioReactive
             : Boolean(safeBase.audioReactive),
+        audioSource: (() => {
+          if (source.audioSource && ["off", "playback", "environment", "external"].includes(source.audioSource)) return source.audioSource;
+          if (typeof source.audioReactive === "boolean") return source.audioReactive ? "playback" : "off";
+          return safeBase.audioSource || "playback";
+        })(),
         invert:
           typeof source.invert === "boolean"
             ? source.invert
             : Boolean(safeBase.invert),
+        bgColor: this.normalizeHexColor(source.bgColor, safeBase.bgColor || "#000000"),
+        bgOpacity: this.clampNumber(
+          Math.round(this.numberOrFallback(source.bgOpacity, safeBase.bgOpacity ?? 100)),
+          0,
+          100,
+        ),
         colorA: this.normalizeHexColor(source.colorA, safeBase.colorA),
         colorB: this.normalizeHexColor(source.colorB, safeBase.colorB),
         textContent: String(source.textContent ?? safeBase.textContent ?? ""),
@@ -1533,14 +1649,21 @@
     }
 
     syncToggleButtons() {
-      if (this.audioToggleBtn) {
-        this.audioToggleBtn.setAttribute(
-          "aria-pressed",
-          this.params.audioReactive ? "true" : "false",
-        );
-        this.audioToggleBtn.title = this.params.audioReactive
-          ? "audio react: on"
-          : "audio react: off";
+      const src = this.params.audioSource || "off";
+      if (this.audioPlaybackBtn) {
+        const on = src === "playback";
+        this.audioPlaybackBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        this.audioPlaybackBtn.title = "playback audio react: " + (on ? "on" : "off");
+      }
+      if (this.audioEnvironmentBtn) {
+        const on = src === "environment";
+        this.audioEnvironmentBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        this.audioEnvironmentBtn.title = "environment audio react: " + (on ? "on" : "off");
+      }
+      if (this.audioExternalBtn) {
+        const on = src === "external";
+        this.audioExternalBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        this.audioExternalBtn.title = "external audio react: " + (on ? "on" : "off");
       }
       if (this.invertToggleBtn) {
         this.invertToggleBtn.setAttribute(
@@ -1569,6 +1692,21 @@
           ? "flip text vertical: on"
           : "flip text vertical: off";
       }
+      this.syncAudioSourceStatus();
+    }
+
+    syncAudioSourceStatus() {
+      if (!this.audioSourceStatus) return;
+      const src = this.params.audioSource || "off";
+      const labelMap = {
+        off: "off",
+        playback: "playback",
+        external: "external",
+        environment: "environment",
+      };
+      const label = labelMap[src] || "off";
+      this.audioSourceStatus.textContent = `react source: ${label}`;
+      this.audioSourceStatus.title = `react source: ${label}`;
     }
 
     syncHudLabel() {
@@ -1609,6 +1747,8 @@
       if (this.colorBHexInput) this.colorBHexInput.value = this.params.colorB;
       if (this.textColorInput) this.textColorInput.value = this.params.textColor;
       if (this.textColorHexInput) this.textColorHexInput.value = this.params.textColor;
+      if (this.bgColorInput) this.bgColorInput.value = this.params.bgColor;
+      if (this.bgColorHexInput) this.bgColorHexInput.value = this.params.bgColor;
 
       const textInput = this.shell
         ? this.shell.querySelector(".videoSynthTextInput")
@@ -2008,7 +2148,7 @@
         // ignore clipboard failures
       }
 
-      this.setPresetStatus("copied json");
+      this.setPresetStatus("copying json");
     }
 
     applySessionJsonFromEditor(event) {
@@ -2016,7 +2156,7 @@
         event.preventDefault();
         event.stopPropagation();
       }
-      this.showSongIo();
+      if (this.songIo) this.songIo.open = true;
       this.setPresetStatus("", { busy: true });
       this.updateJsonHighlight();
       const parsed = this.safeJsonParse(this.songJson?.value || "");
@@ -2044,7 +2184,7 @@
         return;
       }
       if (!isSessionShape && this.songIo?.open) this.syncJsonEditorFromSession();
-      this.setPresetStatus("applied json");
+      this.setPresetStatus("applying json");
     }
 
     downloadSessionJsonFile(event) {
@@ -2084,7 +2224,7 @@
       const file = this.songJsonUploadInput.files?.[0] || null;
       if (!file) return;
 
-      this.setPresetStatus("", { busy: true });
+      this.setPresetStatus("uploading json", { busy: true });
       try {
         const text = await file.text();
         this.showSongIo();
@@ -2093,7 +2233,6 @@
           this.updateJsonHighlight();
         }
         this.applySessionJsonFromEditor();
-        this.setPresetStatus("uploading json");
       } catch (error) {
         console.warn("Unable to read uploaded video synth JSON", error);
         this.setPresetStatus("upload failed", { ok: false });
@@ -2177,8 +2316,8 @@
       if (selectedPreset && this.getPreset(selectedPreset)) {
         applied = this.loadPresetByName(selectedPreset, { showStatus: false });
       }
-      if (!applied && session.currentState) {
-        applied = this.applyState(session.currentState);
+      if (session.currentState) {
+        applied = this.applyState(session.currentState) || applied;
       }
       if (!applied) {
         this.resetParams();
@@ -2232,6 +2371,88 @@
       this.analyser = analyser;
       this.audioFrame = new Uint8Array(analyser.fftSize);
       this.audioTextureFrame = new Uint8Array(this.textureSize);
+    }
+
+    setAudioSourceMode(mode) {
+      this.params.audioSource = mode;
+      if (mode === "environment" || mode === "external") {
+        this.attachMicTap(mode === "external");
+      } else {
+        this.detachMicTap();
+      }
+      this.syncToggleButtons();
+    }
+
+    async attachMicTap(preferExternal) {
+      this.detachMicTap();
+      if (!navigator.mediaDevices?.getUserMedia) return;
+      try {
+        const baseConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        let stream;
+        if (preferExternal) {
+          // Get permission first, then enumerate to find a non-default device
+          stream = await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioInputs = devices.filter(d => d.kind === "audioinput");
+          const rankedInputs = audioInputs
+            .filter(d => d.deviceId !== "default" && d.deviceId !== "communications" && d.deviceId !== "")
+            .map((d) => {
+              const label = String(d.label || "").toLowerCase();
+              let score = 0;
+              if (/loopback|stereo mix|what u hear/.test(label)) score += 100;
+              if (/line in|line-in|linein|aux/.test(label)) score += 80;
+              if (/interface|scarlett|focusrite|usb|asio|aggregate/.test(label)) score += 60;
+              if (/headset|headphone|webcam|built-in|builtin|internal/.test(label)) score -= 20;
+              return { device: d, score };
+            })
+            .sort((a, b) => b.score - a.score);
+          const external = rankedInputs[0]?.device || null;
+          if (external) {
+            // Re-request with the external device
+            stream.getTracks().forEach(t => t.stop());
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { ...baseConstraints, deviceId: { exact: external.deviceId } } });
+          }
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+        }
+        const ctx = new AudioContext();
+        await ctx.resume();
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.82;
+        analyser.minDecibels = -95;
+        analyser.maxDecibels = -5;
+        src.connect(analyser);
+        this.micStream = stream;
+        this.micAudioCtx = ctx;
+        this.micAnalyser = analyser;
+        this.micAudioFrame = new Uint8Array(analyser.fftSize);
+        this.micAdaptiveGain = 1;
+      } catch {
+        // Permission denied or no device — silently stay off
+        this.micStream = null;
+        this.micAudioCtx = null;
+        this.micAnalyser = null;
+        this.micAudioFrame = null;
+        this.micAdaptiveGain = 1;
+        this.params.audioSource = "off";
+        this.syncToggleButtons();
+      }
+    }
+
+    detachMicTap() {
+      if (this.micStream) {
+        this.micStream.getTracks().forEach(t => t.stop());
+        this.micStream = null;
+      }
+      if (this.micAudioCtx) {
+        try { this.micAudioCtx.close(); } catch { /* ignore */ }
+        this.micAudioCtx = null;
+      }
+      this.micAnalyser = null;
+      this.micAudioFrame = null;
+      this.micAdaptiveGain = 1;
     }
 
     setActive(nextActive) {
@@ -2380,13 +2601,38 @@
       const out = this.audioTextureFrame;
       const outLen = out.length;
 
-      if (this.analyser && this.audioFrame) {
-        this.analyser.getByteTimeDomainData(this.audioFrame);
-        const src = this.audioFrame;
+      const useMic = this.params.audioSource === "environment" || this.params.audioSource === "external";
+      const activeAnalyser = useMic ? this.micAnalyser : this.analyser;
+      const activeFrame = useMic ? this.micAudioFrame : this.audioFrame;
+
+      if (activeAnalyser && activeFrame) {
+        activeAnalyser.getByteTimeDomainData(activeFrame);
+        const src = activeFrame;
         const srcLen = src.length;
-        for (let i = 0; i < outLen; i += 1) {
-          const srcIndex = Math.floor((i / outLen) * srcLen);
-          out[i] = src[srcIndex];
+
+        if (useMic) {
+          // Mic inputs are usually much quieter than playback taps; normalize to a target RMS.
+          let sumSq = 0;
+          for (let i = 0; i < srcLen; i += 1) {
+            const centered = (src[i] - 128) / 128;
+            sumSq += centered * centered;
+          }
+          const rms = Math.sqrt(sumSq / Math.max(1, srcLen));
+          const targetRms = 0.22;
+          const instantGain = this.clampNumber(targetRms / Math.max(0.005, rms), 1, 14);
+          this.micAdaptiveGain += (instantGain - this.micAdaptiveGain) * 0.08;
+          const g = this.clampNumber(this.micAdaptiveGain, 1, 14);
+
+          for (let i = 0; i < outLen; i += 1) {
+            const srcIndex = Math.floor((i / outLen) * srcLen);
+            const centered = src[srcIndex] - 128;
+            out[i] = this.clampNumber(Math.round(128 + centered * g), 0, 255);
+          }
+        } else {
+          for (let i = 0; i < outLen; i += 1) {
+            const srcIndex = Math.floor((i / outLen) * srcLen);
+            out[i] = src[srcIndex];
+          }
         }
       } else {
         for (let i = 0; i < outLen; i += 1) {
@@ -2412,12 +2658,15 @@
 
     render(timeSeconds) {
       const gl = this.gl;
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
 
-      const audioMix = this.params.audioReactive ? this.params.audioMix / 100 : 0;
+      const audioMix = this.params.audioSource !== "off" ? this.params.audioMix / 100 : 0;
       const colorA = this.hexToRgb01(this.params.colorA, [0.24, 0.45, 0.95]);
       const colorB = this.hexToRgb01(this.params.colorB, [0.96, 0.98, 1.0]);
       const textColor = this.hexToRgb01(this.params.textColor, [0.95, 0.92, 1.0]);
+      const bgColor = this.hexToRgb01(this.params.bgColor, [0.0, 0.0, 0.0]);
       const textEnabled = String(this.params.textContent || "").trim().length > 0;
 
       gl.uniform1f(this.uTime, timeSeconds);
@@ -2434,9 +2683,13 @@
       gl.uniform1f(this.uPixel, this.params.pixel / 100);
       gl.uniform1f(this.uHue, this.params.hue / 100);
       gl.uniform1f(this.uDrift, this.params.drift / 100);
+      gl.uniform1f(this.uArtifact, this.params.artifact / 100);
+      gl.uniform1f(this.uMovingGrid, this.params.movingGrid / 100);
       gl.uniform1f(this.uAudioMix, audioMix);
       gl.uniform1f(this.uAutoMix, this.params.autoMix / 100);
       gl.uniform1f(this.uInvert, this.params.invert ? 1 : 0);
+      gl.uniform3f(this.uBgColor, bgColor[0], bgColor[1], bgColor[2]);
+      gl.uniform1f(this.uBgOpacity, this.params.bgOpacity / 100);
       gl.uniform3f(this.uColorA, colorA[0], colorA[1], colorA[2]);
       gl.uniform3f(this.uColorB, colorB[0], colorB[1], colorB[2]);
       gl.uniform1f(this.uTextEnabled, textEnabled ? 1 : 0);
@@ -2475,8 +2728,24 @@
       ];
     }
 
+    getFragmentPrecisionQualifier(gl) {
+      if (!gl || typeof gl.getShaderPrecisionFormat !== "function") {
+        return "mediump";
+      }
+      try {
+        const high = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+        if (high && Number.isFinite(high.precision) && high.precision > 0) {
+          return "highp";
+        }
+      } catch {
+        // ignore and fall back
+      }
+      return "mediump";
+    }
+
     initGlResources() {
       const gl = this.gl;
+      const fragmentPrecision = this.getFragmentPrecisionQualifier(gl);
       const vertexSource = `
 attribute vec2 a_position;
 varying vec2 v_uv;
@@ -2487,7 +2756,7 @@ void main() {
 }`;
 
       const fragmentSource = `
-precision mediump float;
+    precision ${fragmentPrecision} float;
 
 varying vec2 v_uv;
 uniform float u_time;
@@ -2505,9 +2774,13 @@ uniform float u_scan;
 uniform float u_pixel;
 uniform float u_hue;
 uniform float u_drift;
+uniform float u_artifact;
+uniform float u_movingGrid;
 uniform float u_audioMix;
 uniform float u_autoMix;
 uniform float u_invert;
+uniform vec3 u_bgColor;
+uniform float u_bgOpacity;
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
 uniform sampler2D u_textTex;
@@ -2592,7 +2865,8 @@ float patternAt(vec2 p, float signal, float t, float aspect) {
   } else if (u_mode < 3.5) {
     vec2 q = (p - 0.5) * vec2(aspect, 1.0);
     float r = length(q);
-    float rings = sin(r * 56.0 - t * 8.4 + signal * 15.0);
+    float ringPhase = mod(r * 56.0 - t * 8.4 + signal * 15.0, 6.28318530718);
+    float rings = sin(ringPhase);
     pattern = smoothstep(0.12, 1.0, abs(rings));
   } else if (u_mode < 4.5) {
     float bars = sin((p.y * 84.0 + t * 9.0) + formulaWarp(p.x * 14.0 + signal * 12.0) * 8.0);
@@ -2613,7 +2887,10 @@ void main() {
   float pix = mix(560.0, 36.0, u_pixel);
   uv = floor(uv * pix) / pix;
 
-  float t = u_time * (0.2 + u_drift * 2.6);
+  float tBase = mod(u_time, 4096.0);
+  float driftRate = 0.2 + u_drift * 2.6;
+  float t = tBase * driftRate;
+  float tGlitch = tBase * (0.35 + u_drift * 1.15);
 
   float audioSample = readWave(uv.x * 0.86 + 0.07);
   float autoSample = sin(uv.x * 8.0 + t * 2.5) * cos(uv.y * 6.0 - t * 2.1);
@@ -2621,16 +2898,72 @@ void main() {
   signal += (1.0 - max(u_autoMix, u_audioMix)) * autoSample * 0.35;
 
   float lineJitterA =
-    (hash21(vec2(floor(uv.y * 144.0), floor(t * 9.0))) - 0.5) * u_glitch * 0.13;
+    (hash21(vec2(floor(uv.y * 144.0), floor(tGlitch * 9.0))) - 0.5) * u_glitch * 0.13;
   float lineJitterB =
-    (hash21(vec2(floor(uv.y * 122.0), floor(t * 6.0 + u_glitchOffset * 14.0))) - 0.5)
+    (hash21(vec2(floor(uv.y * 122.0), floor(tGlitch * 6.0 + u_glitchOffset * 14.0))) - 0.5)
     * u_glitchLayer
     * 0.19;
   uv.x += lineJitterA + lineJitterB;
-  float blockA = step(0.935, hash21(vec2(floor(uv.y * 18.0), floor(t * 3.4))));
-  float blockB = step(0.91, hash21(vec2(floor(uv.y * 12.0 + 9.0), floor(t * 2.1 + 7.0))));
-  uv.y += blockA * u_glitch * 0.05 * sin(t * 15.0 + uv.x * 38.0);
-  uv.y += blockB * u_glitchLayer * 0.08 * cos(t * 11.0 - uv.x * 31.0);
+  float blockA = step(0.935, hash21(vec2(floor(uv.y * 18.0), floor(tGlitch * 3.4))));
+  float blockB = step(0.91, hash21(vec2(floor(uv.y * 12.0 + 9.0), floor(tGlitch * 2.1 + 7.0))));
+  uv.y += blockA * u_glitch * 0.05 * sin(tGlitch * 15.0 + uv.x * 38.0);
+  uv.y += blockB * u_glitchLayer * 0.08 * cos(tGlitch * 11.0 - uv.x * 31.0);
+
+  // Moving grid: uniform tile shuffle (clean, periodic grid effect)
+  if (u_movingGrid > 0.0) {
+    float mg = u_movingGrid;
+    float tileN = mix(2.0, 20.0, mg * mg);
+    float tileRate = floor(tGlitch * mix(0.4, 8.0, mg));
+    vec2 tileId = floor(uv * tileN);
+    vec2 tileFrac = fract(uv * tileN);
+    float tileHash = hash21(tileId + vec2(tileRate * 5.1, 2.3));
+    float tileHashY = hash21(tileId + vec2(1.7, tileRate * 4.9));
+    float tileActive = step(1.0 - mg * 0.85, hash21(tileId + vec2(tileRate * 1.3, 8.7)));
+    vec2 tileJump = floor(vec2(tileHash, tileHashY) * tileN);
+    vec2 uvTiled = clamp((tileJump + tileFrac) / tileN, 0.0, 1.0);
+    uv = mix(uv, uvTiled, tileActive * mg);
+  }
+
+  // Multi-scale tile shuffle: coarse + medium + fine layers with non-square aspect ratios
+  if (u_artifact > 0.0) {
+    float art = u_artifact;
+    vec2 uvW = uv;
+
+    // Coarse layer: large blocks, slow flicker, wide aspect
+    float nc = mix(2.0, 6.0, art);
+    float rc = floor(tGlitch * mix(0.4, 3.5, art));
+    vec2 ncv = vec2(nc, nc * 0.65);
+    vec2 idc = floor(uvW * ncv);
+    vec2 fracc = fract(uvW * ncv);
+    float actc = step(1.0 - art * 0.55, hash21(idc + vec2(rc * 3.7, 11.1)));
+    vec2 jc = floor(vec2(hash21(idc + vec2(rc * 5.1, 2.3)), hash21(idc + vec2(1.7, rc * 4.9))) * ncv);
+    vec2 uvc = clamp((jc + fracc) / ncv, 0.0, 1.0);
+    uvW = mix(uvW, uvc, actc * art);
+
+    // Medium layer: tall rectangles, mid flicker
+    float nm = mix(4.0, 15.0, art * art);
+    float rm = floor(tGlitch * mix(0.8, 7.0, art));
+    vec2 nmv = vec2(nm * 0.9, nm * 1.5);
+    vec2 idm = floor(uvW * nmv);
+    vec2 fracm = fract(uvW * nmv);
+    float actm = step(1.0 - art * 0.65, hash21(idm + vec2(rm * 2.3, 5.5)));
+    vec2 jm = floor(vec2(hash21(idm + vec2(rm * 7.3, 1.1)), hash21(idm + vec2(3.1, rm * 6.7))) * nmv);
+    vec2 uvm = clamp((jm + fracm) / nmv, 0.0, 1.0);
+    uvW = mix(uvW, uvm, actm * art);
+
+    // Fine layer: small near-square tiles, fast flicker
+    float nf = mix(8.0, 30.0, art * art);
+    float rf = floor(tGlitch * mix(1.5, 11.0, art));
+    vec2 nfv = vec2(nf * 0.85, nf);
+    vec2 idf = floor(uvW * nfv);
+    vec2 fracf = fract(uvW * nfv);
+    float actf = step(1.0 - art * 0.45, hash21(idf + vec2(rf * 4.1, 9.3)));
+    vec2 jf = floor(vec2(hash21(idf + vec2(rf * 1.9, 7.7)), hash21(idf + vec2(6.3, rf * 3.1))) * nfv);
+    vec2 uvf = clamp((jf + fracf) / nfv, 0.0, 1.0);
+    uvW = mix(uvW, uvf, actf * art);
+
+    uv = uvW;
+  }
 
   float split = u_split * 0.014;
   vec2 splitVec = vec2(split * (0.8 + u_glitchOffset * 0.7), split * 0.26);
@@ -2661,9 +2994,7 @@ void main() {
 
   float scan = 1.0 - u_scan * (0.25 + 0.4 * sin(uv.y * u_resolution.y * 1.1));
 
-  vec3 baseA = vec3(0.02, 0.03, 0.05);
-  vec3 baseB = vec3(0.07, 0.11, 0.16);
-  vec3 bg = mix(baseA, baseB, uv.y + 0.15 * sin(t * 0.8 + uv.x * 5.0));
+  vec3 bg = u_bgColor;
   vec3 color = bg;
   color += u_colorA * patternCore * (0.75 + u_intensity * 0.9);
   color += u_colorA * patternGhostA * (u_split * 0.45 + u_glitch * 0.12);
@@ -2679,7 +3010,9 @@ void main() {
     color = vec3(1.0) - color;
   }
 
-  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+  float patternAlpha = clamp(patternCore * 1.5 + patternGhostA * 0.5 + patternGhostB * 0.5, 0.0, 1.0);
+  float outAlpha = max(u_bgOpacity, patternAlpha);
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), outAlpha);
 }`;
 
       const program = this.createProgram(vertexSource, fragmentSource);
@@ -2720,9 +3053,13 @@ void main() {
       this.uPixel = gl.getUniformLocation(program, "u_pixel");
       this.uHue = gl.getUniformLocation(program, "u_hue");
       this.uDrift = gl.getUniformLocation(program, "u_drift");
+      this.uArtifact = gl.getUniformLocation(program, "u_artifact");
+      this.uMovingGrid = gl.getUniformLocation(program, "u_movingGrid");
       this.uAudioMix = gl.getUniformLocation(program, "u_audioMix");
       this.uAutoMix = gl.getUniformLocation(program, "u_autoMix");
       this.uInvert = gl.getUniformLocation(program, "u_invert");
+      this.uBgColor = gl.getUniformLocation(program, "u_bgColor");
+      this.uBgOpacity = gl.getUniformLocation(program, "u_bgOpacity");
       this.uColorA = gl.getUniformLocation(program, "u_colorA");
       this.uColorB = gl.getUniformLocation(program, "u_colorB");
       this.uTextTex = gl.getUniformLocation(program, "u_textTex");
@@ -2867,6 +3204,7 @@ void main() {
     destroy() {
       this.stop();
       this.detachAudioTap();
+      this.detachMicTap();
       this.clearAutosaveTimer();
 
       if (this._resizeObserver) {
@@ -2891,11 +3229,15 @@ void main() {
       if (this.hud && this.hud.parentElement) {
         this.hud.parentElement.removeChild(this.hud);
       }
+      if (this.audioSourceStatus && this.audioSourceStatus.parentElement) {
+        this.audioSourceStatus.parentElement.removeChild(this.audioSourceStatus);
+      }
 
       this.shell = null;
       this.preview = null;
       this.canvas = null;
       this.hud = null;
+      this.audioSourceStatus = null;
       this.presetSelect = null;
       this.presetNameInput = null;
       this.presetStatus = null;
