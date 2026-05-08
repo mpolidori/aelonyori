@@ -3729,6 +3729,7 @@
       document.dispatchEvent(new CustomEvent("video-synth:view-open"));
     } else {
       document.dispatchEvent(new CustomEvent("video-synth:view-close"));
+      if (isPlaying) startTransportRaf();
     }
   }
 
@@ -4527,8 +4528,16 @@
   function setSubtitleLines(lowerText, upperText) {
     if (!subtitleLower || !subtitleUpper) return;
 
-    const lower = String(lowerText || "");
-    const upper = String(upperText || "");
+    const maxSubtitleLength = 40;
+    const truncateSubtitle = (text) => {
+      const str = String(text || "");
+      return str.length > maxSubtitleLength
+        ? str.slice(0, maxSubtitleLength) + "…"
+        : str;
+    };
+
+    const lower = truncateSubtitle(lowerText);
+    const upper = truncateSubtitle(upperText);
 
     if (lower) {
       subtitleLower.textContent = lower;
@@ -4803,6 +4812,10 @@
       if (!isPlaying || !audio) {
         stopTransportRaf();
         updateTransportBar();
+        return;
+      }
+      if (isVideoSynthViewOpen()) {
+        stopTransportRaf();
         return;
       }
       const stepFloat = updateTransportBar();
@@ -7840,7 +7853,6 @@
   function toggleTrack(button) {
     const key = button.dataset.key;
     if (!key) return;
-    flashHit(button);
     if (tracks.has(key)) removeTrack(button);
     else addTrack(button);
   }
@@ -8598,6 +8610,7 @@
       button.dataset.skipClickOnce = "1";
       if (maybeLazyLoadDefaultSong()) return;
       toggleTrack(button);
+      button.blur();
     });
 
     button.addEventListener("click", () => {
@@ -8684,6 +8697,14 @@
   document.addEventListener("video-synth:set-logo-video-background", (event) => {
     const nextEnabled = Boolean(event?.detail?.enabled);
     setLogoVideoBackgroundEnabled(nextEnabled);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopTransportRaf();
+    } else if (isPlaying) {
+      startTransportRaf();
+    }
   });
 
   document.addEventListener("video-synth:set-logo-video-crop", (event) => {

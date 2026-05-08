@@ -10,6 +10,10 @@
 
 :root {
   --logo-size: clamp(3rem, 15vw, 8rem);
+  --logo-outline-stroke: clamp(1.4px, 0.05em, 2.2px);
+  --logo-outline-stroke-coarse: clamp(1.1px, 0.04em, 1.7px);
+  --logo-outline-stroke-hover: calc(var(--logo-outline-stroke) + 0.6px);
+  --logo-outline-stroke-hover-coarse: calc(var(--logo-outline-stroke-coarse) + 0.4px);
   --logo-y: 50vh;
   --logo-gap-above: 1.4rem;
   --logo-gap-below: 1.4rem;
@@ -1041,6 +1045,7 @@ html.is-theme .samplePadModeToolbar {
 .logo {
   font-family: sans-serif;
   font-weight: 900;
+  font-synthesis: none;
   font-size: var(--logo-size);
   text-transform: lowercase;
   color: #000000;
@@ -1354,6 +1359,9 @@ html.is-theme .switchToggle:focus-visible {
   --hit: var(--accent);
   --bump-underline-level: 0;
   --bump-ghost-level: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.45rem;
@@ -1364,6 +1372,7 @@ html.is-theme .switchToggle:focus-visible {
   margin: 0;
   cursor: pointer;
   font: inherit;
+  font-synthesis: none;
   line-height: 1;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -1535,7 +1544,11 @@ html.is-theme .logo .letter:focus-visible {
 
 html:not(.is-theme) .logo .letter.is-selected:hover,
 html:not(.is-theme) .logo .letter.is-selected:focus-visible {
-  -webkit-text-stroke: 2px color-mix(in srgb, var(--accent) 62%, #000000);
+  -webkit-text-stroke: var(--logo-outline-stroke-hover)
+    color-mix(in srgb, var(--accent) 62%, #000000);
+  -webkit-text-fill-color: currentColor;
+  paint-order: stroke fill;
+  text-shadow: none;
 }
 
 .logo .letter.is-selected::before {
@@ -1548,35 +1561,61 @@ html.is-theme .logo .letter.is-selected {
 
 html.is-theme .logo .letter.is-selected:hover,
 html.is-theme .logo .letter.is-selected:focus-visible {
-  -webkit-text-stroke: 2px var(--t-50, #808080);
+  -webkit-text-stroke: var(--logo-outline-stroke-hover) var(--t-50, #808080);
+  -webkit-text-fill-color: currentColor;
+  paint-order: stroke fill;
   text-shadow: none;
 }
 
 html.is-theme .logo .letter:not(.is-selected) {
   color: var(--t-bg, #000000);
-  text-shadow:
-    -2px -2px 0 var(--t-fg, #ffffff),
-    0 -2px 0 var(--t-fg, #ffffff),
-    2px -2px 0 var(--t-fg, #ffffff),
-    -2px 0 0 var(--t-fg, #ffffff),
-    2px 0 0 var(--t-fg, #ffffff),
-    -2px 2px 0 var(--t-fg, #ffffff),
-    0 2px 0 var(--t-fg, #ffffff),
-    2px 2px 0 var(--t-fg, #ffffff);
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: var(--logo-outline-stroke) var(--t-fg, #ffffff);
+  text-shadow: none;
+  paint-order: stroke fill;
 }
 
 html.is-theme .logo .letter:hover:not(.is-selected),
 html.is-theme .logo .letter:focus-visible:not(.is-selected) {
   color: var(--t-50, #808080);
-  text-shadow:
-    -2px -2px 0 var(--t-fg, #ffffff),
-    0 -2px 0 var(--t-fg, #ffffff),
-    2px -2px 0 var(--t-fg, #ffffff),
-    -2px 0 0 var(--t-fg, #ffffff),
-    2px 0 0 var(--t-fg, #ffffff),
-    -2px 2px 0 var(--t-fg, #ffffff),
-    0 2px 0 var(--t-fg, #ffffff),
-    2px 2px 0 var(--t-fg, #ffffff);
+  text-shadow: none;
+}
+
+@media (pointer: coarse) {
+  html.is-theme .logo .letter:not(.is-selected) {
+    -webkit-text-stroke-width: var(--logo-outline-stroke-coarse);
+    text-shadow: none;
+  }
+
+  html.is-theme .logo .letter:hover:not(.is-selected),
+  html.is-theme .logo .letter:focus-visible:not(.is-selected) {
+    -webkit-text-stroke-width: var(--logo-outline-stroke-coarse);
+    text-shadow: none;
+  }
+
+  /* Keep hover/tap highlight outline width equal to the stable mobile outline width. */
+  html:not(.is-theme) .logo .letter.is-selected:hover,
+  html:not(.is-theme) .logo .letter.is-selected:focus-visible {
+    -webkit-text-stroke: var(--logo-outline-stroke-hover-coarse)
+      color-mix(in srgb, var(--accent) 62%, #000000);
+    -webkit-text-fill-color: currentColor;
+    paint-order: stroke fill;
+    text-shadow: none;
+  }
+
+  html.is-theme .logo .letter.is-selected:hover,
+  html.is-theme .logo .letter.is-selected:focus-visible {
+    -webkit-text-stroke: var(--logo-outline-stroke-hover-coarse) var(--t-50, #808080);
+    -webkit-text-fill-color: currentColor;
+    paint-order: stroke fill;
+    text-shadow: none;
+  }
+
+  body.is-logo-video-bg .logo .letter:not(.is-selected),
+  body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
+  body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
+    -webkit-text-stroke-width: var(--logo-outline-stroke-coarse) !important;
+  }
 }
 
 body.is-logo-video-bg .logo .letter {
@@ -1586,14 +1625,10 @@ body.is-logo-video-bg .logo .letter {
 }
 
 body.is-logo-video-bg .logo .letter::before {
-  transition:
-    opacity 0s ease,
-    transform 0s cubic-bezier(0.22, 1, 0.36, 1);
+  display: none !important;
 }
 
-body.is-logo-video-bg .logo .letter.is-selected,
-body.is-logo-video-bg .logo .letter.is-selected:hover,
-body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+body.is-logo-video-bg .logo .letter.is-selected {
   background-image: var(--logo-video-frame) !important;
   background-repeat: no-repeat !important;
   color: transparent !important;
@@ -1603,25 +1638,38 @@ body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
 
 body.is-logo-video-bg .logo .letter.is-selected:hover,
 body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
-  -webkit-text-stroke: 1px var(--t-fg, #ffffff) !important;
+  background-image: none !important;
+  color: #6a6a6a !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-hover-coarse) #ffffff !important;
+  paint-order: stroke fill !important;
+  text-shadow: none !important;
 }
 
-body.is-logo-video-bg .logo .letter.is-selected::before {
-  color: transparent !important;
+html:not(.is-theme) body.is-logo-video-bg .logo .letter.is-selected:hover,
+html:not(.is-theme) body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+  color: var(--accent) !important;
+  -webkit-text-stroke-color: color-mix(in srgb, var(--accent) 62%, #000000) !important;
 }
 
+body.is-logo-video-bg .logo .letter.is-selected:active {
+  -webkit-text-stroke: 0 transparent !important;
+  text-shadow: none !important;
+}
+
+body.is-logo-video-bg .logo .letter.is-selected::before,
 body.is-logo-video-bg .logo .letter.is-selected:hover::before,
 body.is-logo-video-bg .logo .letter.is-selected:focus-visible::before {
-  color: var(--t-fg, #ffffff) !important;
-  opacity: 1 !important;
-  transform: translate(2.25px, 2.25px) !important;
+  color: transparent !important;
+  opacity: 0 !important;
 }
 
 body.is-logo-video-bg .logo .letter:not(.is-selected) {
   color: var(--t-bg, #000000) !important;
   -webkit-text-fill-color: currentColor !important;
-  -webkit-text-stroke: 1.5px var(--t-fg, #ffffff) !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-coarse) var(--t-fg, #ffffff) !important;
   text-shadow: none !important;
+  paint-order: stroke fill !important;
   opacity: 1;
 }
 
@@ -1629,47 +1677,36 @@ body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
 body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
   color: var(--t-50, #808080) !important;
   -webkit-text-fill-color: currentColor !important;
-  -webkit-text-stroke: 1.5px var(--t-fg, #ffffff) !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-coarse) var(--t-fg, #ffffff) !important;
   text-shadow: none !important;
+  paint-order: stroke fill !important;
 }
 
-body.is-logo-video-bg .logo .letter:not(.is-selected)::before {
-  color: transparent !important;
-  opacity: 0 !important;
-  transform: translate(0, 0) !important;
-}
-
+body.is-logo-video-bg .logo .letter:not(.is-selected)::before,
 body.is-logo-video-bg .logo .letter:hover:not(.is-selected)::before,
 body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected)::before {
-  color: var(--t-fg, #ffffff) !important;
-  opacity: 1 !important;
-  transform: translate(2.25px, 2.25px) !important;
+  opacity: 0 !important;
 }
+
+
 
 html:not(.is-theme) body.is-logo-video-bg .logo .letter:not(.is-selected) {
   color: #000000 !important;
   -webkit-text-fill-color: currentColor !important;
-  -webkit-text-stroke: 1.5px #ffffff !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-coarse) #ffffff !important;
 }
 
 html:not(.is-theme) body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
 html:not(.is-theme) body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
-  color: #242424 !important;
+  color: #6a6a6a !important;
   -webkit-text-fill-color: currentColor !important;
-  -webkit-text-stroke: 1.5px #ffffff !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-coarse) #ffffff !important;
 }
 
-html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:hover,
-html.is-theme body.has-daw:not(.is-bump-letters) .logo .letter:focus-visible {
-  text-shadow:
-    -1px -1px 0 var(--hit),
-    0 -1px 0 var(--hit),
-    1px -1px 0 var(--hit),
-    -1px 0 0 var(--hit),
-    1px 0 0 var(--hit),
-    -1px 1px 0 var(--hit),
-    0 1px 0 var(--hit),
-    1px 1px 0 var(--hit);
+html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:hover,
+html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:focus-visible {
+  -webkit-text-stroke-color: var(--hit);
+  text-shadow: none;
 }
 
 html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:hover::before,
@@ -1680,6 +1717,61 @@ html.is-theme
   color: transparent;
   opacity: 0;
   transform: translate(0, 0);
+}
+
+/* Prevent :hover styles from sticking after tap on touch (hover-none) devices */
+@media (hover: none) {
+  .logo .letter:hover:not(.is-selected) {
+    color: #000000;
+  }
+
+  .logo .letter:hover:not(.is-selected)::before {
+    opacity: 0;
+  }
+
+  html.is-theme .logo .letter:hover:not(.is-selected) {
+    color: var(--t-bg, #000000);
+    -webkit-text-fill-color: currentColor;
+    -webkit-text-stroke-color: var(--t-fg, #ffffff);
+  }
+
+  html:not(.is-theme) .logo .letter.is-selected:hover {
+    -webkit-text-stroke: 0 transparent;
+    -webkit-text-fill-color: unset;
+  }
+
+  html.is-theme .logo .letter.is-selected:hover {
+    -webkit-text-stroke: 0 transparent;
+    -webkit-text-fill-color: unset;
+  }
+
+  html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:hover {
+    -webkit-text-stroke-color: var(--t-fg, #ffffff);
+  }
+
+  html.is-theme
+    body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg)
+    .logo
+    .letter:hover::before {
+    opacity: 0;
+  }
+
+  body.is-logo-video-bg .logo .letter:hover:not(.is-selected) {
+    color: var(--t-bg, #000000) !important;
+  }
+
+  html:not(.is-theme) body.is-logo-video-bg .logo .letter:hover:not(.is-selected) {
+    color: #000000 !important;
+  }
+
+  body.is-logo-video-bg .logo .letter.is-selected:hover,
+  body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+    background-image: var(--logo-video-frame) !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    -webkit-text-stroke: 0 transparent !important;
+    paint-order: unset !important;
+  }
 }
 
 body.is-bump-letters .logo .letter.is-hit {
@@ -1694,7 +1786,7 @@ body.is-bump-letters .logo .letter.is-hit::after {
 }
 
 body.is-bump-letters .logo .letter::before {
-  color: color-mix(in srgb, var(--hit) 92%, #ffffff);
+  color: var(--hit);
   opacity: calc(
     var(--bump-letter-ghost-opacity, 0.34) * var(--bump-ghost-level, 0)
   );
@@ -1707,12 +1799,12 @@ body.is-bump-letters .logo .letter::before {
 }
 
 html.is-theme body.is-bump-letters .logo .letter::before {
-  color: color-mix(in srgb, var(--hit) 90%, #ffffff);
+  color: color-mix(in srgb, var(--hit) 88%, #ffffff);
   opacity: clamp(
     0,
     calc(
       var(--bump-letter-ghost-opacity, 0.68)
-        * 1.04
+        * 1.28
         * var(--bump-ghost-level, 0)
         * var(--bump-ghost-opacity-scale-theme, 1)
     ),
@@ -1723,20 +1815,16 @@ html.is-theme body.is-bump-letters .logo .letter::before {
 html:not(.is-theme) body.is-bump-letters .logo .letter::before {
   color: color-mix(
     in srgb,
-    var(--hit) var(--bump-ghost-hit-mix-nontheme, 78%),
+    var(--hit) var(--bump-ghost-hit-mix-nontheme, 42%),
     #ffffff
   );
   opacity: calc(
-    var(--bump-letter-ghost-opacity, 0.08)
+    var(--bump-letter-ghost-opacity, 0.14)
       * var(--bump-ghost-level, 0)
       * var(--bump-ghost-opacity-scale-nontheme, 1)
   );
   text-shadow: 0 var(--bump-letter-shadow-spread, 2px) 0
-    color-mix(
-      in srgb,
-      var(--hit) var(--bump-ghost-shadow-hit-mix-nontheme, 72%),
-      #ffffff
-    );
+    color-mix(in srgb, var(--hit) 72%, #ffffff);
 }
 
 .logo .letter.is-muted {
