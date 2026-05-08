@@ -9,10 +9,13 @@
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.35) transparent;
 }
 
 html.is-theme .videoSynthRoot {
   color: var(--t-fg, rgba(255, 255, 255, 0.92));
+  scrollbar-color: var(--t-32, rgba(255, 255, 255, 0.32)) transparent;
 }
 
 body.is-video-synth-view .videoSynthRoot {

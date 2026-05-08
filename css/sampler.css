@@ -191,6 +191,7 @@ body.is-sampler-view #settingsModal {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.35) transparent;
 }
 
 #samplerComposeView {
@@ -410,6 +411,7 @@ body.is-sampler-view #settingsModal {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.35) transparent;
 }
 
 @media (min-width: 640px) and (pointer: fine) {
@@ -698,6 +700,11 @@ html.is-theme .samplerPadsBar .transportIconBtn[aria-pressed="true"] {
 
 html.is-theme .samplerTransportRecordBtn[aria-pressed="true"] {
   animation-name: samplerRecordPulseTheme;
+}
+
+html.is-theme #samplerPadsView,
+html.is-theme .samplerComposeGrid {
+  scrollbar-color: var(--t-32, rgba(255, 255, 255, 0.32)) transparent;
 }
 
 @media (max-width: 860px) {

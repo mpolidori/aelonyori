@@ -3663,6 +3663,7 @@
       setVideoSynthViewOpen(false);
     }
     document.body.classList.toggle("is-sampler-view", open);
+    document.documentElement.classList.toggle("is-sampler-view", open);
     if (navToDawBtn) {
       navToDawBtn.hidden = false;
       navToDawBtn.disabled = !open;
