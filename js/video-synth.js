@@ -159,6 +159,7 @@
       this.uTextColor = null;
       this.uTextFlipH = null;
       this.uTextFlipV = null;
+      this.uVideoRotate = null;
 
       this.onFullscreenChange = () => {
         this.syncHudVisibility();
@@ -225,9 +226,12 @@
         videoSpeed: 70,
         audioMix: 62,
         autoMix: 68,
+        videoRotate: 0,
         audioReactive: true,
         audioSource: "playback",
         invert: false,
+        videoFlipH: false,
+        videoFlipV: false,
         bgColor: "#000000",
         bgOpacity: 100,
         colorA: "#6600ff",
@@ -551,15 +555,6 @@
           step: 1,
         }),
       );
-      controlsColA.appendChild(
-        this.makeRangeField({
-          key: "scan",
-          label: "scan",
-          min: 0,
-          max: 100,
-          step: 1,
-        }),
-      );
       controlsColB.appendChild(
         this.makeRangeField({
           key: "hue",
@@ -597,14 +592,11 @@
         }),
       );
       controlsColB.appendChild(
-        this.makeColorField({ key: "bgColor", label: "background color" }),
-      );
-      controlsColB.appendChild(
         this.makeRangeField({
-          key: "bgOpacity",
-          label: "background opacity",
-          min: 0,
-          max: 100,
+          key: "videoRotate",
+          label: "rotate",
+          min: -180,
+          max: 180,
           step: 1,
         }),
       );
@@ -613,34 +605,6 @@
       );
       controlsColB.appendChild(
         this.makeColorField({ key: "colorB", label: "color b" }),
-      );
-      controlsColB.appendChild(
-        this.makeTextField({
-          key: "textContent",
-          label: "text",
-          placeholder: "type text",
-        }),
-      );
-      controlsColB.appendChild(
-        this.makeColorField({ key: "textColor", label: "text color" }),
-      );
-      controlsColB.appendChild(
-        this.makeRangeField({
-          key: "textSize",
-          label: "text size",
-          min: 10,
-          max: 160,
-          step: 1,
-        }),
-      );
-      controlsColB.appendChild(
-        this.makeRangeField({
-          key: "textMix",
-          label: "text mix",
-          min: 0,
-          max: 100,
-          step: 1,
-        }),
       );
 
       const textFlipRow = document.createElement("div");
@@ -654,11 +618,11 @@
       this.textFlipHBtn = document.createElement("button");
       this.textFlipHBtn.type = "button";
       this.textFlipHBtn.className = "switchToggle";
-      this.textFlipHBtn.setAttribute("aria-label", "flip text horizontal");
+      this.textFlipHBtn.setAttribute("aria-label", "flip horizontal");
       this.textFlipHBtn.setAttribute("aria-pressed", "false");
-      this.textFlipHBtn.title = "flip text horizontal: off";
+      this.textFlipHBtn.title = "flip horizontal: off";
       this.textFlipHBtn.addEventListener("click", () => {
-        this.params.textFlipH = !this.params.textFlipH;
+        this.params.videoFlipH = !this.params.videoFlipH;
         this.syncToggleButtons();
       });
       textFlipHField.appendChild(textFlipHLabel);
@@ -672,11 +636,11 @@
       this.textFlipVBtn = document.createElement("button");
       this.textFlipVBtn.type = "button";
       this.textFlipVBtn.className = "switchToggle";
-      this.textFlipVBtn.setAttribute("aria-label", "flip text vertical");
+      this.textFlipVBtn.setAttribute("aria-label", "flip vertical");
       this.textFlipVBtn.setAttribute("aria-pressed", "false");
-      this.textFlipVBtn.title = "flip text vertical: off";
+      this.textFlipVBtn.title = "flip vertical: off";
       this.textFlipVBtn.addEventListener("click", () => {
-        this.params.textFlipV = !this.params.textFlipV;
+        this.params.videoFlipV = !this.params.videoFlipV;
         this.syncToggleButtons();
       });
       textFlipVField.appendChild(textFlipVLabel);
@@ -767,20 +731,8 @@
       );
       toggleRow.appendChild(
         this.makeSwitchToggleField({
-          label: "video background",
-          button: this.logoVideoBackgroundBtn,
-        }),
-      );
-      toggleRow.appendChild(
-        this.makeSwitchToggleField({
           label: "external audio react",
           button: this.audioExternalBtn,
-        }),
-      );
-      toggleRow.appendChild(
-        this.makeSwitchToggleField({
-          label: "invert",
-          button: this.invertToggleBtn,
         }),
       );
       toggleRow.appendChild(
@@ -791,8 +743,20 @@
       );
       toggleRow.appendChild(
         this.makeSwitchToggleField({
+          label: "video background",
+          button: this.logoVideoBackgroundBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
           label: "crop",
           button: this.logoVideoCropBtn,
+        }),
+      );
+      toggleRow.appendChild(
+        this.makeSwitchToggleField({
+          label: "invert",
+          button: this.invertToggleBtn,
         }),
       );
 
@@ -1460,9 +1424,12 @@
         videoSpeed: 70,
         audioMix: 62,
         autoMix: 68,
+        videoRotate: 0,
         audioReactive: true,
         audioSource: "playback",
         invert: false,
+        videoFlipH: false,
+        videoFlipV: false,
         colorA: "#6600ff",
         colorB: "#ff0077",
         textContent: "",
@@ -1493,9 +1460,12 @@
         videoSpeed: 74,
         audioMix: 68,
         autoMix: 72,
+        videoRotate: 0,
         audioReactive: true,
         audioSource: "playback",
         invert: false,
+        videoFlipH: false,
+        videoFlipV: false,
         bgColor: "#000000",
         bgOpacity: 100,
         colorA: "#5500ff",
@@ -1598,6 +1568,11 @@
           0,
           100,
         ),
+        videoRotate: this.clampNumber(
+          Math.round(this.numberOrFallback(source.videoRotate, safeBase.videoRotate ?? 0)),
+          -180,
+          180,
+        ),
         audioReactive:
           typeof source.audioReactive === "boolean"
             ? source.audioReactive
@@ -1611,6 +1586,18 @@
           typeof source.invert === "boolean"
             ? source.invert
             : Boolean(safeBase.invert),
+        videoFlipH:
+          typeof source.videoFlipH === "boolean"
+            ? source.videoFlipH
+            : typeof source.textFlipH === "boolean"
+              ? source.textFlipH
+              : Boolean(safeBase.videoFlipH),
+        videoFlipV:
+          typeof source.videoFlipV === "boolean"
+            ? source.videoFlipV
+            : typeof source.textFlipV === "boolean"
+              ? source.textFlipV
+              : Boolean(safeBase.videoFlipV),
         bgColor: this.normalizeHexColor(source.bgColor, safeBase.bgColor || "#000000"),
         bgOpacity: this.clampNumber(
           Math.round(this.numberOrFallback(source.bgOpacity, safeBase.bgOpacity ?? 100)),
@@ -1677,20 +1664,20 @@
       if (this.textFlipHBtn) {
         this.textFlipHBtn.setAttribute(
           "aria-pressed",
-          this.params.textFlipH ? "true" : "false",
+          this.params.videoFlipH ? "true" : "false",
         );
-        this.textFlipHBtn.title = this.params.textFlipH
-          ? "flip text horizontal: on"
-          : "flip text horizontal: off";
+        this.textFlipHBtn.title = this.params.videoFlipH
+          ? "flip horizontal: on"
+          : "flip horizontal: off";
       }
       if (this.textFlipVBtn) {
         this.textFlipVBtn.setAttribute(
           "aria-pressed",
-          this.params.textFlipV ? "true" : "false",
+          this.params.videoFlipV ? "true" : "false",
         );
-        this.textFlipVBtn.title = this.params.textFlipV
-          ? "flip text vertical: on"
-          : "flip text vertical: off";
+        this.textFlipVBtn.title = this.params.videoFlipV
+          ? "flip vertical: on"
+          : "flip vertical: off";
       }
       this.syncAudioSourceStatus();
     }
@@ -2665,9 +2652,8 @@
       const audioMix = this.params.audioSource !== "off" ? this.params.audioMix / 100 : 0;
       const colorA = this.hexToRgb01(this.params.colorA, [0.24, 0.45, 0.95]);
       const colorB = this.hexToRgb01(this.params.colorB, [0.96, 0.98, 1.0]);
-      const textColor = this.hexToRgb01(this.params.textColor, [0.95, 0.92, 1.0]);
       const bgColor = this.hexToRgb01(this.params.bgColor, [0.0, 0.0, 0.0]);
-      const textEnabled = String(this.params.textContent || "").trim().length > 0;
+      const textEnabled = false;
 
       gl.uniform1f(this.uTime, timeSeconds);
       gl.uniform2f(this.uResolution, this.canvas.width, this.canvas.height);
@@ -2687,16 +2673,17 @@
       gl.uniform1f(this.uMovingGrid, this.params.movingGrid / 100);
       gl.uniform1f(this.uAudioMix, audioMix);
       gl.uniform1f(this.uAutoMix, this.params.autoMix / 100);
+      gl.uniform1f(this.uVideoRotate, (this.params.videoRotate * Math.PI) / 180);
       gl.uniform1f(this.uInvert, this.params.invert ? 1 : 0);
       gl.uniform3f(this.uBgColor, bgColor[0], bgColor[1], bgColor[2]);
       gl.uniform1f(this.uBgOpacity, this.params.bgOpacity / 100);
       gl.uniform3f(this.uColorA, colorA[0], colorA[1], colorA[2]);
       gl.uniform3f(this.uColorB, colorB[0], colorB[1], colorB[2]);
       gl.uniform1f(this.uTextEnabled, textEnabled ? 1 : 0);
-      gl.uniform1f(this.uTextMix, this.params.textMix / 100);
-      gl.uniform3f(this.uTextColor, textColor[0], textColor[1], textColor[2]);
-      gl.uniform1f(this.uTextFlipH, this.params.textFlipH ? 1 : 0);
-      gl.uniform1f(this.uTextFlipV, this.params.textFlipV ? 1 : 0);
+      gl.uniform1f(this.uTextMix, 0);
+      gl.uniform3f(this.uTextColor, 0, 0, 0);
+      gl.uniform1f(this.uTextFlipH, this.params.videoFlipH ? 1 : 0);
+      gl.uniform1f(this.uTextFlipV, this.params.videoFlipV ? 1 : 0);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.audioTexture);
@@ -2778,6 +2765,7 @@ uniform float u_artifact;
 uniform float u_movingGrid;
 uniform float u_audioMix;
 uniform float u_autoMix;
+uniform float u_videoRotate;
 uniform float u_invert;
 uniform vec3 u_bgColor;
 uniform float u_bgOpacity;
@@ -2883,6 +2871,19 @@ float patternAt(vec2 p, float signal, float t, float aspect) {
 void main() {
   vec2 uv = v_uv;
   float aspect = max(0.001, u_resolution.x / max(u_resolution.y, 1.0));
+
+  vec2 centeredUv = uv - 0.5;
+  centeredUv.x *= aspect;
+  float rotCos = cos(u_videoRotate);
+  float rotSin = sin(u_videoRotate);
+  centeredUv = mat2(rotCos, -rotSin, rotSin, rotCos) * centeredUv;
+  centeredUv.x /= aspect;
+  uv = centeredUv + 0.5;
+  uv = vec2(
+    mix(uv.x, 1.0 - uv.x, u_textFlipH),
+    mix(uv.y, 1.0 - uv.y, u_textFlipV)
+  );
+  uv = clamp(uv, 0.0, 1.0);
 
   float pix = mix(560.0, 36.0, u_pixel);
   uv = floor(uv * pix) / pix;
@@ -3057,6 +3058,7 @@ void main() {
       this.uMovingGrid = gl.getUniformLocation(program, "u_movingGrid");
       this.uAudioMix = gl.getUniformLocation(program, "u_audioMix");
       this.uAutoMix = gl.getUniformLocation(program, "u_autoMix");
+      this.uVideoRotate = gl.getUniformLocation(program, "u_videoRotate");
       this.uInvert = gl.getUniformLocation(program, "u_invert");
       this.uBgColor = gl.getUniformLocation(program, "u_bgColor");
       this.uBgOpacity = gl.getUniformLocation(program, "u_bgOpacity");

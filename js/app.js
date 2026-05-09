@@ -1036,15 +1036,20 @@
   let logoVideoBgRaf = null;
   let logoVideoBgIntervalId = null;
   let logoVideoBgLastSampleAt = 0;
+  let logoVideoBgLastSampleIntervalMs = 0;
   let logoVideoBgSampleCanvas = null;
   let logoVideoBgSampleCtx = null;
   let textVideoBgSampleCanvas = null;
   let textVideoBgSampleCtx = null;
+  let perfDebugChipEl = null;
+  let perfDebugTimerId = null;
 
   const TEXT_VIDEO_MAX_LENGTH = 56;
   const TEXT_VIDEO_DEFAULT_TEXT = "aelonyori";
-  const TEXT_VIDEO_CROP_SIZE_MIN = 15;
+  const TEXT_VIDEO_CROP_SIZE_MIN = 30;
   const TEXT_VIDEO_CROP_SIZE_MAX = 100;
+  const TEXT_VIDEO_CROP_UI_MIN = 1;
+  const TEXT_VIDEO_CROP_UI_MAX = 100;
   const TEXT_VIDEO_MAX_SAMPLE_PIXELS = 760000;
   const TEXT_VIDEO_STATE_OUTLINE = "outline";
   const TEXT_VIDEO_STATE_VIDEO = "video";
@@ -1288,6 +1293,67 @@
     }
 
     return normalized;
+  }
+
+  const NOTE_RATCHET_MIN = 1;
+  const NOTE_RATCHET_MAX = 8;
+  const NOTE_LENGTH_MIN = 1;
+  const NOTE_LENGTH_MAX = 8;
+
+  function normalizeNoteCellValueGrid(values, defaultValue, minValue, maxValue) {
+    const safeDefault = clampNumber(
+      Math.round(numberOrFallback(defaultValue, 1)),
+      minValue,
+      maxValue,
+    );
+    const out = new Array(stepsCount);
+    for (let step = 0; step < stepsCount; step += 1) {
+      const srcRow = Array.isArray(values) ? values[step] : null;
+      const row = new Array(NOTE_ROWS);
+      for (let noteRow = 0; noteRow < NOTE_ROWS; noteRow += 1) {
+        row[noteRow] = clampNumber(
+          Math.round(numberOrFallback(srcRow ? srcRow[noteRow] : safeDefault, safeDefault)),
+          minValue,
+          maxValue,
+        );
+      }
+      out[step] = row;
+    }
+    return out;
+  }
+
+  function getNoteCellValue(values, stepIndex, rowIndex, fallback = 1) {
+    const safeStep = clampNumber(
+      Math.round(numberOrFallback(stepIndex, 0)),
+      0,
+      Math.max(0, stepsCount - 1),
+    );
+    const safeRow = clampNumber(
+      Math.round(numberOrFallback(rowIndex, 0)),
+      0,
+      NOTE_ROWS - 1,
+    );
+    const row = Array.isArray(values) ? values[safeStep] : null;
+    return Math.round(numberOrFallback(row ? row[safeRow] : fallback, fallback));
+  }
+
+  function setNoteCellValue(values, stepIndex, rowIndex, nextValue, minValue, maxValue) {
+    const safeStep = clampNumber(
+      Math.round(numberOrFallback(stepIndex, 0)),
+      0,
+      Math.max(0, stepsCount - 1),
+    );
+    const safeRow = clampNumber(
+      Math.round(numberOrFallback(rowIndex, 0)),
+      0,
+      NOTE_ROWS - 1,
+    );
+    if (!Array.isArray(values) || !Array.isArray(values[safeStep])) return;
+    values[safeStep][safeRow] = clampNumber(
+      Math.round(numberOrFallback(nextValue, minValue)),
+      minValue,
+      maxValue,
+    );
   }
 
   function readIntFromSelect(selectEl, fallback) {
@@ -1711,6 +1777,69 @@
     updateSoloSuppression();
   }
 
+  function ensureTrackNoteMeta(state) {
+    if (!state || typeof state !== "object") return;
+    state.noteRatchets = normalizeNoteCellValueGrid(
+      state.noteRatchets,
+      NOTE_RATCHET_MIN,
+      NOTE_RATCHET_MIN,
+      NOTE_RATCHET_MAX,
+    );
+    state.noteLengths = normalizeNoteCellValueGrid(
+      state.noteLengths,
+      NOTE_LENGTH_MIN,
+      NOTE_LENGTH_MIN,
+      NOTE_LENGTH_MAX,
+    );
+  }
+
+  function getTrackCellRatchet(state, stepIndex, rowIndex) {
+    ensureTrackNoteMeta(state);
+    return clampNumber(
+      getNoteCellValue(state.noteRatchets, stepIndex, rowIndex, NOTE_RATCHET_MIN),
+      NOTE_RATCHET_MIN,
+      NOTE_RATCHET_MAX,
+    );
+  }
+
+  function setTrackCellRatchet(state, stepIndex, rowIndex, nextValue) {
+    ensureTrackNoteMeta(state);
+    setNoteCellValue(
+      state.noteRatchets,
+      stepIndex,
+      rowIndex,
+      nextValue,
+      NOTE_RATCHET_MIN,
+      NOTE_RATCHET_MAX,
+    );
+  }
+
+  function getTrackCellLength(state, stepIndex, rowIndex) {
+    ensureTrackNoteMeta(state);
+    return clampNumber(
+      getNoteCellValue(state.noteLengths, stepIndex, rowIndex, NOTE_LENGTH_MIN),
+      NOTE_LENGTH_MIN,
+      NOTE_LENGTH_MAX,
+    );
+  }
+
+  function setTrackCellLength(state, stepIndex, rowIndex, nextValue) {
+    ensureTrackNoteMeta(state);
+    setNoteCellValue(
+      state.noteLengths,
+      stepIndex,
+      rowIndex,
+      nextValue,
+      NOTE_LENGTH_MIN,
+      NOTE_LENGTH_MAX,
+    );
+  }
+
+  function clearTrackCellMeta(state, stepIndex, rowIndex) {
+    setTrackCellRatchet(state, stepIndex, rowIndex, NOTE_RATCHET_MIN);
+    setTrackCellLength(state, stepIndex, rowIndex, NOTE_LENGTH_MIN);
+  }
+
   function getSongObject() {
     const activeKeys = Array.from(tracksContainer.children)
       .map((el) => (el && el.dataset ? el.dataset.key : ""))
@@ -1726,6 +1855,18 @@
         sound: String(safeSound),
         pattern: normalizePattern(state.pattern),
         noteTies: normalizeNoteTies(state.noteTies, state.pattern),
+        noteRatchets: normalizeNoteCellValueGrid(
+          state.noteRatchets,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MAX,
+        ),
+        noteLengths: normalizeNoteCellValueGrid(
+          state.noteLengths,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MAX,
+        ),
         pitch: numberOrFallback(state.pitch, soundDefaults.pitch),
         tuneCents: numberOrFallback(state.tuneCents, soundDefaults.tuneCents),
         osc1Wave: normalizeOscWave(state.osc1Wave, soundDefaults.osc1Wave),
@@ -2130,6 +2271,18 @@
         noteTies: Array.isArray(entry.noteTies)
           ? entry.noteTies.slice()
           : new Array(stepsCount).fill(0),
+        noteRatchets: normalizeNoteCellValueGrid(
+          entry.noteRatchets,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MAX,
+        ),
+        noteLengths: normalizeNoteCellValueGrid(
+          entry.noteLengths,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MAX,
+        ),
         pitch: numberOrFallback(entry.pitch, soundDefaults.pitch),
         tuneCents: numberOrFallback(entry.tuneCents, soundDefaults.tuneCents),
         osc1Wave: normalizeOscWave(entry.osc1Wave, soundDefaults.osc1Wave),
@@ -2328,6 +2481,18 @@
         sound: defaultSound,
         pattern: new Array(stepsCount).fill(0),
         noteTies: new Array(stepsCount).fill(0),
+        noteRatchets: normalizeNoteCellValueGrid(
+          null,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MAX,
+        ),
+        noteLengths: normalizeNoteCellValueGrid(
+          null,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MAX,
+        ),
         pitch: soundDefaults.pitch,
         tuneCents: soundDefaults.tuneCents,
         osc1Wave: soundDefaults.osc1Wave,
@@ -2364,6 +2529,7 @@
     const soundDefaults = getSoundDefaultsForSound(state.sound);
     state.pattern = normalizePattern(state.pattern);
     state.noteTies = normalizeNoteTies(state.noteTies, state.pattern);
+    ensureTrackNoteMeta(state);
     state.pitch = clampNumber(
       numberOrFallback(state.pitch, soundDefaults.pitch),
       PITCH_MIN,
@@ -2946,8 +3112,8 @@
     );
     logoVideoCropSize = clampNumber(
       Math.round(numberOrFallback(nextSize, logoVideoCropSize)),
-      30,
-      100,
+      TEXT_VIDEO_CROP_SIZE_MIN,
+      TEXT_VIDEO_CROP_SIZE_MAX,
     );
 
     emitLogoVideoState();
@@ -3136,7 +3302,11 @@
     }
 
     const sizeRatio =
-      clampNumber(numberOrFallback(logoVideoCropSize, 88), 30, 100) / 100;
+      clampNumber(
+        numberOrFallback(logoVideoCropSize, 88),
+        TEXT_VIDEO_CROP_SIZE_MIN,
+        TEXT_VIDEO_CROP_SIZE_MAX,
+      ) / 100;
     const sw = Math.max(1, maxCropW * sizeRatio);
     const sh = Math.max(1, maxCropH * sizeRatio);
     const sx = (sourceW - sw)
@@ -3243,6 +3413,51 @@
       window.clearInterval(logoVideoBgIntervalId);
       logoVideoBgIntervalId = null;
     }
+    logoVideoBgLastSampleIntervalMs = 0;
+    updatePerfDebugChip();
+  }
+
+  function ensurePerfDebugChip() {
+    if (perfDebugChipEl) return perfDebugChipEl;
+    const el = document.createElement("div");
+    el.className = "perfDebugChip";
+    el.setAttribute("aria-hidden", "true");
+    el.hidden = true;
+    document.body.appendChild(el);
+    perfDebugChipEl = el;
+    return perfDebugChipEl;
+  }
+
+  function getPerfViewLabel() {
+    if (isTextVideoViewOpen()) return "text";
+    if (isVideoSynthViewOpen()) return "video";
+    if (isSamplerViewOpen()) return "sampler";
+    return "daw";
+  }
+
+  function updatePerfDebugChip() {
+    const el = ensurePerfDebugChip();
+    const shouldShow =
+      isTextVideoViewOpen() || isVideoSynthViewOpen() || logoVideoBackgroundEnabled;
+    el.hidden = !shouldShow;
+    if (!shouldShow) return;
+
+    const now = Date.now();
+    const lastAge = logoVideoBgLastSampleAt
+      ? Math.max(0, Math.round(now - logoVideoBgLastSampleAt))
+      : -1;
+    const synthActive = Boolean(videoSynthPlugin && videoSynthPlugin.active);
+    const loopState = logoVideoBgRaf != null ? "raf" : "off";
+    const interval = logoVideoBgLastSampleIntervalMs || 0;
+    const ageText = lastAge >= 0 ? `${lastAge}ms` : "--";
+
+    el.textContent = `perf ${getPerfViewLabel()} | synth:${synthActive ? "on" : "off"} | logo:${logoVideoBackgroundEnabled ? "on" : "off"} | loop:${loopState} | interval:${interval}ms | age:${ageText}`;
+  }
+
+  function startPerfDebugChipLoop() {
+    if (perfDebugTimerId != null) return;
+    perfDebugTimerId = window.setInterval(updatePerfDebugChip, 500);
+    updatePerfDebugChip();
   }
 
   function runLogoVideoPaletteLoop() {
@@ -3257,13 +3472,16 @@
       if (!logoVideoBackgroundEnabled) return;
       const now = Number.isFinite(ts) ? ts : Date.now();
       const sampleIntervalMs = isTextVideoViewOpen() ? 60 : 42;
+      logoVideoBgLastSampleIntervalMs = sampleIntervalMs;
       if (now - logoVideoBgLastSampleAt >= sampleIntervalMs) {
         logoVideoBgLastSampleAt = now;
         sampleLogoVideoPalette();
+        updatePerfDebugChip();
       }
       logoVideoBgRaf = window.requestAnimationFrame(tick);
     };
     logoVideoBgRaf = window.requestAnimationFrame(tick);
+    updatePerfDebugChip();
   }
 
   function setLogoVideoBackgroundEnabled(nextEnabled, options = {}) {
@@ -3302,6 +3520,7 @@
 
     emitLogoVideoState();
     syncLogoVideoBackgroundAvailability();
+    updatePerfDebugChip();
   }
 
   function syncLogoVideoBackgroundAvailability() {
@@ -3879,6 +4098,7 @@
     syncTextVideoFullscreenButton();
     fitTextVideoWordToStage();
     updateDawVisibility();
+    updatePerfDebugChip();
   }
 
   function setSamplerViewOpen(nextOpen) {
@@ -3916,6 +4136,7 @@
     } else {
       document.dispatchEvent(new CustomEvent("sampler:view-close"));
     }
+    updatePerfDebugChip();
   }
 
   function isSamplerViewOpen() {
@@ -3969,6 +4190,7 @@
       document.dispatchEvent(new CustomEvent("video-synth:view-close"));
       if (isPlaying) startTransportRaf();
     }
+    updatePerfDebugChip();
   }
 
   function isVideoSynthViewOpen() {
@@ -5810,6 +6032,7 @@
     const state = getOrInitState(track.key);
     const pattern = normalizePattern(state.pattern);
     const ties = normalizeNoteTies(state.noteTies, pattern);
+    ensureTrackNoteMeta(state);
 
     const byRow = Array.isArray(track.stepButtonsByRow)
       ? track.stepButtonsByRow
@@ -5831,6 +6054,37 @@
         btn.classList.toggle("is-on", on);
         btn.classList.toggle("is-tied", tied);
         btn.classList.toggle("is-current", isPlaying && i === uiStep);
+        const ratchet = on ? getTrackCellRatchet(state, i, row) : NOTE_RATCHET_MIN;
+        const length = on ? getTrackCellLength(state, i, row) : NOTE_LENGTH_MIN;
+        const showRatchet = on && ratchet > NOTE_RATCHET_MIN;
+        const showLength = on && length > NOTE_LENGTH_MIN;
+        btn.classList.toggle("has-ratchet", showRatchet);
+        btn.classList.toggle("has-length", showLength);
+
+        let ratchetBadge = btn.querySelector(".stepRatchetBadge");
+        if (showRatchet) {
+          if (!ratchetBadge) {
+            ratchetBadge = document.createElement("span");
+            ratchetBadge.className = "stepRatchetBadge";
+            btn.append(ratchetBadge);
+          }
+          ratchetBadge.textContent = String(ratchet);
+        } else if (ratchetBadge) {
+          ratchetBadge.remove();
+        }
+
+        let lengthBadge = btn.querySelector(".stepLengthBadge");
+        if (showLength) {
+          if (!lengthBadge) {
+            lengthBadge = document.createElement("span");
+            lengthBadge.className = "stepLengthBadge";
+            btn.append(lengthBadge);
+          }
+          lengthBadge.textContent = `L${length}`;
+        } else if (lengthBadge) {
+          lengthBadge.remove();
+        }
+
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       }
     }
@@ -5901,6 +6155,7 @@
     for (const state of states.values()) {
       state.pattern = normalizePattern(state.pattern);
       state.noteTies = normalizeNoteTies(state.noteTies, state.pattern);
+      ensureTrackNoteMeta(state);
     }
     for (const track of tracks.values()) {
       buildGrid(track);
@@ -6303,6 +6558,20 @@
     soloBtn.className = "btn btn-toggle";
     soloBtn.dataset.action = "solo";
     soloBtn.textContent = "solo";
+
+    const ratchetEditBtn = document.createElement("button");
+    ratchetEditBtn.type = "button";
+    ratchetEditBtn.className = "btn btn-toggle trackEditModeBtn";
+    ratchetEditBtn.dataset.action = "ratchet-edit";
+    ratchetEditBtn.textContent = "ratchet edit";
+    ratchetEditBtn.setAttribute("aria-pressed", "false");
+
+    const lengthEditBtn = document.createElement("button");
+    lengthEditBtn.type = "button";
+    lengthEditBtn.className = "btn btn-toggle trackEditModeBtn";
+    lengthEditBtn.dataset.action = "length-edit";
+    lengthEditBtn.textContent = "length edit";
+    lengthEditBtn.setAttribute("aria-pressed", "false");
 
     const collapseBtn = document.createElement("button");
     collapseBtn.type = "button";
@@ -6771,6 +7040,8 @@
     actionControls.appendChild(notesToggleBtn);
     actionControls.appendChild(muteBtn);
     actionControls.appendChild(soloBtn);
+    actionControls.appendChild(ratchetEditBtn);
+    actionControls.appendChild(lengthEditBtn);
     actionControls.appendChild(actionRight);
 
     mainControls.appendChild(volumeRow);
@@ -6872,6 +7143,8 @@
       el,
       muteBtn,
       soloBtn,
+      ratchetEditBtn,
+      lengthEditBtn,
       collapseBtn,
       notesToggleBtn,
       clearBtn,
@@ -6969,11 +7242,35 @@
       rollPaintStretchAnchorStep: null,
       rollPaintStretchSourceStart: null,
       rollPaintStretchSourceEnd: null,
+      editMode: "none",
       noteLabelEls: [],
       stepButtonsByRow: [],
       grid,
       stepButtons: [],
     };
+
+    const setTrackEditMode = (mode) => {
+      const nextMode = mode === "ratchet" || mode === "length" ? mode : "none";
+      track.editMode = nextMode;
+      el.classList.toggle("is-ratchet-edit-mode", nextMode === "ratchet");
+      el.classList.toggle("is-length-edit-mode", nextMode === "length");
+      ratchetEditBtn.setAttribute(
+        "aria-pressed",
+        nextMode === "ratchet" ? "true" : "false",
+      );
+      lengthEditBtn.setAttribute(
+        "aria-pressed",
+        nextMode === "length" ? "true" : "false",
+      );
+    };
+
+    ratchetEditBtn.addEventListener("click", () => {
+      setTrackEditMode(track.editMode === "ratchet" ? "none" : "ratchet");
+    });
+
+    lengthEditBtn.addEventListener("click", () => {
+      setTrackEditMode(track.editMode === "length" ? "none" : "length");
+    });
 
     track.previewRollRow = (row, event) => {
       if (!Number.isFinite(row)) return;
@@ -7099,11 +7396,46 @@
 
       if (nextMode === "single") {
         const normalized = normalizePattern(s.pattern);
+        const ratchets = normalizeNoteCellValueGrid(
+          s.noteRatchets,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MIN,
+          NOTE_RATCHET_MAX,
+        );
+        const lengths = normalizeNoteCellValueGrid(
+          s.noteLengths,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MIN,
+          NOTE_LENGTH_MAX,
+        );
         s.pattern = normalized.map((m) =>
           clampNumber(Math.round(numberOrFallback(m, 0)), 0, NOTE_MASK_ALL)
             ? 1
             : 0,
         );
+        for (let step = 0; step < stepsCount; step += 1) {
+          const mask = clampNumber(
+            Math.round(numberOrFallback(normalized[step], 0)),
+            0,
+            NOTE_MASK_ALL,
+          );
+          let nextRatchet = NOTE_RATCHET_MIN;
+          let nextLength = NOTE_LENGTH_MIN;
+          for (let row = 0; row < NOTE_ROWS; row += 1) {
+            const bit = 1 << row;
+            if ((mask & bit) === 0) continue;
+            nextRatchet = Math.max(nextRatchet, ratchets[step][row]);
+            nextLength = Math.max(nextLength, lengths[step][row]);
+          }
+          ratchets[step][0] = nextRatchet;
+          lengths[step][0] = nextLength;
+          for (let row = 1; row < NOTE_ROWS; row += 1) {
+            ratchets[step][row] = NOTE_RATCHET_MIN;
+            lengths[step][row] = NOTE_LENGTH_MIN;
+          }
+        }
+        s.noteRatchets = ratchets;
+        s.noteLengths = lengths;
       }
 
       s.noteTies = normalizeNoteTies(s.noteTies, s.pattern);
@@ -7210,6 +7542,7 @@
         const next = prev & ~bit;
         if (next === prev) return;
         s.pattern[stepIndex] = next;
+        clearTrackCellMeta(s, stepIndex, rowIndex);
         ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
         if (stepIndex + 1 < ties.length) {
           ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
@@ -7245,11 +7578,43 @@
       const bit = 1 << rowIndex;
       const next = prev ^ bit;
       s.pattern[stepIndex] = next;
+      if ((next & bit) === 0) {
+        clearTrackCellMeta(s, stepIndex, rowIndex);
+      }
       ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
       if (stepIndex + 1 < ties.length) {
         ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
       }
       s.noteTies = normalizeNoteTies(ties, s.pattern);
+      renderTrackGrid(track);
+    };
+
+    const applyStepEditMode = (btn, editMode) => {
+      if (!btn || (editMode !== "ratchet" && editMode !== "length")) return;
+      const stepIndex = Number(btn.dataset.step);
+      const rowIndex = Number(btn.dataset.row);
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return;
+
+      const s = getOrInitState(key);
+      s.pattern = normalizePattern(s.pattern);
+      const mask = clampNumber(
+        Math.round(numberOrFallback(s.pattern[stepIndex], 0)),
+        0,
+        NOTE_MASK_ALL,
+      );
+      const bit = 1 << rowIndex;
+      if ((mask & bit) === 0) return;
+
+      if (editMode === "ratchet") {
+        const current = getTrackCellRatchet(s, stepIndex, rowIndex);
+        const next = current >= NOTE_RATCHET_MAX ? NOTE_RATCHET_MIN : current + 1;
+        setTrackCellRatchet(s, stepIndex, rowIndex, next);
+      } else {
+        const current = getTrackCellLength(s, stepIndex, rowIndex);
+        const next = current >= NOTE_LENGTH_MAX ? NOTE_LENGTH_MIN : current + 1;
+        setTrackCellLength(s, stepIndex, rowIndex, next);
+      }
+
       renderTrackGrid(track);
     };
 
@@ -7496,7 +7861,11 @@
           track.rollPaintStartStep,
           track.rollPaintStartRow,
         );
-        toggleStepButton(startBtn);
+        if (track.editMode === "ratchet" || track.editMode === "length") {
+          applyStepEditMode(startBtn, track.editMode);
+        } else {
+          toggleStepButton(startBtn);
+        }
       }
 
       track.rollPaintActive = false;
@@ -7533,6 +7902,10 @@
       if (!target) return;
       const btn = target.closest("button.step");
       if (!btn) return;
+      if (track.editMode === "ratchet" || track.editMode === "length") {
+        applyStepEditMode(btn, track.editMode);
+        return;
+      }
       toggleStepButton(btn);
     });
 
@@ -7571,6 +7944,18 @@
       );
       s.pattern = new Array(nextLen).fill(0);
       s.noteTies = new Array(nextLen).fill(0);
+      s.noteRatchets = normalizeNoteCellValueGrid(
+        null,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      s.noteLengths = normalizeNoteCellValueGrid(
+        null,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
       renderTrackGrid(track);
     });
 
@@ -8418,6 +8803,7 @@
       };
       const stack = getDualOscParams(state);
       const ties = normalizeNoteTies(state.noteTies, state.pattern);
+      ensureTrackNoteMeta(state);
 
       const getMaskAt = (index) =>
         clampNumber(
@@ -8446,32 +8832,52 @@
         return len;
       };
 
+      const scheduleVoice = (row, atTime, duration) => {
+        const rowMidi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
+        const pitchWithTune = clampNumber(
+          rowMidi + tuneCents / 100,
+          PITCH_MIN,
+          PITCH_MAX,
+        );
+        const effectiveMidi = effectiveMidiForSound(state.sound, pitchWithTune);
+        const frequency = midiToFrequency(effectiveMidi);
+        triggerSound(state.sound, atTime, {
+          duration,
+          frequency,
+          pitch: pitchWithTune,
+          volume: volume01,
+          pan: pan01,
+          env,
+          stack,
+        });
+      };
+
+      const scheduleCell = (row, baseDuration) => {
+        const ratchetCount = getTrackCellRatchet(state, stepIndex, row);
+        const lengthMult = getTrackCellLength(state, stepIndex, row);
+        const duration = baseDuration * lengthMult;
+
+        if (ratchetCount <= 1) {
+          scheduleVoice(row, noteTime, duration);
+          return;
+        }
+
+        const subdivision = stepDuration / ratchetCount;
+        for (let hit = 0; hit < ratchetCount; hit += 1) {
+          const hitTimeRaw = noteTime + hit * subdivision;
+          if (hitTimeRaw < audio.currentTime - 0.01) continue;
+          const hitTime = Math.max(hitTimeRaw, audio.currentTime + 0.001);
+          scheduleVoice(row, hitTime, duration);
+        }
+      };
+
       if (audible) {
         if (state.seqMode !== "roll") {
           if (holdNotes && getTieAt(stepIndex) !== 0) {
             continue;
           }
           const duration = stepDuration * (holdNotes ? getRunLength(stepIndex) : 1);
-          const rowMidi = clampNumber(basePitch, PITCH_MIN, PITCH_MAX);
-          const pitchWithTune = clampNumber(
-            rowMidi + tuneCents / 100,
-            PITCH_MIN,
-            PITCH_MAX,
-          );
-          const effectiveMidi = effectiveMidiForSound(
-            state.sound,
-            pitchWithTune,
-          );
-          const frequency = midiToFrequency(effectiveMidi);
-          triggerSound(state.sound, noteTime, {
-            duration,
-            frequency,
-            pitch: pitchWithTune,
-            volume: volume01,
-            pan: pan01,
-            env,
-            stack,
-          });
+          scheduleCell(0, duration);
         } else {
           for (let row = 0; row < NOTE_ROWS; row += 1) {
             const rowBit = 1 << row;
@@ -8480,26 +8886,7 @@
               continue;
             }
             const duration = stepDuration * (holdNotes ? getRunLength(stepIndex, rowBit) : 1);
-            const rowMidi = clampNumber(basePitch + row, PITCH_MIN, PITCH_MAX);
-            const pitchWithTune = clampNumber(
-              rowMidi + tuneCents / 100,
-              PITCH_MIN,
-              PITCH_MAX,
-            );
-            const effectiveMidi = effectiveMidiForSound(
-              state.sound,
-              pitchWithTune,
-            );
-            const frequency = midiToFrequency(effectiveMidi);
-            triggerSound(state.sound, noteTime, {
-              duration,
-              frequency,
-              pitch: pitchWithTune,
-              volume: volume01,
-              pan: pan01,
-              env,
-              stack,
-            });
+            scheduleCell(row, duration);
           }
         }
       }
@@ -8960,6 +9347,7 @@
       TEXT_VIDEO_CROP_SIZE_MIN,
       TEXT_VIDEO_CROP_SIZE_MAX,
     );
+    const uiSize = mapTextVideoCropSizeToUi(size);
     const x = clampNumber(
       Math.round(numberOrFallback(logoVideoCropX, 50)),
       0,
@@ -8971,12 +9359,50 @@
       100,
     );
 
-    if (textVideoVideoScaleInput) textVideoVideoScaleInput.value = String(size);
-    if (textVideoVideoScaleOut) textVideoVideoScaleOut.value = String(size);
+    if (textVideoVideoScaleInput) textVideoVideoScaleInput.value = String(uiSize);
+    if (textVideoVideoScaleOut) textVideoVideoScaleOut.value = String(uiSize);
     if (textVideoVideoXInput) textVideoVideoXInput.value = String(x);
     if (textVideoVideoXOut) textVideoVideoXOut.value = String(x);
     if (textVideoVideoYInput) textVideoVideoYInput.value = String(y);
     if (textVideoVideoYOut) textVideoVideoYOut.value = String(y);
+  }
+
+  function mapTextVideoUiScaleToCropSize(rawUiValue) {
+    const uiValue = clampNumber(
+      Math.round(numberOrFallback(rawUiValue, TEXT_VIDEO_CROP_UI_MAX)),
+      TEXT_VIDEO_CROP_UI_MIN,
+      TEXT_VIDEO_CROP_UI_MAX,
+    );
+    const uiRange = TEXT_VIDEO_CROP_UI_MAX - TEXT_VIDEO_CROP_UI_MIN;
+    if (uiRange <= 0) return TEXT_VIDEO_CROP_SIZE_MAX;
+    const ratio = (uiValue - TEXT_VIDEO_CROP_UI_MIN) / uiRange;
+    return clampNumber(
+      Math.round(
+        TEXT_VIDEO_CROP_SIZE_MIN
+          + ratio * (TEXT_VIDEO_CROP_SIZE_MAX - TEXT_VIDEO_CROP_SIZE_MIN),
+      ),
+      TEXT_VIDEO_CROP_SIZE_MIN,
+      TEXT_VIDEO_CROP_SIZE_MAX,
+    );
+  }
+
+  function mapTextVideoCropSizeToUi(rawCropSize) {
+    const cropSize = clampNumber(
+      Math.round(numberOrFallback(rawCropSize, TEXT_VIDEO_CROP_SIZE_MAX)),
+      TEXT_VIDEO_CROP_SIZE_MIN,
+      TEXT_VIDEO_CROP_SIZE_MAX,
+    );
+    const cropRange = TEXT_VIDEO_CROP_SIZE_MAX - TEXT_VIDEO_CROP_SIZE_MIN;
+    if (cropRange <= 0) return TEXT_VIDEO_CROP_UI_MAX;
+    const ratio = (cropSize - TEXT_VIDEO_CROP_SIZE_MIN) / cropRange;
+    return clampNumber(
+      Math.round(
+        TEXT_VIDEO_CROP_UI_MIN
+          + ratio * (TEXT_VIDEO_CROP_UI_MAX - TEXT_VIDEO_CROP_UI_MIN),
+      ),
+      TEXT_VIDEO_CROP_UI_MIN,
+      TEXT_VIDEO_CROP_UI_MAX,
+    );
   }
 
   function setTextVideoInset(side, rawValue) {
@@ -9235,22 +9661,14 @@
       blurTextVideoInputForSliderInteraction();
     });
     textVideoVideoScaleInput.addEventListener("input", () => {
-      const size = clampNumber(
-        Math.round(numberOrFallback(textVideoVideoScaleInput.value, logoVideoCropSize)),
-        TEXT_VIDEO_CROP_SIZE_MIN,
-        TEXT_VIDEO_CROP_SIZE_MAX,
-      );
+      const size = mapTextVideoUiScaleToCropSize(textVideoVideoScaleInput.value);
       setLogoVideoCrop(logoVideoCropX, logoVideoCropY, size);
     });
   }
   if (textVideoVideoScaleOut) {
     textVideoVideoScaleOut.addEventListener("input", () => {
       if (textVideoVideoScaleOut.value === "") return;
-      const size = clampNumber(
-        Math.round(numberOrFallback(textVideoVideoScaleOut.value, logoVideoCropSize)),
-        TEXT_VIDEO_CROP_SIZE_MIN,
-        TEXT_VIDEO_CROP_SIZE_MAX,
-      );
+      const size = mapTextVideoUiScaleToCropSize(textVideoVideoScaleOut.value);
       setLogoVideoCrop(logoVideoCropX, logoVideoCropY, size);
     });
   }
@@ -10678,8 +11096,22 @@
       const state = getOrInitState(track.key);
       const pattern = normalizePattern(state.pattern).slice();
       const ties = normalizeNoteTies(state.noteTies, pattern).slice();
+      const ratchets = normalizeNoteCellValueGrid(
+        state.noteRatchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      const lengths = normalizeNoteCellValueGrid(
+        state.noteLengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
       const segment = pattern.slice(start, end + 1);
       const tieSegment = ties.slice(start, end + 1);
+      const ratchetSegment = ratchets.slice(start, end + 1).map((row) => row.slice());
+      const lengthSegment = lengths.slice(start, end + 1).map((row) => row.slice());
       for (let i = 0; i < len; i += 1) {
         const targetIndex = insertAt + i;
         if (targetIndex >= stepsCount) break;
@@ -10693,9 +11125,27 @@
           0,
           NOTE_MASK_ALL,
         );
+        ratchets[targetIndex] = Array.isArray(ratchetSegment[i])
+          ? ratchetSegment[i].slice(0, NOTE_ROWS)
+          : new Array(NOTE_ROWS).fill(NOTE_RATCHET_MIN);
+        lengths[targetIndex] = Array.isArray(lengthSegment[i])
+          ? lengthSegment[i].slice(0, NOTE_ROWS)
+          : new Array(NOTE_ROWS).fill(NOTE_LENGTH_MIN);
       }
       state.pattern = pattern;
       state.noteTies = normalizeNoteTies(ties, pattern);
+      state.noteRatchets = normalizeNoteCellValueGrid(
+        ratchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      state.noteLengths = normalizeNoteCellValueGrid(
+        lengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
       renderTrackGrid(track);
     }
   }
@@ -10712,7 +11162,19 @@
       const state = getOrInitState(track.key);
       const pattern = normalizePattern(state.pattern);
       const noteTies = normalizeNoteTies(state.noteTies, pattern);
-      snapshots.set(track.key, { pattern, noteTies });
+      const noteRatchets = normalizeNoteCellValueGrid(
+        state.noteRatchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      const noteLengths = normalizeNoteCellValueGrid(
+        state.noteLengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
+      snapshots.set(track.key, { pattern, noteTies, noteRatchets, noteLengths });
     }
 
     applyStepsCount(nextSteps);
@@ -10722,15 +11184,47 @@
       const noteTies = snapshot.noteTies;
       const segment = pattern.slice(start, end + 1);
       const tieSegment = noteTies.slice(start, end + 1);
+      const ratchetSegment = snapshot.noteRatchets
+        .slice(start, end + 1)
+        .map((row) => row.slice());
+      const lengthSegment = snapshot.noteLengths
+        .slice(start, end + 1)
+        .map((row) => row.slice());
       const prefix = pattern.slice(0, end + 1);
       const tiePrefix = noteTies.slice(0, end + 1);
+      const ratchetPrefix = snapshot.noteRatchets
+        .slice(0, end + 1)
+        .map((row) => row.slice());
+      const lengthPrefix = snapshot.noteLengths
+        .slice(0, end + 1)
+        .map((row) => row.slice());
       const suffix = pattern.slice(end + 1);
       const tieSuffix = noteTies.slice(end + 1);
+      const ratchetSuffix = snapshot.noteRatchets
+        .slice(end + 1)
+        .map((row) => row.slice());
+      const lengthSuffix = snapshot.noteLengths
+        .slice(end + 1)
+        .map((row) => row.slice());
       const nextPattern = prefix.concat(segment, suffix);
       const nextTies = tiePrefix.concat(tieSegment, tieSuffix);
+      const nextRatchets = ratchetPrefix.concat(ratchetSegment, ratchetSuffix);
+      const nextLengths = lengthPrefix.concat(lengthSegment, lengthSuffix);
       const state = getOrInitState(key);
       state.pattern = normalizePattern(nextPattern);
       state.noteTies = normalizeNoteTies(nextTies, state.pattern);
+      state.noteRatchets = normalizeNoteCellValueGrid(
+        nextRatchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      state.noteLengths = normalizeNoteCellValueGrid(
+        nextLengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
     }
 
     renderAllTrackGrids();
@@ -10743,9 +11237,37 @@
       const state = getOrInitState(track.key);
       const pattern = normalizePattern(state.pattern).slice();
       const ties = normalizeNoteTies(state.noteTies, pattern).slice();
+      const ratchets = normalizeNoteCellValueGrid(
+        state.noteRatchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      const lengths = normalizeNoteCellValueGrid(
+        state.noteLengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
       for (let i = start; i <= end; i += 1) pattern[i] = 0;
+      for (let i = start; i <= end; i += 1) {
+        ratchets[i] = new Array(NOTE_ROWS).fill(NOTE_RATCHET_MIN);
+        lengths[i] = new Array(NOTE_ROWS).fill(NOTE_LENGTH_MIN);
+      }
       state.pattern = pattern;
       state.noteTies = normalizeNoteTies(ties, pattern);
+      state.noteRatchets = normalizeNoteCellValueGrid(
+        ratchets,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MIN,
+        NOTE_RATCHET_MAX,
+      );
+      state.noteLengths = normalizeNoteCellValueGrid(
+        lengths,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MIN,
+        NOTE_LENGTH_MAX,
+      );
       renderTrackGrid(track);
     }
   }
@@ -11106,6 +11628,8 @@
 
   populateRangeSelects({ oldSteps: stepsCount });
   updateRangeButtons();
+  startPerfDebugChipLoop();
+  updatePerfDebugChip();
 
   refreshPresetSelect();
 })();
