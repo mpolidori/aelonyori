@@ -85,16 +85,40 @@
     isAndroidChrome,
   );
 
-  const letters = Array.from(document.querySelectorAll(".logo .letter"));
+  const letters = Array.from(document.querySelectorAll("#mainLogo .letter"));
   const daw = document.getElementById("daw");
   const tracksContainer = document.getElementById("tracks");
 
   const themeStarBtn = document.getElementById("themeStarBtn");
   const navToVideoSynthBtn = document.getElementById("navToVideoSynthBtn");
+  const navToTextVideoBtn = document.getElementById("navToTextVideoBtn");
+  const navToVideoFromTextBtn = document.getElementById("navToVideoFromTextBtn");
   const navToSamplerBtn = document.getElementById("navToSamplerBtn");
   const navToDawBtn = document.getElementById("navToDawBtn");
   const navToDawFromVideoBtn = document.getElementById("navToDawFromVideoBtn");
   const videoSynthRoot = document.getElementById("videoSynthRoot");
+  const textVideoRoot = document.getElementById("textVideoRoot");
+  const textVideoStage = document.getElementById("textVideoStage");
+  const textVideoInterior = document.getElementById("textVideoInterior");
+  const textVideoWord = document.getElementById("textVideoWord");
+  const textVideoInput = document.getElementById("textVideoInput");
+  const textVideoCount = document.getElementById("textVideoCount");
+  const textVideoResetBtn = document.getElementById("textVideoResetBtn");
+  const textVideoFullscreenBtn = document.getElementById("textVideoFullscreenBtn");
+  const textVideoPadTopInput = document.getElementById("textVideoPadTop");
+  const textVideoPadTopOut = document.getElementById("textVideoPadTopOut");
+  const textVideoPadBottomInput = document.getElementById("textVideoPadBottom");
+  const textVideoPadBottomOut = document.getElementById("textVideoPadBottomOut");
+  const textVideoPadLeftInput = document.getElementById("textVideoPadLeft");
+  const textVideoPadLeftOut = document.getElementById("textVideoPadLeftOut");
+  const textVideoPadRightInput = document.getElementById("textVideoPadRight");
+  const textVideoPadRightOut = document.getElementById("textVideoPadRightOut");
+  const textVideoVideoScaleInput = document.getElementById("textVideoVideoScale");
+  const textVideoVideoScaleOut = document.getElementById("textVideoVideoScaleOut");
+  const textVideoVideoXInput = document.getElementById("textVideoVideoX");
+  const textVideoVideoXOut = document.getElementById("textVideoVideoXOut");
+  const textVideoVideoYInput = document.getElementById("textVideoVideoY");
+  const textVideoVideoYOut = document.getElementById("textVideoVideoYOut");
   const samplePadWrap = document.getElementById("samplePadWrap");
   const samplePadGrid = document.getElementById("samplePadGrid");
   const samplePadRollWrap = document.getElementById("samplePadRollWrap");
@@ -145,6 +169,9 @@
   );
   const logoVideoBackgroundToggleBtn = document.getElementById(
     "logoVideoBackgroundToggleBtn",
+  );
+  const logoVideoBackgroundRow = document.getElementById(
+    "logoVideoBackgroundRow",
   );
   const bumpToggleBtn = document.getElementById("bumpToggleBtn");
   const starBounceToggleBtn = document.getElementById("starBounceToggleBtn");
@@ -1011,6 +1038,22 @@
   let logoVideoBgLastSampleAt = 0;
   let logoVideoBgSampleCanvas = null;
   let logoVideoBgSampleCtx = null;
+  let textVideoBgSampleCanvas = null;
+  let textVideoBgSampleCtx = null;
+
+  const TEXT_VIDEO_MAX_LENGTH = 56;
+  const TEXT_VIDEO_DEFAULT_TEXT = "aelonyori";
+  const TEXT_VIDEO_CROP_SIZE_MIN = 15;
+  const TEXT_VIDEO_CROP_SIZE_MAX = 100;
+  const TEXT_VIDEO_MAX_SAMPLE_PIXELS = 760000;
+  const TEXT_VIDEO_STATE_OUTLINE = "outline";
+  const TEXT_VIDEO_STATE_VIDEO = "video";
+  const TEXT_VIDEO_STATE_TEXT = "text";
+  let textVideoValue = TEXT_VIDEO_DEFAULT_TEXT;
+  let textVideoPadTop = 0;
+  let textVideoPadBottom = 0;
+  let textVideoPadLeft = 0;
+  let textVideoPadRight = 0;
   const samplePadHoldStates = new Map();
   let themeColorThrottleTimerId = null;
   let queuedThemeColorA = null;
@@ -1994,7 +2037,6 @@
       nextLogoVideoCropY,
       nextLogoVideoCropSize,
     );
-    setLogoVideoBackgroundEnabled(nextLogoVideoBackgroundEnabled);
 
     const nextStarBounceEnabled =
       typeof ui.starBounceEnabled === "boolean"
@@ -2021,6 +2063,7 @@
           ? ui.darkMode
           : INITIAL_UI.themeEnabled;
     setThemeEnabled(nextThemeEnabled);
+    setLogoVideoBackgroundEnabled(nextLogoVideoBackgroundEnabled);
 
     const nextBumpEnabled =
       typeof ui.bumpEnabled === "boolean"
@@ -2217,7 +2260,6 @@
       INITIAL_UI.logoVideoCropY,
       INITIAL_UI.logoVideoCropSize,
     );
-    setLogoVideoBackgroundEnabled(INITIAL_UI.logoVideoBackgroundEnabled);
     setStarBounceEnabled(INITIAL_UI.starBounceEnabled);
     setStarBounceAlwaysEnabled(INITIAL_UI.starBounceAlwaysEnabled);
     setBumpHeight(INITIAL_UI.bumpHeight);
@@ -2227,6 +2269,7 @@
 
     setThemeColors(INITIAL_UI.themeA, INITIAL_UI.themeB);
     setThemeEnabled(INITIAL_UI.themeEnabled);
+    setLogoVideoBackgroundEnabled(INITIAL_UI.logoVideoBackgroundEnabled);
 
     setAutosaveInterval(INITIAL_UI.autosaveIntervalMinutes);
     setAutosaveEnabled(INITIAL_UI.autosaveEnabled);
@@ -2908,11 +2951,15 @@
     );
 
     emitLogoVideoState();
+    syncTextVideoCropControls();
 
     if (logoVideoBackgroundEnabled) {
       logoVideoBgLastSampleAt = 0;
       sampleLogoVideoPalette();
     }
+  }
+
+  function clearTextVideoFrameObjectUrl() {
   }
 
   function resetLogoVideoPalette() {
@@ -2931,6 +2978,21 @@
       btn.style.removeProperty("background-size");
       btn.style.removeProperty("background-position");
     }
+
+    const textLetters = getTextVideoLetters();
+    if (textVideoWord instanceof HTMLElement) {
+      textVideoWord.style.removeProperty("--logo-video-frame");
+    }
+    for (const btn of textLetters) {
+      btn.style.removeProperty("color");
+      btn.style.removeProperty("text-shadow");
+      btn.style.removeProperty("-webkit-text-fill-color");
+      btn.style.removeProperty("-webkit-background-clip");
+      btn.style.removeProperty("background-clip");
+      btn.style.removeProperty("background-size");
+      btn.style.removeProperty("background-position");
+    }
+
     applyLetterHitAccentPalette();
   }
 
@@ -3004,6 +3066,31 @@
     return `#${rr}${gg}${bb}`;
   }
 
+  function applyVideoFrameToWord(wordEl, wordLetters, dataUrl) {
+    if (!(wordEl instanceof HTMLElement)) return;
+    if (!Array.isArray(wordLetters) || wordLetters.length === 0) return;
+
+    const wordRect = wordEl.getBoundingClientRect();
+    const wordW = Math.round(wordRect.width);
+    const wordH = Math.round(wordRect.height);
+    if (wordW <= 0 || wordH <= 0) return;
+
+    wordEl.style.setProperty("--logo-video-frame", `url("${dataUrl}")`);
+
+    for (const btn of wordLetters) {
+      const btnRect = btn.getBoundingClientRect();
+      const offsetX = btnRect.left - wordRect.left;
+      const offsetY = btnRect.top - wordRect.top;
+      btn.style.setProperty("-webkit-background-clip", "text");
+      btn.style.setProperty("background-clip", "text");
+      btn.style.setProperty("background-size", `${wordW}px ${wordH}px`);
+      btn.style.setProperty("background-position", `-${offsetX}px -${offsetY}px`);
+      btn.style.setProperty("color", "transparent");
+      btn.style.setProperty("-webkit-text-fill-color", "transparent");
+      btn.style.setProperty("text-shadow", "none");
+    }
+  }
+
   function sampleLogoVideoPalette() {
     if (!logoVideoBackgroundEnabled) return;
 
@@ -3069,20 +3156,82 @@
       logoH,
     );
     const dataUrl = logoVideoBgSampleCanvas.toDataURL("image/jpeg", 0.58);
-    logoEl.style.setProperty("--logo-video-frame", `url("${dataUrl}")`);
+    applyVideoFrameToWord(logoEl, letters, dataUrl);
 
-    for (const btn of letters) {
-      const btnRect = btn.getBoundingClientRect();
-      const offsetX = btnRect.left - logoRect.left;
-      const offsetY = btnRect.top - logoRect.top;
-      btn.style.setProperty("-webkit-background-clip", "text");
-      btn.style.setProperty("background-clip", "text");
-      btn.style.setProperty("background-size", `${logoW}px ${logoH}px`);
-      btn.style.setProperty("background-position", `-${offsetX}px -${offsetY}px`);
-      btn.style.setProperty("color", "transparent");
-      btn.style.setProperty("-webkit-text-fill-color", "transparent");
-      btn.style.setProperty("text-shadow", "none");
+    const textLetters = getTextVideoLetters();
+    if (!(textVideoWord instanceof HTMLElement) || textLetters.length === 0) return;
+
+    if (!isTextVideoViewOpen()) {
+      applyVideoFrameToWord(textVideoWord, textLetters, dataUrl);
+      return;
     }
+
+    const textRect = textVideoWord.getBoundingClientRect();
+    const textW = Math.round(textRect.width);
+    const textH = Math.round(textRect.height);
+    if (textW <= 0 || textH <= 0) return;
+
+    const renderScale = clampNumber(
+      numberOrFallback(window.devicePixelRatio, 1) * 1.15,
+      1.15,
+      2.05,
+    );
+    let renderW = Math.max(1, Math.round(textW * renderScale));
+    let renderH = Math.max(1, Math.round(textH * renderScale));
+    const pixelCount = renderW * renderH;
+    if (pixelCount > TEXT_VIDEO_MAX_SAMPLE_PIXELS) {
+      const downscale = Math.sqrt(TEXT_VIDEO_MAX_SAMPLE_PIXELS / pixelCount);
+      renderW = Math.max(1, Math.round(renderW * downscale));
+      renderH = Math.max(1, Math.round(renderH * downscale));
+    }
+
+    if (!textVideoBgSampleCanvas) {
+      textVideoBgSampleCanvas = document.createElement("canvas");
+    }
+    if (
+      textVideoBgSampleCanvas.width !== renderW
+      || textVideoBgSampleCanvas.height !== renderH
+    ) {
+      textVideoBgSampleCanvas.width = renderW;
+      textVideoBgSampleCanvas.height = renderH;
+      textVideoBgSampleCtx = null;
+    }
+    if (!textVideoBgSampleCtx) {
+      textVideoBgSampleCtx = textVideoBgSampleCanvas.getContext("2d");
+    }
+    if (!textVideoBgSampleCtx) return;
+
+    const textAspect = renderW / renderH;
+    let textMaxCropW = sourceW;
+    let textMaxCropH = sourceH;
+    if (sourceAspect > textAspect) {
+      textMaxCropH = sourceH;
+      textMaxCropW = textMaxCropH * textAspect;
+    } else {
+      textMaxCropW = sourceW;
+      textMaxCropH = textMaxCropW / textAspect;
+    }
+
+    const textSw = Math.max(1, textMaxCropW * sizeRatio);
+    const textSh = Math.max(1, textMaxCropH * sizeRatio);
+    const textSx = (sourceW - textSw)
+      * (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
+    const textSy = (sourceH - textSh)
+      * (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
+
+    textVideoBgSampleCtx.drawImage(
+      videoCanvas,
+      textSx,
+      textSy,
+      textSw,
+      textSh,
+      0,
+      0,
+      renderW,
+      renderH,
+    );
+    const textDataUrl = textVideoBgSampleCanvas.toDataURL("image/jpeg", 0.68);
+    applyVideoFrameToWord(textVideoWord, textLetters, textDataUrl);
   }
 
   function stopLogoVideoPaletteLoop() {
@@ -3107,7 +3256,8 @@
     const tick = (ts) => {
       if (!logoVideoBackgroundEnabled) return;
       const now = Number.isFinite(ts) ? ts : Date.now();
-      if (now - logoVideoBgLastSampleAt >= 42) {
+      const sampleIntervalMs = isTextVideoViewOpen() ? 60 : 42;
+      if (now - logoVideoBgLastSampleAt >= sampleIntervalMs) {
         logoVideoBgLastSampleAt = now;
         sampleLogoVideoPalette();
       }
@@ -3118,7 +3268,9 @@
 
   function setLogoVideoBackgroundEnabled(nextEnabled, options = {}) {
     const skipBumpSync = Boolean(options.skipBumpSync);
-    logoVideoBackgroundEnabled = Boolean(nextEnabled);
+    const allowWithoutTheme = Boolean(options.allowWithoutTheme);
+    const canEnable = themeEnabled || allowWithoutTheme;
+    logoVideoBackgroundEnabled = canEnable ? Boolean(nextEnabled) : false;
     if (logoVideoBackgroundEnabled && bumpEnabled && !skipBumpSync) {
       setBumpEnabled(false, { skipVideoBackgroundSync: true });
     }
@@ -3149,6 +3301,26 @@
     }
 
     emitLogoVideoState();
+    syncLogoVideoBackgroundAvailability();
+  }
+
+  function syncLogoVideoBackgroundAvailability() {
+    const available = Boolean(themeEnabled);
+    if (logoVideoBackgroundToggleBtn) {
+      logoVideoBackgroundToggleBtn.disabled = !available;
+      logoVideoBackgroundToggleBtn.setAttribute(
+        "aria-disabled",
+        available ? "false" : "true",
+      );
+      logoVideoBackgroundToggleBtn.title = available
+        ? logoVideoBackgroundEnabled
+          ? "video background: on"
+          : "video background: off"
+        : "video background: enable theme mode first";
+    }
+    if (logoVideoBackgroundRow) {
+      logoVideoBackgroundRow.classList.toggle("is-disabled", !available);
+    }
   }
 
   applyLetterHitAccentPalette();
@@ -3586,6 +3758,7 @@
     const hasTracks = tracks.size > 0;
     const samplerOpen = isSamplerViewOpen();
     const videoSynthOpen = isVideoSynthViewOpen();
+    const textVideoOpen = isTextVideoViewOpen();
     daw.hidden = !hasTracks;
     if (transportBar) transportBar.hidden = !hasTracks;
     document.body.classList.toggle("has-daw", hasTracks);
@@ -3609,7 +3782,7 @@
     updateTransportControls();
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = !hasTracks || samplerOpen || videoSynthOpen;
+      navToSamplerBtn.disabled = !hasTracks || samplerOpen || videoSynthOpen || textVideoOpen;
     }
     if (navToDawBtn) {
       navToDawBtn.hidden = false;
@@ -3617,11 +3790,19 @@
     }
     if (navToVideoSynthBtn) {
       navToVideoSynthBtn.hidden = false;
-      navToVideoSynthBtn.disabled = samplerOpen || videoSynthOpen;
+      navToVideoSynthBtn.disabled = samplerOpen || videoSynthOpen || textVideoOpen;
     }
     if (navToDawFromVideoBtn) {
       navToDawFromVideoBtn.hidden = false;
       navToDawFromVideoBtn.disabled = !videoSynthOpen;
+    }
+    if (navToTextVideoBtn) {
+      navToTextVideoBtn.hidden = false;
+      navToTextVideoBtn.disabled = !videoSynthOpen;
+    }
+    if (navToVideoFromTextBtn) {
+      navToVideoFromTextBtn.hidden = false;
+      navToVideoFromTextBtn.disabled = !textVideoOpen;
     }
 
     if (themeStarBtn) {
@@ -3657,10 +3838,56 @@
     }
   }
 
+  function isTextVideoViewOpen() {
+    return document.body.classList.contains("is-text-video-view");
+  }
+
+  function setTextVideoViewOpen(nextOpen) {
+    const open = Boolean(nextOpen);
+    if (textVideoRoot) {
+      textVideoRoot.hidden = false;
+    }
+    if (open && isSamplerViewOpen()) {
+      setSamplerViewOpen(false);
+    }
+    if (open && isVideoSynthViewOpen()) {
+      setVideoSynthViewOpen(false);
+    }
+
+    document.body.classList.toggle("is-text-video-view", open);
+    document.documentElement.classList.toggle("is-text-video-view", open);
+
+    if (open) {
+      if (!logoVideoBackgroundEnabled) {
+        setLogoVideoBackgroundEnabled(true, { allowWithoutTheme: true });
+      }
+      if (videoSynthPlugin) videoSynthPlugin.setActive(true);
+      if (settingsOpen) setSettingsOpen(false);
+      if (textVideoInput) textVideoInput.focus({ preventScroll: true });
+      logoVideoBgLastSampleAt = 0;
+      sampleLogoVideoPalette();
+      fitTextVideoWordToStage();
+    } else {
+      if (document.fullscreenElement === textVideoStage) {
+        document.exitFullscreen().catch(() => {});
+      }
+      if (videoSynthPlugin) {
+        videoSynthPlugin.setActive(isVideoSynthViewOpen());
+      }
+    }
+
+    syncTextVideoFullscreenButton();
+    fitTextVideoWordToStage();
+    updateDawVisibility();
+  }
+
   function setSamplerViewOpen(nextOpen) {
     const open = Boolean(nextOpen);
     if (open && isVideoSynthViewOpen()) {
       setVideoSynthViewOpen(false);
+    }
+    if (open && isTextVideoViewOpen()) {
+      setTextVideoViewOpen(false);
     }
     document.body.classList.toggle("is-sampler-view", open);
     document.documentElement.classList.toggle("is-sampler-view", open);
@@ -3670,11 +3897,11 @@
     }
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = open || !tracks.size || isVideoSynthViewOpen();
+      navToSamplerBtn.disabled = open || !tracks.size || isVideoSynthViewOpen() || isTextVideoViewOpen();
     }
     if (navToVideoSynthBtn) {
       navToVideoSynthBtn.hidden = false;
-      navToVideoSynthBtn.disabled = open;
+      navToVideoSynthBtn.disabled = open || isTextVideoViewOpen();
     }
     if (navToDawFromVideoBtn) {
       navToDawFromVideoBtn.hidden = false;
@@ -3700,6 +3927,9 @@
     if (open && isSamplerViewOpen()) {
       setSamplerViewOpen(false);
     }
+    if (open && isTextVideoViewOpen()) {
+      setTextVideoViewOpen(false);
+    }
     document.body.classList.toggle("is-video-synth-view", open);
     document.documentElement.classList.toggle("is-video-synth-view", open);
 
@@ -3713,11 +3943,19 @@
     }
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = open || !tracks.size || isSamplerViewOpen();
+      navToSamplerBtn.disabled = open || !tracks.size || isSamplerViewOpen() || isTextVideoViewOpen();
     }
     if (navToDawBtn) {
       navToDawBtn.hidden = false;
       navToDawBtn.disabled = !isSamplerViewOpen();
+    }
+    if (navToTextVideoBtn) {
+      navToTextVideoBtn.hidden = false;
+      navToTextVideoBtn.disabled = !open;
+    }
+    if (navToVideoFromTextBtn) {
+      navToVideoFromTextBtn.hidden = false;
+      navToVideoFromTextBtn.disabled = !isTextVideoViewOpen();
     }
 
     if (videoSynthPlugin) {
@@ -8603,6 +8841,238 @@
     button.focus({ preventScroll: true });
   }
 
+  function normalizeTextVideoValue(value) {
+    const collapsed = String(value || "")
+      .replace(/\s+/g, " ")
+      .slice(0, TEXT_VIDEO_MAX_LENGTH);
+    const hasVisibleChars = /\S/.test(collapsed);
+    return hasVisibleChars ? collapsed : "";
+  }
+
+  function getTextVideoLetters() {
+    if (!textVideoWord) return [];
+    return Array.from(textVideoWord.querySelectorAll(".letter"));
+  }
+
+  function syncTextVideoCount() {
+    if (!textVideoCount || !textVideoInput) return;
+    const currentLen = String(textVideoInput.value || "").length;
+    textVideoCount.textContent = `${currentLen}/${TEXT_VIDEO_MAX_LENGTH}`;
+  }
+
+  function getTextVideoLetterState(button) {
+    if (!button) return TEXT_VIDEO_STATE_OUTLINE;
+    if (button.classList.contains("tv-state-text")) return TEXT_VIDEO_STATE_TEXT;
+    if (button.classList.contains("is-selected")) return TEXT_VIDEO_STATE_VIDEO;
+    return TEXT_VIDEO_STATE_OUTLINE;
+  }
+
+  function setTextVideoLetterState(button, nextState) {
+    if (!button) return;
+    const state = String(nextState || TEXT_VIDEO_STATE_OUTLINE);
+    const isVideo = state === TEXT_VIDEO_STATE_VIDEO;
+    const isText = state === TEXT_VIDEO_STATE_TEXT;
+    button.classList.toggle("is-selected", isVideo);
+    button.classList.toggle("tv-state-text", isText);
+    button.classList.toggle(
+      "tv-state-outline",
+      !isVideo && !isText,
+    );
+    button.setAttribute("aria-pressed", isVideo ? "true" : "false");
+    button.setAttribute("data-tv-state", getTextVideoLetterState(button));
+  }
+
+  function toggleTextVideoLetter(button) {
+    const state = getTextVideoLetterState(button);
+    if (state === TEXT_VIDEO_STATE_OUTLINE) {
+      setTextVideoLetterState(button, TEXT_VIDEO_STATE_VIDEO);
+      return;
+    }
+    if (state === TEXT_VIDEO_STATE_VIDEO) {
+      setTextVideoLetterState(button, TEXT_VIDEO_STATE_TEXT);
+      return;
+    }
+    setTextVideoLetterState(button, TEXT_VIDEO_STATE_OUTLINE);
+  }
+
+  function fitTextVideoWordToStage() {
+    if (!textVideoWord || !textVideoStage) return;
+
+    const fitHost = textVideoInterior || textVideoStage;
+
+    const stageStyles = window.getComputedStyle(fitHost);
+    const padX = numberOrFallback(stageStyles.paddingLeft, 0)
+      + numberOrFallback(stageStyles.paddingRight, 0);
+    const padY = numberOrFallback(stageStyles.paddingTop, 0)
+      + numberOrFallback(stageStyles.paddingBottom, 0);
+
+    const descenderSafetyPx = 20;
+    const maxWidth = Math.max(1, fitHost.clientWidth - padX - 8);
+    const maxHeight = Math.max(1, fitHost.clientHeight - padY - 8 - descenderSafetyPx);
+
+    let low = 8;
+    let high = Math.max(24, Math.min(maxHeight * 0.9, maxWidth * 0.9));
+    let best = low;
+
+    const fits = (sizePx) => {
+      textVideoWord.style.fontSize = `${sizePx}px`;
+      const w = textVideoWord.scrollWidth;
+      const h = textVideoWord.scrollHeight;
+      return w <= maxWidth && h <= maxHeight;
+    };
+
+    for (let i = 0; i < 14; i += 1) {
+      const mid = (low + high) / 2;
+      if (fits(mid)) {
+        best = mid;
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+
+    textVideoWord.style.fontSize = `${Math.max(8, Math.floor(best))}px`;
+  }
+
+  function blurTextVideoInputForSliderInteraction() {
+    if (!textVideoInput) return;
+    if (document.activeElement !== textVideoInput) return;
+    textVideoInput.blur();
+  }
+
+  function applyTextVideoInsets() {
+    if (!textVideoStage) return;
+    textVideoStage.style.setProperty("--text-video-pad-top", `${textVideoPadTop}%`);
+    textVideoStage.style.setProperty("--text-video-pad-bottom", `${textVideoPadBottom}%`);
+    textVideoStage.style.setProperty("--text-video-pad-left", `${textVideoPadLeft}%`);
+    textVideoStage.style.setProperty("--text-video-pad-right", `${textVideoPadRight}%`);
+    fitTextVideoWordToStage();
+
+    if (logoVideoBackgroundEnabled) {
+      logoVideoBgLastSampleAt = 0;
+      sampleLogoVideoPalette();
+    }
+  }
+
+  function syncTextVideoCropControls() {
+    const size = clampNumber(
+      Math.round(numberOrFallback(logoVideoCropSize, 88)),
+      TEXT_VIDEO_CROP_SIZE_MIN,
+      TEXT_VIDEO_CROP_SIZE_MAX,
+    );
+    const x = clampNumber(
+      Math.round(numberOrFallback(logoVideoCropX, 50)),
+      0,
+      100,
+    );
+    const y = clampNumber(
+      Math.round(numberOrFallback(logoVideoCropY, 60)),
+      0,
+      100,
+    );
+
+    if (textVideoVideoScaleInput) textVideoVideoScaleInput.value = String(size);
+    if (textVideoVideoScaleOut) textVideoVideoScaleOut.value = String(size);
+    if (textVideoVideoXInput) textVideoVideoXInput.value = String(x);
+    if (textVideoVideoXOut) textVideoVideoXOut.value = String(x);
+    if (textVideoVideoYInput) textVideoVideoYInput.value = String(y);
+    if (textVideoVideoYOut) textVideoVideoYOut.value = String(y);
+  }
+
+  function setTextVideoInset(side, rawValue) {
+    const value = clampNumber(
+      Math.round(numberOrFallback(rawValue, 0)),
+      0,
+      25,
+    );
+    if (side === "top") {
+      textVideoPadTop = value;
+      if (textVideoPadTopInput) textVideoPadTopInput.value = String(value);
+      if (textVideoPadTopOut) textVideoPadTopOut.value = String(value);
+    } else if (side === "bottom") {
+      textVideoPadBottom = value;
+      if (textVideoPadBottomInput) textVideoPadBottomInput.value = String(value);
+      if (textVideoPadBottomOut) textVideoPadBottomOut.value = String(value);
+    } else if (side === "left") {
+      textVideoPadLeft = value;
+      if (textVideoPadLeftInput) textVideoPadLeftInput.value = String(value);
+      if (textVideoPadLeftOut) textVideoPadLeftOut.value = String(value);
+    } else if (side === "right") {
+      textVideoPadRight = value;
+      if (textVideoPadRightInput) textVideoPadRightInput.value = String(value);
+      if (textVideoPadRightOut) textVideoPadRightOut.value = String(value);
+    } else {
+      return;
+    }
+    applyTextVideoInsets();
+  }
+
+  function renderTextVideoWord(rawValue, { resetSelection = true } = {}) {
+    if (!textVideoWord) return;
+    const nextValue = normalizeTextVideoValue(rawValue);
+    const renderValue = nextValue || TEXT_VIDEO_DEFAULT_TEXT;
+    textVideoValue = nextValue;
+    textVideoWord.textContent = "";
+
+    for (const ch of renderValue) {
+      if (ch === " ") {
+        const spacer = document.createElement("span");
+        spacer.className = "textVideoSpace";
+        spacer.textContent = "\u00a0";
+        textVideoWord.appendChild(spacer);
+        continue;
+      }
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "letter";
+      if (resetSelection) {
+        setTextVideoLetterState(button, TEXT_VIDEO_STATE_VIDEO);
+      } else {
+        setTextVideoLetterState(button, TEXT_VIDEO_STATE_OUTLINE);
+      }
+      button.textContent = ch;
+      button.dataset.letter = ch;
+      button.setAttribute(
+        "aria-label",
+        `toggle ${ch.toLowerCase ? ch.toLowerCase() : ch}`,
+      );
+
+      button.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        event.preventDefault();
+        button.dataset.skipClickOnce = "1";
+        toggleTextVideoLetter(button);
+        button.blur();
+      });
+
+      button.addEventListener("click", () => {
+        if (button.dataset.skipClickOnce === "1") {
+          button.dataset.skipClickOnce = "0";
+          return;
+        }
+        toggleTextVideoLetter(button);
+      });
+
+      textVideoWord.appendChild(button);
+    }
+
+    textVideoWord.setAttribute("aria-label", renderValue);
+    syncTextVideoCount();
+    fitTextVideoWordToStage();
+
+    if (logoVideoBackgroundEnabled) {
+      logoVideoBgLastSampleAt = 0;
+      sampleLogoVideoPalette();
+    }
+  }
+
+  function syncTextVideoFullscreenButton() {
+    if (!textVideoFullscreenBtn || !textVideoStage) return;
+    const active = document.fullscreenElement === textVideoStage;
+    textVideoFullscreenBtn.textContent = active ? "exit fullscreen" : "fullscreen";
+  }
+
   for (const button of letters) {
     button.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse") return;
@@ -8627,6 +9097,20 @@
     themeStarBtn.setAttribute("aria-expanded", "false");
   }
 
+  if (textVideoRoot) {
+    textVideoRoot.hidden = false;
+  }
+  if (textVideoInput) {
+    textVideoInput.value = textVideoValue;
+  }
+  syncTextVideoCropControls();
+  setTextVideoInset("top", textVideoPadTop);
+  setTextVideoInset("bottom", textVideoPadBottom);
+  setTextVideoInset("left", textVideoPadLeft);
+  setTextVideoInset("right", textVideoPadRight);
+  renderTextVideoWord(textVideoValue, { resetSelection: true });
+  syncTextVideoFullscreenButton();
+
   if (window.VideoSynthPlugin && videoSynthRoot) {
     videoSynthRoot.hidden = false;
     videoSynthPlugin = new window.VideoSynthPlugin({ mount: videoSynthRoot });
@@ -8648,6 +9132,19 @@
     });
   }
 
+  if (navToTextVideoBtn) {
+    navToTextVideoBtn.addEventListener("click", () => {
+      setTextVideoViewOpen(true);
+    });
+  }
+
+  if (navToVideoFromTextBtn) {
+    navToVideoFromTextBtn.addEventListener("click", () => {
+      setTextVideoViewOpen(false);
+      setVideoSynthViewOpen(true);
+    });
+  }
+
   if (navToSamplerBtn) {
     navToSamplerBtn.addEventListener("click", () => {
       if (!tracks.size) return;
@@ -8664,6 +9161,193 @@
   if (navToDawFromVideoBtn) {
     navToDawFromVideoBtn.addEventListener("click", () => {
       setVideoSynthViewOpen(false);
+    });
+  }
+
+  if (textVideoInput) {
+    textVideoInput.addEventListener("input", () => {
+      renderTextVideoWord(textVideoInput.value, { resetSelection: true });
+    });
+  }
+
+  if (textVideoPadTopInput) {
+    textVideoPadTopInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoPadTopInput.addEventListener("input", () => {
+      setTextVideoInset("top", textVideoPadTopInput.value);
+    });
+  }
+  if (textVideoPadTopOut) {
+    textVideoPadTopOut.addEventListener("input", () => {
+      if (textVideoPadTopOut.value === "") return;
+      setTextVideoInset("top", textVideoPadTopOut.value);
+    });
+  }
+
+  if (textVideoPadBottomInput) {
+    textVideoPadBottomInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoPadBottomInput.addEventListener("input", () => {
+      setTextVideoInset("bottom", textVideoPadBottomInput.value);
+    });
+  }
+  if (textVideoPadBottomOut) {
+    textVideoPadBottomOut.addEventListener("input", () => {
+      if (textVideoPadBottomOut.value === "") return;
+      setTextVideoInset("bottom", textVideoPadBottomOut.value);
+    });
+  }
+
+  if (textVideoPadLeftInput) {
+    textVideoPadLeftInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoPadLeftInput.addEventListener("input", () => {
+      setTextVideoInset("left", textVideoPadLeftInput.value);
+    });
+  }
+  if (textVideoPadLeftOut) {
+    textVideoPadLeftOut.addEventListener("input", () => {
+      if (textVideoPadLeftOut.value === "") return;
+      setTextVideoInset("left", textVideoPadLeftOut.value);
+    });
+  }
+
+  if (textVideoPadRightInput) {
+    textVideoPadRightInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoPadRightInput.addEventListener("input", () => {
+      setTextVideoInset("right", textVideoPadRightInput.value);
+    });
+  }
+  if (textVideoPadRightOut) {
+    textVideoPadRightOut.addEventListener("input", () => {
+      if (textVideoPadRightOut.value === "") return;
+      setTextVideoInset("right", textVideoPadRightOut.value);
+    });
+  }
+
+  if (textVideoVideoScaleInput) {
+    textVideoVideoScaleInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoVideoScaleInput.addEventListener("input", () => {
+      const size = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoScaleInput.value, logoVideoCropSize)),
+        TEXT_VIDEO_CROP_SIZE_MIN,
+        TEXT_VIDEO_CROP_SIZE_MAX,
+      );
+      setLogoVideoCrop(logoVideoCropX, logoVideoCropY, size);
+    });
+  }
+  if (textVideoVideoScaleOut) {
+    textVideoVideoScaleOut.addEventListener("input", () => {
+      if (textVideoVideoScaleOut.value === "") return;
+      const size = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoScaleOut.value, logoVideoCropSize)),
+        TEXT_VIDEO_CROP_SIZE_MIN,
+        TEXT_VIDEO_CROP_SIZE_MAX,
+      );
+      setLogoVideoCrop(logoVideoCropX, logoVideoCropY, size);
+    });
+  }
+
+  if (textVideoVideoXInput) {
+    textVideoVideoXInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoVideoXInput.addEventListener("input", () => {
+      const x = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoXInput.value, logoVideoCropX)),
+        0,
+        100,
+      );
+      setLogoVideoCrop(x, logoVideoCropY, logoVideoCropSize);
+    });
+  }
+  if (textVideoVideoXOut) {
+    textVideoVideoXOut.addEventListener("input", () => {
+      if (textVideoVideoXOut.value === "") return;
+      const x = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoXOut.value, logoVideoCropX)),
+        0,
+        100,
+      );
+      setLogoVideoCrop(x, logoVideoCropY, logoVideoCropSize);
+    });
+  }
+
+  if (textVideoVideoYInput) {
+    textVideoVideoYInput.addEventListener("pointerdown", () => {
+      blurTextVideoInputForSliderInteraction();
+    });
+    textVideoVideoYInput.addEventListener("input", () => {
+      const y = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoYInput.value, logoVideoCropY)),
+        0,
+        100,
+      );
+      setLogoVideoCrop(logoVideoCropX, y, logoVideoCropSize);
+    });
+  }
+  if (textVideoVideoYOut) {
+    textVideoVideoYOut.addEventListener("input", () => {
+      if (textVideoVideoYOut.value === "") return;
+      const y = clampNumber(
+        Math.round(numberOrFallback(textVideoVideoYOut.value, logoVideoCropY)),
+        0,
+        100,
+      );
+      setLogoVideoCrop(logoVideoCropX, y, logoVideoCropSize);
+    });
+  }
+
+  if (textVideoResetBtn) {
+    textVideoResetBtn.addEventListener("click", () => {
+      if (textVideoInput) {
+        textVideoInput.value = TEXT_VIDEO_DEFAULT_TEXT;
+      }
+      setLogoVideoCrop(50, 60, 88);
+      setTextVideoInset("top", 0);
+      setTextVideoInset("bottom", 0);
+      setTextVideoInset("left", 0);
+      setTextVideoInset("right", 0);
+      renderTextVideoWord(TEXT_VIDEO_DEFAULT_TEXT, { resetSelection: true });
+    });
+  }
+
+  if (textVideoFullscreenBtn && textVideoStage) {
+    textVideoFullscreenBtn.addEventListener("click", async () => {
+      const isFullscreen = document.fullscreenElement === textVideoStage;
+      try {
+        if (!isFullscreen) {
+          await textVideoStage.requestFullscreen();
+        } else if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+      } catch {
+        // Ignore fullscreen API failures caused by platform/browser restrictions.
+      }
+      syncTextVideoFullscreenButton();
+    });
+  }
+
+  if (textVideoStage) {
+    textVideoStage.addEventListener("dblclick", async () => {
+      const isFullscreen = document.fullscreenElement === textVideoStage;
+      try {
+        if (!isFullscreen) {
+          await textVideoStage.requestFullscreen();
+        } else if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+      } catch {
+        // Ignore fullscreen API failures caused by platform/browser restrictions.
+      }
+      syncTextVideoFullscreenButton();
     });
   }
 
@@ -8705,6 +9389,11 @@
     } else if (isPlaying) {
       startTransportRaf();
     }
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    syncTextVideoFullscreenButton();
+    fitTextVideoWordToStage();
   });
 
   document.addEventListener("video-synth:set-logo-video-crop", (event) => {
@@ -9385,6 +10074,7 @@
     rebuildTransportTicks();
     syncFloatingBarGeometry();
     syncFloatingScrollClearance();
+    fitTextVideoWordToStage();
     if (videoSynthPlugin) videoSynthPlugin.resize();
   });
 
@@ -9422,6 +10112,11 @@
     }
 
     syncThemeControlsMount();
+
+    if (!themeEnabled && logoVideoBackgroundEnabled) {
+      setLogoVideoBackgroundEnabled(false);
+    }
+    syncLogoVideoBackgroundAvailability();
 
     applyLetterHitAccentPalette();
     syncBumpModeClass();

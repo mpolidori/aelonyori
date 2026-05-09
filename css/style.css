@@ -58,7 +58,8 @@ html {
 }
 
 html.is-video-synth-view,
-html.is-sampler-view {
+html.is-sampler-view,
+html.is-text-video-view {
   overflow-y: hidden;
 }
 
@@ -153,16 +154,300 @@ body:not(.is-video-synth-view) .edgeNavVideoBack {
   display: none;
 }
 
+body:not(.is-video-synth-view) .edgeNavTextVideoOpen {
+  display: none;
+}
+
+body:not(.is-text-video-view) .edgeNavTextVideoBack {
+  display: none;
+}
+
 body.is-sampler-view .edgeNavSamplerOpen,
 body.is-sampler-view .edgeNavVideoOpen,
-body.is-sampler-view .edgeNavVideoBack {
+body.is-sampler-view .edgeNavVideoBack,
+body.is-sampler-view .edgeNavTextVideoOpen,
+body.is-sampler-view .edgeNavTextVideoBack {
   display: none;
 }
 
 body.is-video-synth-view .edgeNavSamplerOpen,
 body.is-video-synth-view .edgeNavVideoOpen,
-body.is-video-synth-view .edgeNavSamplerBack {
+body.is-video-synth-view .edgeNavSamplerBack,
+body.is-video-synth-view .edgeNavTextVideoBack {
   display: none;
+}
+
+body.is-text-video-view .edgeNavSamplerOpen,
+body.is-text-video-view .edgeNavVideoOpen,
+body.is-text-video-view .edgeNavSamplerBack,
+body.is-text-video-view .edgeNavVideoBack,
+body.is-text-video-view .edgeNavTextVideoOpen {
+  display: none;
+}
+
+body.is-text-video-view .edgeNavTextVideoBack {
+  display: flex;
+}
+
+.textVideoRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  --accent: currentColor;
+  background: var(--page-bg, #ffffff);
+  color: rgba(0, 0, 0, 0.86);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html.is-theme .textVideoRoot {
+  color: var(--t-fg, rgba(255, 255, 255, 0.92));
+}
+
+body.is-text-video-view .textVideoRoot {
+  transform: translateX(0);
+}
+
+.textVideoShell {
+  width: min(900px, calc(100vw - 2rem));
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 1rem 0 1rem;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.textVideoStage {
+  --text-video-pad-top: 0%;
+  --text-video-pad-bottom: 0%;
+  --text-video-pad-left: 0%;
+  --text-video-pad-right: 0%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.8rem;
+}
+
+.textVideoInterior {
+  position: absolute;
+  top: var(--text-video-pad-top);
+  right: var(--text-video-pad-right);
+  bottom: var(--text-video-pad-bottom);
+  left: var(--text-video-pad-left);
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.textVideoWord {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  margin: 0;
+  max-width: none;
+  min-height: 0;
+  font-size: clamp(2.4rem, 12vw, 8rem);
+  line-height: 1.04;
+  letter-spacing: 0.01em;
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 0.04em;
+}
+
+.textVideoWord.logo {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  inset: auto !important;
+  transform: none !important;
+  width: max-content;
+  max-height: 100%;
+  justify-self: center;
+  align-self: center;
+}
+
+.textVideoWord .letter {
+  line-height: inherit;
+}
+
+.textVideoSpace {
+  width: 0.44em;
+  display: inline-block;
+}
+
+.textVideoControls {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 0.62rem;
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.textVideoField {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.34rem;
+  align-items: start;
+}
+
+.textVideoField input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2rem;
+  font-size: 0.96rem;
+}
+
+.textVideoField .fieldLabel {
+  font-size: 0.68rem;
+}
+
+.textVideoInsetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.44rem 0.68rem;
+}
+
+.textVideoVideoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.44rem 0.68rem;
+}
+
+.textVideoInsetField {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 6ch minmax(0, 1fr) 4.6ch;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.textVideoInsetField .fieldLabel {
+  font-size: 0.66rem;
+  text-transform: lowercase;
+}
+
+.textVideoInsetField .num {
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .textVideoInsetGrid,
+  .textVideoVideoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .textVideoInsetGrid,
+  .textVideoVideoGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.textVideoActions {
+  justify-content: flex-end;
+}
+
+.textVideoCount {
+  min-width: 5ch;
+  text-align: right;
+  justify-self: end;
+}
+
+.textVideoStage:fullscreen {
+  background: var(--page-bg, #000000);
+  padding: 0;
+  border: 0;
+}
+
+.textVideoStage:fullscreen .textVideoWord {
+  line-height: 1.02;
+}
+
+html.is-theme .textVideoControls,
+html.is-theme .textVideoStage {
+  border-color: var(--t-18, rgba(255, 255, 255, 0.18));
+}
+
+/* Keep text-video deselection stable in theme+video mode without non-theme flash. */
+html.is-theme body.is-text-video-view.is-logo-video-bg .textVideoWord .letter {
+  transition:
+    transform var(--bump-motion-dur, 160ms) var(--bump-motion-ease, ease),
+    background-size 0.12s ease,
+    text-shadow 0.12s ease;
+}
+
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline,
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline:hover,
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline:focus-visible {
+  color: #000000 !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: calc(var(--logo-outline-stroke-coarse) + 0.9px) #ffffff !important;
+  text-shadow: none !important;
+  paint-order: stroke fill !important;
+}
+
+html.is-theme body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline,
+html.is-theme body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline:hover,
+html.is-theme body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.tv-state-outline:focus-visible {
+  color: var(--t-bg, #000000) !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: calc(var(--logo-outline-stroke-coarse) + 0.9px)
+    var(--t-fg, #ffffff) !important;
+  text-shadow: none !important;
+  paint-order: stroke fill !important;
+}
+
+body.is-text-video-view .textVideoWord .letter.tv-state-text,
+body.is-text-video-view .textVideoWord .letter.tv-state-text:hover,
+body.is-text-video-view .textVideoWord .letter.tv-state-text:focus-visible {
+  background-image: none !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-text-stroke: 0 transparent !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html.is-theme body.is-text-video-view .textVideoWord .letter.tv-state-text,
+html.is-theme body.is-text-video-view .textVideoWord .letter.tv-state-text:hover,
+html.is-theme body.is-text-video-view .textVideoWord .letter.tv-state-text:focus-visible {
+  color: var(--t-fg, #ffffff) !important;
+}
+
+/* Keep custom-text video state visually neutral (no hover tint/stroke). */
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.is-selected,
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.is-selected:hover,
+body.is-text-video-view.is-logo-video-bg .textVideoWord .letter.is-selected:focus-visible,
+html:not(.is-theme)
+  body.is-text-video-view.is-logo-video-bg
+  .textVideoWord
+  .letter.is-selected:hover,
+html:not(.is-theme)
+  body.is-text-video-view.is-logo-video-bg
+  .textVideoWord
+  .letter.is-selected:focus-visible {
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 0 transparent !important;
+  paint-order: unset !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
 }
 
 html.is-theme .edgeNav {
@@ -1124,6 +1409,18 @@ html:not(.is-theme) .logoStar[aria-expanded="true"] {
     center / contain no-repeat;
 }
 
+html.is-star-bouncing .logoStar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-1 * var(--star-floor-offset));
+  bottom: calc(-1 * var(--star-floor-offset));
+  background: currentColor;
+  opacity: 0.001;
+  border-radius: 999px;
+}
+
 @keyframes starBounce {
   0% {
     transform: translate3d(var(--star-x-offset), -50%, 0);
@@ -1561,7 +1858,8 @@ html.is-theme .logo .letter.is-selected {
 
 html.is-theme .logo .letter.is-selected:hover,
 html.is-theme .logo .letter.is-selected:focus-visible {
-  -webkit-text-stroke: var(--logo-outline-stroke-hover) var(--t-50, #808080);
+  -webkit-text-stroke: calc(var(--logo-outline-stroke-hover) + 0.2px)
+    var(--t-50, #808080);
   -webkit-text-fill-color: currentColor;
   paint-order: stroke fill;
   text-shadow: none;
@@ -1577,7 +1875,8 @@ html.is-theme .logo .letter:not(.is-selected) {
 
 html.is-theme .logo .letter:hover:not(.is-selected),
 html.is-theme .logo .letter:focus-visible:not(.is-selected) {
-  color: var(--t-50, #808080);
+  color: var(--t-fg, #ffffff);
+  -webkit-text-stroke-width: var(--logo-outline-stroke-hover);
   text-shadow: none;
 }
 
@@ -1605,7 +1904,8 @@ html.is-theme .logo .letter:focus-visible:not(.is-selected) {
 
   html.is-theme .logo .letter.is-selected:hover,
   html.is-theme .logo .letter.is-selected:focus-visible {
-    -webkit-text-stroke: var(--logo-outline-stroke-hover-coarse) var(--t-50, #808080);
+    -webkit-text-stroke: calc(var(--logo-outline-stroke-hover-coarse) + 0.2px)
+      var(--t-50, #808080);
     -webkit-text-fill-color: currentColor;
     paint-order: stroke fill;
     text-shadow: none;
@@ -1638,18 +1938,31 @@ body.is-logo-video-bg .logo .letter.is-selected {
 
 body.is-logo-video-bg .logo .letter.is-selected:hover,
 body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
-  background-image: none !important;
-  color: #6a6a6a !important;
-  -webkit-text-fill-color: currentColor !important;
-  -webkit-text-stroke: var(--logo-outline-stroke-hover-coarse) #ffffff !important;
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: var(--logo-outline-stroke-coarse) var(--t-fg, #ffffff) !important;
   paint-order: stroke fill !important;
   text-shadow: none !important;
 }
 
+@media (pointer: coarse) {
+  body.is-logo-video-bg .logo .letter.is-selected:hover,
+  body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
+    -webkit-text-stroke-width: var(--logo-outline-stroke-coarse) !important;
+  }
+}
+
 html:not(.is-theme) body.is-logo-video-bg .logo .letter.is-selected:hover,
 html:not(.is-theme) body.is-logo-video-bg .logo .letter.is-selected:focus-visible {
-  color: var(--accent) !important;
-  -webkit-text-stroke-color: color-mix(in srgb, var(--accent) 62%, #000000) !important;
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 0 transparent !important;
+  paint-order: unset !important;
+  opacity: 0.4 !important;
 }
 
 body.is-logo-video-bg .logo .letter.is-selected:active {
@@ -1701,6 +2014,18 @@ html:not(.is-theme) body.is-logo-video-bg .logo .letter:focus-visible:not(.is-se
   color: #6a6a6a !important;
   -webkit-text-fill-color: currentColor !important;
   -webkit-text-stroke: var(--logo-outline-stroke-coarse) #ffffff !important;
+}
+
+/* Video mode ghost preview: inactive hover reveals live frame at partial opacity. */
+body.is-logo-video-bg .logo .letter:hover:not(.is-selected),
+body.is-logo-video-bg .logo .letter:focus-visible:not(.is-selected) {
+  background-image: var(--logo-video-frame) !important;
+  background-repeat: no-repeat !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 0 transparent !important;
+  paint-order: unset !important;
+  opacity: 0.4 !important;
 }
 
 html.is-theme body.has-daw:not(.is-bump-letters):not(.is-logo-video-bg) .logo .letter:hover,
@@ -2472,6 +2797,14 @@ html.is-theme .settingsDivider {
 
 .settingsField .fieldLabel {
   white-space: nowrap;
+}
+
+.settingsField.is-disabled {
+  opacity: 0.55;
+}
+
+.settingsField.is-disabled .switchToggle {
+  cursor: not-allowed;
 }
 
 .settingsFieldAutoSave {

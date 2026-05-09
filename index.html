@@ -11,9 +11,11 @@
 </head>
 <body>
     <button type="button" id="navToVideoSynthBtn" class="edgeNav edgeNavLeft edgeNavVideoOpen" aria-label="open video synth">&lt;</button>
+    <button type="button" id="navToTextVideoBtn" class="edgeNav edgeNavLeft edgeNavTextVideoOpen" aria-label="open text with video" hidden>&lt;</button>
     <button type="button" id="navToSamplerBtn" class="edgeNav edgeNavRight edgeNavSamplerOpen" aria-label="open sampler">&gt;</button>
     <button type="button" id="navToDawBtn" class="edgeNav edgeNavLeft edgeNavSamplerBack" aria-label="back to daw" hidden>&lt;</button>
     <button type="button" id="navToDawFromVideoBtn" class="edgeNav edgeNavRight edgeNavVideoBack" aria-label="back to daw" hidden>&gt;</button>
+    <button type="button" id="navToVideoFromTextBtn" class="edgeNav edgeNavRight edgeNavTextVideoBack" aria-label="back to video synth" hidden>&gt;</button>
 
     <div class="container">
         <section id="samplePadWrap" class="samplePadWrap" hidden aria-label="sample pad">
@@ -38,7 +40,7 @@
             </section>
         </section>
 
-        <h1 class="logo" aria-label="aelonyori">
+        <h1 id="mainLogo" class="logo" aria-label="aelonyori">
             <button type="button" class="letter" data-key="0" data-letter="a" aria-pressed="false">a</button>
             <button type="button" class="letter" data-key="1" data-letter="e" aria-pressed="false">e</button>
             <button type="button" class="letter" data-key="2" data-letter="l" aria-pressed="false">l</button>
@@ -57,6 +59,70 @@
     </div>
 
     <section id="videoSynthRoot" class="videoSynthRoot" hidden aria-label="video synthesis"></section>
+
+    <section id="textVideoRoot" class="textVideoRoot" hidden aria-label="text with video">
+        <div class="textVideoShell">
+            <section id="textVideoStage" class="textVideoStage" aria-label="text preview stage">
+                <div id="textVideoInterior" class="textVideoInterior">
+                    <h1 id="textVideoWord" class="logo textVideoWord" aria-live="polite" aria-label="text preview"></h1>
+                </div>
+            </section>
+
+            <section class="textVideoControls" aria-label="text controls">
+                <label class="field textVideoField">
+                    <span class="fieldLabel">text</span>
+                    <input id="textVideoInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="56" placeholder="artist name" aria-label="text to render" />
+                    <span id="textVideoCount" class="status textVideoCount" aria-live="polite"></span>
+                </label>
+
+                <div class="textVideoInsetGrid" aria-label="text margins">
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">top</span>
+                        <input id="textVideoPadTop" type="range" min="0" max="25" step="1" value="0" aria-label="top margin" />
+                        <input id="textVideoPadTopOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="top margin value" />
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">bottom</span>
+                        <input id="textVideoPadBottom" type="range" min="0" max="25" step="1" value="0" aria-label="bottom margin" />
+                        <input id="textVideoPadBottomOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="bottom margin value" />
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">left</span>
+                        <input id="textVideoPadLeft" type="range" min="0" max="25" step="1" value="0" aria-label="left margin" />
+                        <input id="textVideoPadLeftOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="left margin value" />
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">right</span>
+                        <input id="textVideoPadRight" type="range" min="0" max="25" step="1" value="0" aria-label="right margin" />
+                        <input id="textVideoPadRightOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="right margin value" />
+                    </label>
+                </div>
+
+                <div class="textVideoVideoGrid" aria-label="video framing">
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">scale</span>
+                        <input id="textVideoVideoScale" type="range" min="15" max="100" step="1" value="88" aria-label="video scale" />
+                        <input id="textVideoVideoScaleOut" class="num" type="number" min="15" max="100" step="1" value="88" aria-label="video scale value" />
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">x</span>
+                        <input id="textVideoVideoX" type="range" min="0" max="100" step="1" value="50" aria-label="video x position" />
+                        <input id="textVideoVideoXOut" class="num" type="number" min="0" max="100" step="1" value="50" aria-label="video x position value" />
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">y</span>
+                        <input id="textVideoVideoY" type="range" min="0" max="100" step="1" value="60" aria-label="video y position" />
+                        <input id="textVideoVideoYOut" class="num" type="number" min="0" max="100" step="1" value="60" aria-label="video y position value" />
+                    </label>
+                </div>
+
+                <div class="controls textVideoActions" aria-label="text view actions">
+                    <button type="button" class="btn" id="textVideoResetBtn">reset</button>
+                    <button type="button" class="btn" id="textVideoFullscreenBtn">fullscreen</button>
+                </div>
+            </section>
+        </div>
+    </section>
 
     <main id="samplerRoot" class="samplerRoot" aria-label="sampler">
         <section class="samplerShell" aria-label="sampler app">
