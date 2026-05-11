@@ -6,77 +6,95 @@
   const VIDEO_SYNTH_AUTOSAVE_KEY = "aelonyori.video-synth.autosave";
 
   const shared = window.AelonyoriShared || {};
-  const sharedClampNumber = shared.clampNumber || ((value, min, max) => Math.min(max, Math.max(min, value)));
-  const sharedNumberOrFallback = shared.numberOrFallback || ((value, fallback) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-  });
-  const sharedSafeJsonParse = shared.safeJsonParse || ((text) => {
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch (error) {
-      return { ok: false, error };
-    }
-  });
-  const sharedFileSafeStem = shared.fileSafeStem || ((value, fallback = "video-synth") => {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
-  });
-  const sharedHighlightJson = shared.highlightJson || ((text) => String(text));
-  const sharedIsQuotaExceededError = shared.isQuotaExceededError || ((error) => {
-    if (!error) return false;
-    const code = Number(error.code);
-    const name = String(error.name || "");
-    return (
-      name === "QuotaExceededError" ||
-      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-      code === 22 ||
-      code === 1014
-    );
-  });
-  const sharedNormalizeIntervalChoice = shared.normalizeIntervalChoice || ((value, allowed, fallback) => {
-    const options = Array.isArray(allowed) && allowed.length > 0
-      ? allowed
-      : [1, 5, 10, 15, 30, 60];
-    const next = Math.round(sharedNumberOrFallback(value, fallback));
-    if (options.includes(next)) return next;
-    let best = options[0];
-    let bestDist = Math.abs(next - best);
-    for (let i = 1; i < options.length; i += 1) {
-      const dist = Math.abs(next - options[i]);
-      if (dist < bestDist) {
-        best = options[i];
-        bestDist = dist;
+  const sharedClampNumber =
+    shared.clampNumber ||
+    ((value, min, max) => Math.min(max, Math.max(min, value)));
+  const sharedNumberOrFallback =
+    shared.numberOrFallback ||
+    ((value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    });
+  const sharedSafeJsonParse =
+    shared.safeJsonParse ||
+    ((text) => {
+      try {
+        return { ok: true, value: JSON.parse(text) };
+      } catch (error) {
+        return { ok: false, error };
       }
-    }
-    return best;
-  });
-  const sharedMakeUniquePresetName = shared.makeUniquePresetName || ((base, existingNames, defaultBase) => {
-    const baseName = String(base || "").trim() || String(defaultBase || "preset");
-    const existing = new Set(existingNames);
-    if (!existing.has(baseName)) return baseName;
-    let i = 2;
-    while (existing.has(`${baseName} ${i}`)) i += 1;
-    return `${baseName} ${i}`;
-  });
-  const sharedTriggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
-    const type = String(mimeType || "application/json");
-    const blob = new Blob([data], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = String(filename || "download");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  });
+    });
+  const sharedFileSafeStem =
+    shared.fileSafeStem ||
+    ((value, fallback = "video-synth") => {
+      const stem = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_ ]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return stem || fallback;
+    });
+  const sharedHighlightJson = shared.highlightJson || ((text) => String(text));
+  const sharedIsQuotaExceededError =
+    shared.isQuotaExceededError ||
+    ((error) => {
+      if (!error) return false;
+      const code = Number(error.code);
+      const name = String(error.name || "");
+      return (
+        name === "QuotaExceededError" ||
+        name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        code === 22 ||
+        code === 1014
+      );
+    });
+  const sharedNormalizeIntervalChoice =
+    shared.normalizeIntervalChoice ||
+    ((value, allowed, fallback) => {
+      const options =
+        Array.isArray(allowed) && allowed.length > 0
+          ? allowed
+          : [1, 5, 10, 15, 30, 60];
+      const next = Math.round(sharedNumberOrFallback(value, fallback));
+      if (options.includes(next)) return next;
+      let best = options[0];
+      let bestDist = Math.abs(next - best);
+      for (let i = 1; i < options.length; i += 1) {
+        const dist = Math.abs(next - options[i]);
+        if (dist < bestDist) {
+          best = options[i];
+          bestDist = dist;
+        }
+      }
+      return best;
+    });
+  const sharedMakeUniquePresetName =
+    shared.makeUniquePresetName ||
+    ((base, existingNames, defaultBase) => {
+      const baseName =
+        String(base || "").trim() || String(defaultBase || "preset");
+      const existing = new Set(existingNames);
+      if (!existing.has(baseName)) return baseName;
+      let i = 2;
+      while (existing.has(`${baseName} ${i}`)) i += 1;
+      return `${baseName} ${i}`;
+    });
+  const sharedTriggerBlobDownload =
+    shared.triggerBlobDownload ||
+    ((data, filename, mimeType) => {
+      const type = String(mimeType || "application/json");
+      const blob = new Blob([data], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = String(filename || "download");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
 
   class VideoSynthPlugin {
     constructor({ mount }) {
@@ -116,7 +134,7 @@
       this.songJsonUploadBtn = null;
       this.songJsonUploadInput = null;
       this.rangeInputs = new Map();
-      this.logoVideoBackgroundBtn = null;
+      this.logoVideoBackgroundModeInput = null;
       this.logoVideoCropBtn = null;
       this.logoCropOverlay = null;
       this.logoCropRect = null;
@@ -192,6 +210,7 @@
       this.autosaveTimerId = null;
       this.lastPresetSaveErrorMessage = "";
       this.logoVideoBackgroundEnabled = false;
+      this.logoVideoBackgroundMode = "off";
       this.logoVideoCropX = 50;
       this.logoVideoCropY = 60;
       this.logoVideoCropSize = 88;
@@ -265,6 +284,7 @@
         const detail = event?.detail || {};
         this.setLogoVideoBackgroundState(
           detail.enabled,
+          detail.mode,
           detail.cropX,
           detail.cropY,
           detail.cropSize,
@@ -283,17 +303,20 @@
           const maxY = Math.max(0, state.previewH - state.startRectH);
           const nextRectX = this.clampNumber(state.startRectX + dx, 0, maxX);
           const nextRectY = this.clampNumber(state.startRectY + dy, 0, maxY);
-          const nextCropX = maxX > 0 ? (nextRectX / maxX) * 100 : state.startCropX;
-          const nextCropY = maxY > 0 ? (nextRectY / maxY) * 100 : state.startCropY;
+          const nextCropX =
+            maxX > 0 ? (nextRectX / maxX) * 100 : state.startCropX;
+          const nextCropY =
+            maxY > 0 ? (nextRectY / maxY) * 100 : state.startCropY;
           this.emitLogoCropChange(nextCropX, nextCropY, state.startCropSize);
           return;
         }
 
         const desiredWFromX = state.startRectW + dx;
         const desiredWFromY = (state.startRectH + dy) * state.aspect;
-        const desiredW = Math.abs(dx) >= Math.abs(dy * state.aspect)
-          ? desiredWFromX
-          : desiredWFromY;
+        const desiredW =
+          Math.abs(dx) >= Math.abs(dy * state.aspect)
+            ? desiredWFromX
+            : desiredWFromY;
         const boundW = Math.max(
           state.minRectW,
           Math.min(
@@ -304,16 +327,20 @@
         );
         const nextRectW = this.clampNumber(desiredW, state.minRectW, boundW);
         const nextCropSize = (nextRectW / state.maxRectW) * 100;
-        this.emitLogoCropChange(state.startCropX, state.startCropY, nextCropSize);
+        this.emitLogoCropChange(
+          state.startCropX,
+          state.startCropY,
+          nextCropSize,
+        );
       };
       this.onLogoCropPointerUp = (event) => {
         if (!this.logoCropDragState) return;
         const state = this.logoCropDragState;
         if (
-          event
-          && state.pointerId != null
-          && event.pointerId != null
-          && event.pointerId !== state.pointerId
+          event &&
+          state.pointerId != null &&
+          event.pointerId != null &&
+          event.pointerId !== state.pointerId
         ) {
           return;
         }
@@ -322,10 +349,10 @@
           this.logoCropRect.classList.remove("is-dragging", "is-resizing");
         }
         if (
-          state
-          && state.captureTarget
-          && typeof state.captureTarget.releasePointerCapture === "function"
-          && state.pointerId != null
+          state &&
+          state.captureTarget &&
+          typeof state.captureTarget.releasePointerCapture === "function" &&
+          state.pointerId != null
         ) {
           try {
             state.captureTarget.releasePointerCapture(state.pointerId);
@@ -343,11 +370,16 @@
 
     async loadDefaults() {
       try {
-        const response = await fetch(VIDEO_SYNTH_DEFAULTS_PATH, { cache: "no-store" });
+        const response = await fetch(VIDEO_SYNTH_DEFAULTS_PATH, {
+          cache: "no-store",
+        });
         if (!response.ok) return;
         const parsed = await response.json();
         if (!parsed || typeof parsed !== "object") return;
-        this.loadedDefaults = this.normalizeParams(parsed, this.getDefaultParams());
+        this.loadedDefaults = this.normalizeParams(
+          parsed,
+          this.getDefaultParams(),
+        );
         this.params = { ...this.loadedDefaults };
         this.syncParamInputs();
         this.textTextureDirty = true;
@@ -364,8 +396,7 @@
       this.shell = document.createElement("section");
       this.shell.className = "videoSynthShell";
 
-  const presetPanel = this.buildPresetPanel();
-
+      const presetPanel = this.buildPresetPanel();
 
       this.preview = document.createElement("div");
       this.preview.className = "videoSynthPreview";
@@ -422,19 +453,14 @@
       modeLabel.textContent = "mode";
       this.modeSelect = document.createElement("select");
       this.modeSelect.className = "videoSynthSelect";
-      [
-        "wave",
-        "noise field",
-        "grid fold",
-        "rings",
-        "bars",
-        "plasma",
-      ].forEach((name, idx) => {
-        const option = document.createElement("option");
-        option.value = String(idx);
-        option.textContent = name;
-        this.modeSelect.appendChild(option);
-      });
+      ["wave", "noise field", "grid fold", "rings", "bars", "plasma"].forEach(
+        (name, idx) => {
+          const option = document.createElement("option");
+          option.value = String(idx);
+          option.textContent = name;
+          this.modeSelect.appendChild(option);
+        },
+      );
       this.modeSelect.value = String(this.params.mode);
       this.modeSelect.addEventListener("change", () => {
         this.params.mode = Number(this.modeSelect.value);
@@ -456,10 +482,10 @@
       this.formulaSelect.className = "videoSynthSelect";
       ["sine", "tangent", "fold", "pulse", "cheby", "xor"].forEach(
         (name, idx) => {
-        const option = document.createElement("option");
-        option.value = String(idx);
-        option.textContent = name;
-        this.formulaSelect.appendChild(option);
+          const option = document.createElement("option");
+          option.value = String(idx);
+          option.textContent = name;
+          this.formulaSelect.appendChild(option);
         },
       );
       this.formulaSelect.value = String(this.params.formula);
@@ -546,7 +572,7 @@
           step: 1,
         }),
       );
-      controlsColA.appendChild(
+      controlsColB.appendChild(
         this.makeRangeField({
           key: "movingGrid",
           label: "grid",
@@ -662,16 +688,23 @@
       this.audioPlaybackBtn.setAttribute("aria-label", "playback audio react");
       this.audioPlaybackBtn.setAttribute("aria-pressed", "false");
       this.audioPlaybackBtn.addEventListener("click", () => {
-        this.setAudioSourceMode(this.params.audioSource === "playback" ? "off" : "playback");
+        this.setAudioSourceMode(
+          this.params.audioSource === "playback" ? "off" : "playback",
+        );
       });
 
       this.audioEnvironmentBtn = document.createElement("button");
       this.audioEnvironmentBtn.type = "button";
       this.audioEnvironmentBtn.className = "switchToggle";
-      this.audioEnvironmentBtn.setAttribute("aria-label", "environment audio react");
+      this.audioEnvironmentBtn.setAttribute(
+        "aria-label",
+        "environment audio react",
+      );
       this.audioEnvironmentBtn.setAttribute("aria-pressed", "false");
       this.audioEnvironmentBtn.addEventListener("click", () => {
-        this.setAudioSourceMode(this.params.audioSource === "environment" ? "off" : "environment");
+        this.setAudioSourceMode(
+          this.params.audioSource === "environment" ? "off" : "environment",
+        );
       });
 
       this.audioExternalBtn = document.createElement("button");
@@ -680,7 +713,9 @@
       this.audioExternalBtn.setAttribute("aria-label", "external audio react");
       this.audioExternalBtn.setAttribute("aria-pressed", "false");
       this.audioExternalBtn.addEventListener("click", () => {
-        this.setAudioSourceMode(this.params.audioSource === "external" ? "off" : "external");
+        this.setAudioSourceMode(
+          this.params.audioSource === "external" ? "off" : "external",
+        );
       });
 
       this.invertToggleBtn = document.createElement("button");
@@ -693,16 +728,24 @@
         this.syncToggleButtons();
       });
 
-      this.logoVideoBackgroundBtn = document.createElement("button");
-      this.logoVideoBackgroundBtn.type = "button";
-      this.logoVideoBackgroundBtn.className = "switchToggle";
-      this.logoVideoBackgroundBtn.setAttribute("aria-label", "video background");
-      this.logoVideoBackgroundBtn.setAttribute("aria-pressed", "false");
-      this.logoVideoBackgroundBtn.addEventListener("click", () => {
-        const nextEnabled = !this.logoVideoBackgroundEnabled;
+      this.logoVideoBackgroundModeInput = document.createElement("input");
+      this.logoVideoBackgroundModeInput.type = "range";
+      this.logoVideoBackgroundModeInput.className = "videoSynthModeSlider";
+      this.logoVideoBackgroundModeInput.min = "0";
+      this.logoVideoBackgroundModeInput.max = "2";
+      this.logoVideoBackgroundModeInput.step = "1";
+      this.logoVideoBackgroundModeInput.value = "1";
+      this.logoVideoBackgroundModeInput.setAttribute(
+        "aria-label",
+        "video background mode",
+      );
+      this.logoVideoBackgroundModeInput.addEventListener("input", () => {
+        const nextMode = this.getLogoVideoModeFromSliderValue(
+          this.logoVideoBackgroundModeInput.value,
+        );
         document.dispatchEvent(
           new CustomEvent("video-synth:set-logo-video-background", {
-            detail: { enabled: nextEnabled },
+            detail: { mode: nextMode },
           }),
         );
       });
@@ -714,9 +757,13 @@
       this.logoVideoCropBtn.setAttribute("aria-pressed", "false");
       this.logoVideoCropBtn.addEventListener("click", () => {
         if (!this.logoVideoBackgroundEnabled) {
+          const resumeMode =
+            this.logoVideoBackgroundMode === "off"
+              ? "daw"
+              : this.logoVideoBackgroundMode;
           document.dispatchEvent(
             new CustomEvent("video-synth:set-logo-video-background", {
-              detail: { enabled: true },
+              detail: { mode: resumeMode },
             }),
           );
         }
@@ -743,12 +790,6 @@
       );
       toggleRow.appendChild(
         this.makeSwitchToggleField({
-          label: "video background",
-          button: this.logoVideoBackgroundBtn,
-        }),
-      );
-      toggleRow.appendChild(
-        this.makeSwitchToggleField({
           label: "crop",
           button: this.logoVideoCropBtn,
         }),
@@ -764,6 +805,38 @@
       this.shell.appendChild(this.preview);
       this.shell.appendChild(controls);
       this.shell.appendChild(toggleRow);
+
+      const modeRow = document.createElement("div");
+      modeRow.className = "videoSynthModeSliderRow";
+
+      const modeTitle = document.createElement("span");
+      modeTitle.className = "fieldLabel videoSynthModeSliderTitle";
+      modeTitle.textContent = "video background mode";
+
+      const modeLabels = document.createElement("div");
+      modeLabels.className = "videoSynthModeSliderLabels";
+
+      const modeLabelCustom = document.createElement("span");
+      modeLabelCustom.className = "videoSynthModeSliderLabel";
+      modeLabelCustom.textContent = "custom text";
+
+      const modeLabelOff = document.createElement("span");
+      modeLabelOff.className = "videoSynthModeSliderLabel";
+      modeLabelOff.textContent = "off";
+
+      const modeLabelDaw = document.createElement("span");
+      modeLabelDaw.className = "videoSynthModeSliderLabel";
+      modeLabelDaw.textContent = "daw";
+
+      modeLabels.appendChild(modeLabelCustom);
+      modeLabels.appendChild(modeLabelOff);
+      modeLabels.appendChild(modeLabelDaw);
+
+      modeRow.appendChild(modeTitle);
+      modeRow.appendChild(modeLabels);
+      modeRow.appendChild(this.logoVideoBackgroundModeInput);
+
+      this.shell.appendChild(modeRow);
       this.mount.appendChild(this.shell);
       if (document.body) {
         document.body.appendChild(this.audioSourceStatus);
@@ -850,7 +923,8 @@
       nameLabel.textContent = "name";
       this.presetNameInput = document.createElement("input");
       this.presetNameInput.type = "text";
-      this.presetNameInput.className = "videoSynthMetaInput videoSynthNameInput";
+      this.presetNameInput.className =
+        "videoSynthMetaInput videoSynthNameInput";
       this.presetNameInput.inputMode = "text";
       this.presetNameInput.autocomplete = "off";
       this.presetNameInput.spellcheck = false;
@@ -863,7 +937,8 @@
       nameField.appendChild(this.presetStatus);
 
       const autosaveField = document.createElement("label");
-      autosaveField.className = "field videoSynthMetaField videoSynthMetaFieldAutoSave";
+      autosaveField.className =
+        "field videoSynthMetaField videoSynthMetaFieldAutoSave";
       const autosaveLabel = document.createElement("span");
       autosaveLabel.className = "fieldLabel";
       autosaveLabel.textContent = "autosave";
@@ -876,7 +951,10 @@
       });
       this.autosaveIntervalSelect = document.createElement("select");
       this.autosaveIntervalSelect.className = "videoSynthSelect";
-      this.autosaveIntervalSelect.setAttribute("aria-label", "video synth autosave interval");
+      this.autosaveIntervalSelect.setAttribute(
+        "aria-label",
+        "video synth autosave interval",
+      );
       [1, 5, 10, 15, 30, 60].forEach((minutes) => {
         const option = document.createElement("option");
         option.value = String(minutes);
@@ -911,7 +989,10 @@
       this.presetSaveBtn.className = "btn";
       this.presetSaveBtn.textContent = "save";
       this.presetSaveBtn.addEventListener("click", () => {
-        this.saveCurrentPreset({ statusLabel: "saving", showPresetStatus: true });
+        this.saveCurrentPreset({
+          statusLabel: "saving",
+          showPresetStatus: true,
+        });
       });
 
       this.presetLoadBtn = document.createElement("button");
@@ -1094,10 +1175,22 @@
       color.addEventListener("input", () => syncValue(color.value));
       hex.addEventListener("input", () => syncValue(hex.value));
 
-      if (key === "colorA") { this.colorAInput = color; this.colorAHexInput = hex; }
-      if (key === "colorB") { this.colorBInput = color; this.colorBHexInput = hex; }
-      if (key === "textColor") { this.textColorInput = color; this.textColorHexInput = hex; }
-      if (key === "bgColor") { this.bgColorInput = color; this.bgColorHexInput = hex; }
+      if (key === "colorA") {
+        this.colorAInput = color;
+        this.colorAHexInput = hex;
+      }
+      if (key === "colorB") {
+        this.colorBInput = color;
+        this.colorBHexInput = hex;
+      }
+      if (key === "textColor") {
+        this.textColorInput = color;
+        this.textColorHexInput = hex;
+      }
+      if (key === "bgColor") {
+        this.bgColorInput = color;
+        this.bgColorHexInput = hex;
+      }
 
       field.appendChild(labelEl);
       field.appendChild(color);
@@ -1135,7 +1228,8 @@
           ? Math.max(min, Math.min(max, next))
           : this.params[key];
         this.params[key] = safe;
-        if (key === "textSize" || key === "textMix") this.textTextureDirty = true;
+        if (key === "textSize" || key === "textMix")
+          this.textTextureDirty = true;
         range.value = String(safe);
         num.value = String(safe);
       };
@@ -1178,15 +1272,63 @@
       return field;
     }
 
-    setLogoVideoBackgroundState(nextEnabled, nextCropX, nextCropY, nextCropSize) {
+    normalizeLogoVideoMode(nextMode) {
+      const mode = String(nextMode || "off").toLowerCase();
+      if (mode === "custom" || mode === "daw" || mode === "off") {
+        return mode;
+      }
+      return "off";
+    }
+
+    getLogoVideoModeUi() {
+      if (!this.logoVideoBackgroundEnabled) {
+        return "off";
+      }
+      return this.normalizeLogoVideoMode(this.logoVideoBackgroundMode, "daw");
+    }
+
+    getLogoVideoModeSliderValue(mode) {
+      const nextMode = this.normalizeLogoVideoMode(mode);
+      if (nextMode === "custom") return 0;
+      if (nextMode === "daw") return 2;
+      return 1;
+    }
+
+    getLogoVideoModeFromSliderValue(rawValue) {
+      const parsed = Number(rawValue);
+      const safe = Number.isFinite(parsed) ? parsed : 1;
+      const value = this.clampNumber(Math.round(safe), 0, 2);
+      if (value <= 0) return "custom";
+      if (value >= 2) return "daw";
+      return "off";
+    }
+
+    setLogoVideoBackgroundState(
+      nextEnabled,
+      nextMode,
+      nextCropX,
+      nextCropY,
+      nextCropSize,
+    ) {
       if (typeof nextEnabled === "boolean") {
         this.logoVideoBackgroundEnabled = nextEnabled;
       }
+      if (typeof nextMode === "string") {
+        this.logoVideoBackgroundMode = this.normalizeLogoVideoMode(nextMode);
+      }
       if (Number.isFinite(Number(nextCropX))) {
-        this.logoVideoCropX = this.clampNumber(Math.round(Number(nextCropX)), 0, 100);
+        this.logoVideoCropX = this.clampNumber(
+          Math.round(Number(nextCropX)),
+          0,
+          100,
+        );
       }
       if (Number.isFinite(Number(nextCropY))) {
-        this.logoVideoCropY = this.clampNumber(Math.round(Number(nextCropY)), 0, 100);
+        this.logoVideoCropY = this.clampNumber(
+          Math.round(Number(nextCropY)),
+          0,
+          100,
+        );
       }
       if (Number.isFinite(Number(nextCropSize))) {
         this.logoVideoCropSize = this.clampNumber(
@@ -1202,14 +1344,22 @@
     }
 
     syncLogoVideoCropUi() {
-      if (this.logoVideoBackgroundBtn) {
-        this.logoVideoBackgroundBtn.setAttribute(
-          "aria-pressed",
-          this.logoVideoBackgroundEnabled ? "true" : "false",
+      if (this.logoVideoBackgroundModeInput) {
+        const modeUi = this.getLogoVideoModeUi();
+        const modeLabel =
+          modeUi === "custom"
+            ? "custom text"
+            : modeUi === "daw"
+              ? "daw"
+              : "off";
+        this.logoVideoBackgroundModeInput.value = String(
+          this.getLogoVideoModeSliderValue(modeUi),
         );
-        this.logoVideoBackgroundBtn.title = this.logoVideoBackgroundEnabled
-          ? "video background: on"
-          : "video background: off";
+        this.logoVideoBackgroundModeInput.setAttribute(
+          "aria-valuetext",
+          modeLabel,
+        );
+        this.logoVideoBackgroundModeInput.title = `video background mode: ${modeLabel}`;
       }
       if (this.logoVideoCropBtn) {
         this.logoVideoCropBtn.setAttribute(
@@ -1274,8 +1424,10 @@
       const rectH = Math.max(1, maxRectH * sizeRatio);
       const maxX = Math.max(0, w - rectW);
       const maxY = Math.max(0, h - rectH);
-      const rectX = maxX * (this.clampNumber(this.logoVideoCropX, 0, 100) / 100);
-      const rectY = maxY * (this.clampNumber(this.logoVideoCropY, 0, 100) / 100);
+      const rectX =
+        maxX * (this.clampNumber(this.logoVideoCropX, 0, 100) / 100);
+      const rectY =
+        maxY * (this.clampNumber(this.logoVideoCropY, 0, 100) / 100);
 
       return {
         rectX,
@@ -1296,7 +1448,10 @@
       if (!active) return;
 
       const previewRect = this.preview.getBoundingClientRect();
-      const geo = this.getLogoCropGeometry(previewRect.width, previewRect.height);
+      const geo = this.getLogoCropGeometry(
+        previewRect.width,
+        previewRect.height,
+      );
       this.logoCropRect.style.left = `${geo.rectX}px`;
       this.logoCropRect.style.top = `${geo.rectY}px`;
       this.logoCropRect.style.width = `${geo.rectW}px`;
@@ -1324,13 +1479,13 @@
         const dt = now - this.logoCropLastTapAtMs;
         const dx = event.clientX - this.logoCropLastTapX;
         const dy = event.clientY - this.logoCropLastTapY;
-        const distSq = (dx * dx) + (dy * dy);
+        const distSq = dx * dx + dy * dy;
 
         this.logoCropLastTapAtMs = now;
         this.logoCropLastTapX = event.clientX;
         this.logoCropLastTapY = event.clientY;
 
-        if (dt > 0 && dt <= 320 && distSq <= (26 * 26)) {
+        if (dt > 0 && dt <= 320 && distSq <= 26 * 26) {
           event.preventDefault();
           event.stopPropagation();
           this.resetLogoCropToDefault();
@@ -1349,7 +1504,10 @@
       event.stopPropagation();
 
       const previewRect = this.preview.getBoundingClientRect();
-      const geo = this.getLogoCropGeometry(previewRect.width, previewRect.height);
+      const geo = this.getLogoCropGeometry(
+        previewRect.width,
+        previewRect.height,
+      );
       this.logoCropDragState = {
         mode,
         pointerId: event.pointerId,
@@ -1374,8 +1532,8 @@
         aspect: geo.aspect,
       };
       if (
-        this.logoCropDragState.captureTarget
-        && this.logoCropDragState.pointerId != null
+        this.logoCropDragState.captureTarget &&
+        this.logoCropDragState.pointerId != null
       ) {
         try {
           this.logoCropDragState.captureTarget.setPointerCapture(
@@ -1479,9 +1637,10 @@
 
     normalizeParams(raw, fallback = this.getDefaultParams()) {
       const source = raw && typeof raw === "object" ? raw : {};
-      const safeBase = fallback && typeof fallback === "object"
-        ? fallback
-        : this.getDefaultParams();
+      const safeBase =
+        fallback && typeof fallback === "object"
+          ? fallback
+          : this.getDefaultParams();
       return {
         mode: this.clampNumber(
           Math.round(this.numberOrFallback(source.mode, safeBase.mode)),
@@ -1494,7 +1653,9 @@
           5,
         ),
         intensity: this.clampNumber(
-          Math.round(this.numberOrFallback(source.intensity, safeBase.intensity)),
+          Math.round(
+            this.numberOrFallback(source.intensity, safeBase.intensity),
+          ),
           0,
           100,
         ),
@@ -1504,12 +1665,16 @@
           100,
         ),
         glitchLayer: this.clampNumber(
-          Math.round(this.numberOrFallback(source.glitchLayer, safeBase.glitchLayer)),
+          Math.round(
+            this.numberOrFallback(source.glitchLayer, safeBase.glitchLayer),
+          ),
           0,
           100,
         ),
         glitchOffset: this.clampNumber(
-          Math.round(this.numberOrFallback(source.glitchOffset, safeBase.glitchOffset)),
+          Math.round(
+            this.numberOrFallback(source.glitchOffset, safeBase.glitchOffset),
+          ),
           0,
           100,
         ),
@@ -1549,12 +1714,16 @@
           100,
         ),
         movingGrid: this.clampNumber(
-          Math.round(this.numberOrFallback(source.movingGrid, safeBase.movingGrid)),
+          Math.round(
+            this.numberOrFallback(source.movingGrid, safeBase.movingGrid),
+          ),
           0,
           100,
         ),
         videoSpeed: this.clampNumber(
-          Math.round(this.numberOrFallback(source.videoSpeed, safeBase.videoSpeed)),
+          Math.round(
+            this.numberOrFallback(source.videoSpeed, safeBase.videoSpeed),
+          ),
           0,
           100,
         ),
@@ -1569,7 +1738,12 @@
           100,
         ),
         videoRotate: this.clampNumber(
-          Math.round(this.numberOrFallback(source.videoRotate, safeBase.videoRotate ?? 0)),
+          Math.round(
+            this.numberOrFallback(
+              source.videoRotate,
+              safeBase.videoRotate ?? 0,
+            ),
+          ),
           -180,
           180,
         ),
@@ -1578,8 +1752,15 @@
             ? source.audioReactive
             : Boolean(safeBase.audioReactive),
         audioSource: (() => {
-          if (source.audioSource && ["off", "playback", "environment", "external"].includes(source.audioSource)) return source.audioSource;
-          if (typeof source.audioReactive === "boolean") return source.audioReactive ? "playback" : "off";
+          if (
+            source.audioSource &&
+            ["off", "playback", "environment", "external"].includes(
+              source.audioSource,
+            )
+          )
+            return source.audioSource;
+          if (typeof source.audioReactive === "boolean")
+            return source.audioReactive ? "playback" : "off";
           return safeBase.audioSource || "playback";
         })(),
         invert:
@@ -1598,9 +1779,14 @@
             : typeof source.textFlipV === "boolean"
               ? source.textFlipV
               : Boolean(safeBase.videoFlipV),
-        bgColor: this.normalizeHexColor(source.bgColor, safeBase.bgColor || "#000000"),
+        bgColor: this.normalizeHexColor(
+          source.bgColor,
+          safeBase.bgColor || "#000000",
+        ),
         bgOpacity: this.clampNumber(
-          Math.round(this.numberOrFallback(source.bgOpacity, safeBase.bgOpacity ?? 100)),
+          Math.round(
+            this.numberOrFallback(source.bgOpacity, safeBase.bgOpacity ?? 100),
+          ),
           0,
           100,
         ),
@@ -1639,18 +1825,30 @@
       const src = this.params.audioSource || "off";
       if (this.audioPlaybackBtn) {
         const on = src === "playback";
-        this.audioPlaybackBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        this.audioPlaybackBtn.title = "playback audio react: " + (on ? "on" : "off");
+        this.audioPlaybackBtn.setAttribute(
+          "aria-pressed",
+          on ? "true" : "false",
+        );
+        this.audioPlaybackBtn.title =
+          "playback audio react: " + (on ? "on" : "off");
       }
       if (this.audioEnvironmentBtn) {
         const on = src === "environment";
-        this.audioEnvironmentBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        this.audioEnvironmentBtn.title = "environment audio react: " + (on ? "on" : "off");
+        this.audioEnvironmentBtn.setAttribute(
+          "aria-pressed",
+          on ? "true" : "false",
+        );
+        this.audioEnvironmentBtn.title =
+          "environment audio react: " + (on ? "on" : "off");
       }
       if (this.audioExternalBtn) {
         const on = src === "external";
-        this.audioExternalBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        this.audioExternalBtn.title = "external audio react: " + (on ? "on" : "off");
+        this.audioExternalBtn.setAttribute(
+          "aria-pressed",
+          on ? "true" : "false",
+        );
+        this.audioExternalBtn.title =
+          "external audio react: " + (on ? "on" : "off");
       }
       if (this.invertToggleBtn) {
         this.invertToggleBtn.setAttribute(
@@ -1706,7 +1904,14 @@
         "bars",
         "plasma",
       ];
-      const formulaLabels = ["sine", "tangent", "fold", "pulse", "cheby", "xor"];
+      const formulaLabels = [
+        "sine",
+        "tangent",
+        "fold",
+        "pulse",
+        "cheby",
+        "xor",
+      ];
       const modeLabel = modeLabels[this.params.mode] || "video synth";
       const formulaLabel = formulaLabels[this.params.formula] || "formula";
       this.hud.textContent = `${modeLabel} · ${formulaLabel}`;
@@ -1732,10 +1937,13 @@
       if (this.colorAHexInput) this.colorAHexInput.value = this.params.colorA;
       if (this.colorBInput) this.colorBInput.value = this.params.colorB;
       if (this.colorBHexInput) this.colorBHexInput.value = this.params.colorB;
-      if (this.textColorInput) this.textColorInput.value = this.params.textColor;
-      if (this.textColorHexInput) this.textColorHexInput.value = this.params.textColor;
+      if (this.textColorInput)
+        this.textColorInput.value = this.params.textColor;
+      if (this.textColorHexInput)
+        this.textColorHexInput.value = this.params.textColor;
       if (this.bgColorInput) this.bgColorInput.value = this.params.bgColor;
-      if (this.bgColorHexInput) this.bgColorHexInput.value = this.params.bgColor;
+      if (this.bgColorHexInput)
+        this.bgColorHexInput.value = this.params.bgColor;
 
       const textInput = this.shell
         ? this.shell.querySelector(".videoSynthTextInput")
@@ -1790,7 +1998,9 @@
 
     getDefaultPresetName() {
       try {
-        const name = window.localStorage.getItem(VIDEO_SYNTH_PRESET_DEFAULT_KEY);
+        const name = window.localStorage.getItem(
+          VIDEO_SYNTH_PRESET_DEFAULT_KEY,
+        );
         return name ? this.sanitizePresetName(name) : "";
       } catch {
         return "";
@@ -1811,7 +2021,9 @@
       const cleanName = this.sanitizePresetName(name);
       if (!cleanName) return null;
       try {
-        const raw = window.localStorage.getItem(this.presetStorageKey(cleanName));
+        const raw = window.localStorage.getItem(
+          this.presetStorageKey(cleanName),
+        );
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === "object" ? parsed : null;
@@ -1825,7 +2037,10 @@
       if (!cleanName) return null;
       const localPreset = this.getLocalPreset(cleanName);
       if (localPreset) return localPreset;
-      return Object.prototype.hasOwnProperty.call(this.embeddedPresets, cleanName)
+      return Object.prototype.hasOwnProperty.call(
+        this.embeddedPresets,
+        cleanName,
+      )
         ? this.embeddedPresets[cleanName]
         : null;
     }
@@ -1876,7 +2091,9 @@
       const localSet = new Set(localNames);
       const localDefault = this.getDefaultPresetName();
       const embeddedDefault = this.embeddedDefaultPresetName;
-      const selected = this.sanitizePresetName(preferredValue || this.presetSelect.value);
+      const selected = this.sanitizePresetName(
+        preferredValue || this.presetSelect.value,
+      );
 
       this.presetSelect.innerHTML = "";
       const emptyOpt = document.createElement("option");
@@ -1887,10 +2104,14 @@
       for (const name of this.getAllPresetNames()) {
         const opt = document.createElement("option");
         const isLocal = localSet.has(name);
-        const isEmbedded = Object.prototype.hasOwnProperty.call(this.embeddedPresets, name);
+        const isEmbedded = Object.prototype.hasOwnProperty.call(
+          this.embeddedPresets,
+          name,
+        );
         let label = name;
         if (name === localDefault) label += " (default)";
-        else if (!isLocal && name === embeddedDefault) label += " (song default)";
+        else if (!isLocal && name === embeddedDefault)
+          label += " (song default)";
         else if (isEmbedded && !isLocal) label += " [song]";
         opt.value = name;
         opt.textContent = label;
@@ -1928,7 +2149,9 @@
 
     updateJsonHighlight() {
       if (!this.songJson || !this.songJsonHighlight) return;
-      this.songJsonHighlight.innerHTML = this.highlightJson(this.songJson.value);
+      this.songJsonHighlight.innerHTML = this.highlightJson(
+        this.songJson.value,
+      );
       this.syncJsonScroll();
     }
 
@@ -2027,9 +2250,12 @@
     }
 
     setAutosaveInterval(nextIntervalMinutes) {
-      this.autosaveIntervalMinutes = this.normalizeAutosaveInterval(nextIntervalMinutes);
+      this.autosaveIntervalMinutes =
+        this.normalizeAutosaveInterval(nextIntervalMinutes);
       if (this.autosaveIntervalSelect) {
-        this.autosaveIntervalSelect.value = String(this.autosaveIntervalMinutes);
+        this.autosaveIntervalSelect.value = String(
+          this.autosaveIntervalMinutes,
+        );
       }
       this.writeAutosaveConfig();
       this.syncAutosaveTimer();
@@ -2055,20 +2281,31 @@
       if (this.songIo?.open) this.syncJsonEditorFromSession();
     }
 
-    saveCurrentPreset({ statusLabel = "saving", showPresetStatus = true } = {}) {
+    saveCurrentPreset({
+      statusLabel = "saving",
+      showPresetStatus = true,
+    } = {}) {
       if (showPresetStatus) this.setPresetStatus("", { busy: true });
 
       const state = this.exportState();
-      const requestedName = this.sanitizePresetName(this.presetNameInput?.value);
+      const requestedName = this.sanitizePresetName(
+        this.presetNameInput?.value,
+      );
       const selectedName = this.sanitizePresetName(this.presetSelect?.value);
-      const name = requestedName || selectedName || this.makeUniquePresetName("video synth");
+      const name =
+        requestedName ||
+        selectedName ||
+        this.makeUniquePresetName("video synth");
 
       const ok = this.savePreset(name, state);
       if (!ok) {
         if (showPresetStatus) {
-          this.setPresetStatus(this.lastPresetSaveErrorMessage || "save failed", {
-            ok: false,
-          });
+          this.setPresetStatus(
+            this.lastPresetSaveErrorMessage || "save failed",
+            {
+              ok: false,
+            },
+          );
         }
         return false;
       }
@@ -2154,14 +2391,12 @@
       }
 
       const isSessionShape =
-        parsed.value
-        && typeof parsed.value === "object"
-        && (
-          parsed.value.currentState
-          || parsed.value.presets
-          || parsed.value.selectedPreset
-          || parsed.value.currentName
-        );
+        parsed.value &&
+        typeof parsed.value === "object" &&
+        (parsed.value.currentState ||
+          parsed.value.presets ||
+          parsed.value.selectedPreset ||
+          parsed.value.currentName);
 
       const ok = isSessionShape
         ? this.importSession(parsed.value)
@@ -2170,7 +2405,8 @@
         this.setPresetStatus("invalid synth json", { ok: false });
         return;
       }
-      if (!isSessionShape && this.songIo?.open) this.syncJsonEditorFromSession();
+      if (!isSessionShape && this.songIo?.open)
+        this.syncJsonEditorFromSession();
       this.setPresetStatus("applying json");
     }
 
@@ -2188,9 +2424,10 @@
         this.updateJsonHighlight();
       }
 
-      const sourceName = this.sanitizePresetName(this.presetNameInput?.value)
-        || this.sanitizePresetName(session.selectedPreset)
-        || "video synth";
+      const sourceName =
+        this.sanitizePresetName(this.presetNameInput?.value) ||
+        this.sanitizePresetName(session.selectedPreset) ||
+        "video synth";
       const filename = `${this.fileSafeStem(sourceName)}.aelonyori-video-synth.json`;
       sharedTriggerBlobDownload(text, filename, "application/json");
       this.setPresetStatus("downloading json");
@@ -2241,9 +2478,10 @@
         state.params && typeof state.params === "object"
           ? state.params
           : state.currentState && typeof state.currentState === "object"
-            ? (state.currentState.params && typeof state.currentState.params === "object"
-                ? state.currentState.params
-                : state.currentState)
+            ? state.currentState.params &&
+              typeof state.currentState.params === "object"
+              ? state.currentState.params
+              : state.currentState
             : state;
       this.applyParams(source);
       return true;
@@ -2257,9 +2495,14 @@
       }
       return {
         version: 1,
-        currentName: this.sanitizePresetName(this.presetNameInput?.value) || undefined,
-        selectedPreset: this.sanitizePresetName(this.presetSelect?.value) || undefined,
-        defaultPreset: this.getDefaultPresetName() || this.embeddedDefaultPresetName || undefined,
+        currentName:
+          this.sanitizePresetName(this.presetNameInput?.value) || undefined,
+        selectedPreset:
+          this.sanitizePresetName(this.presetSelect?.value) || undefined,
+        defaultPreset:
+          this.getDefaultPresetName() ||
+          this.embeddedDefaultPresetName ||
+          undefined,
         autosaveEnabled: Boolean(this.autosaveEnabled),
         autosaveIntervalMinutes: Number(this.autosaveIntervalMinutes),
         currentState: this.exportState(),
@@ -2271,9 +2514,10 @@
       if (!session || typeof session !== "object") return false;
 
       const nextEmbeddedPresets = Object.create(null);
-      const rawPresets = session.presets && typeof session.presets === "object"
-        ? session.presets
-        : {};
+      const rawPresets =
+        session.presets && typeof session.presets === "object"
+          ? session.presets
+          : {};
 
       for (const [rawName, value] of Object.entries(rawPresets)) {
         const name = this.sanitizePresetName(rawName);
@@ -2288,7 +2532,10 @@
         : "";
 
       this.setAutosaveInterval(
-        this.numberOrFallback(session.autosaveIntervalMinutes, this.autosaveIntervalMinutes),
+        this.numberOrFallback(
+          session.autosaveIntervalMinutes,
+          this.autosaveIntervalMinutes,
+        ),
       );
       this.setAutosaveEnabled(
         typeof session.autosaveEnabled === "boolean"
@@ -2374,33 +2621,55 @@
       this.detachMicTap();
       if (!navigator.mediaDevices?.getUserMedia) return;
       try {
-        const baseConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        const baseConstraints = {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        };
         let stream;
         if (preferExternal) {
           // Get permission first, then enumerate to find a non-default device
-          stream = await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: baseConstraints,
+          });
           const devices = await navigator.mediaDevices.enumerateDevices();
-          const audioInputs = devices.filter(d => d.kind === "audioinput");
+          const audioInputs = devices.filter((d) => d.kind === "audioinput");
           const rankedInputs = audioInputs
-            .filter(d => d.deviceId !== "default" && d.deviceId !== "communications" && d.deviceId !== "")
+            .filter(
+              (d) =>
+                d.deviceId !== "default" &&
+                d.deviceId !== "communications" &&
+                d.deviceId !== "",
+            )
             .map((d) => {
               const label = String(d.label || "").toLowerCase();
               let score = 0;
               if (/loopback|stereo mix|what u hear/.test(label)) score += 100;
               if (/line in|line-in|linein|aux/.test(label)) score += 80;
-              if (/interface|scarlett|focusrite|usb|asio|aggregate/.test(label)) score += 60;
-              if (/headset|headphone|webcam|built-in|builtin|internal/.test(label)) score -= 20;
+              if (/interface|scarlett|focusrite|usb|asio|aggregate/.test(label))
+                score += 60;
+              if (
+                /headset|headphone|webcam|built-in|builtin|internal/.test(label)
+              )
+                score -= 20;
               return { device: d, score };
             })
             .sort((a, b) => b.score - a.score);
           const external = rankedInputs[0]?.device || null;
           if (external) {
             // Re-request with the external device
-            stream.getTracks().forEach(t => t.stop());
-            stream = await navigator.mediaDevices.getUserMedia({ audio: { ...baseConstraints, deviceId: { exact: external.deviceId } } });
+            stream.getTracks().forEach((t) => t.stop());
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                ...baseConstraints,
+                deviceId: { exact: external.deviceId },
+              },
+            });
           }
         } else {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: baseConstraints,
+          });
         }
         const ctx = new AudioContext();
         await ctx.resume();
@@ -2430,11 +2699,15 @@
 
     detachMicTap() {
       if (this.micStream) {
-        this.micStream.getTracks().forEach(t => t.stop());
+        this.micStream.getTracks().forEach((t) => t.stop());
         this.micStream = null;
       }
       if (this.micAudioCtx) {
-        try { this.micAudioCtx.close(); } catch { /* ignore */ }
+        try {
+          this.micAudioCtx.close();
+        } catch {
+          /* ignore */
+        }
         this.micAudioCtx = null;
       }
       this.micAnalyser = null;
@@ -2560,7 +2833,8 @@
 
         const lines = content.split(/\n+/).slice(0, 3);
         const lineGap = Math.max(10, Math.round(sizePx * 0.24));
-        const totalHeight = lines.length * sizePx + (lines.length - 1) * lineGap;
+        const totalHeight =
+          lines.length * sizePx + (lines.length - 1) * lineGap;
         let y = (height - totalHeight) * 0.5 + sizePx * 0.52;
         for (const line of lines) {
           ctx.fillText(line, width * 0.5, y);
@@ -2588,7 +2862,9 @@
       const out = this.audioTextureFrame;
       const outLen = out.length;
 
-      const useMic = this.params.audioSource === "environment" || this.params.audioSource === "external";
+      const useMic =
+        this.params.audioSource === "environment" ||
+        this.params.audioSource === "external";
       const activeAnalyser = useMic ? this.micAnalyser : this.analyser;
       const activeFrame = useMic ? this.micAudioFrame : this.audioFrame;
 
@@ -2606,7 +2882,11 @@
           }
           const rms = Math.sqrt(sumSq / Math.max(1, srcLen));
           const targetRms = 0.22;
-          const instantGain = this.clampNumber(targetRms / Math.max(0.005, rms), 1, 14);
+          const instantGain = this.clampNumber(
+            targetRms / Math.max(0.005, rms),
+            1,
+            14,
+          );
           this.micAdaptiveGain += (instantGain - this.micAdaptiveGain) * 0.08;
           const g = this.clampNumber(this.micAdaptiveGain, 1, 14);
 
@@ -2649,7 +2929,8 @@
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(this.program);
 
-      const audioMix = this.params.audioSource !== "off" ? this.params.audioMix / 100 : 0;
+      const audioMix =
+        this.params.audioSource !== "off" ? this.params.audioMix / 100 : 0;
       const colorA = this.hexToRgb01(this.params.colorA, [0.24, 0.45, 0.95]);
       const colorB = this.hexToRgb01(this.params.colorB, [0.96, 0.98, 1.0]);
       const bgColor = this.hexToRgb01(this.params.bgColor, [0.0, 0.0, 0.0]);
@@ -2673,7 +2954,10 @@
       gl.uniform1f(this.uMovingGrid, this.params.movingGrid / 100);
       gl.uniform1f(this.uAudioMix, audioMix);
       gl.uniform1f(this.uAutoMix, this.params.autoMix / 100);
-      gl.uniform1f(this.uVideoRotate, (this.params.videoRotate * Math.PI) / 180);
+      gl.uniform1f(
+        this.uVideoRotate,
+        (this.params.videoRotate * Math.PI) / 180,
+      );
       gl.uniform1f(this.uInvert, this.params.invert ? 1 : 0);
       gl.uniform3f(this.uBgColor, bgColor[0], bgColor[1], bgColor[2]);
       gl.uniform1f(this.uBgOpacity, this.params.bgOpacity / 100);
@@ -2708,11 +2992,7 @@
       if (!safe) return fallback;
       const n = parseInt(safe.slice(1), 16);
       if (!Number.isFinite(n)) return fallback;
-      return [
-        ((n >> 16) & 255) / 255,
-        ((n >> 8) & 255) / 255,
-        (n & 255) / 255,
-      ];
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
     }
 
     getFragmentPrecisionQualifier(gl) {
@@ -2720,7 +3000,10 @@
         return "mediump";
       }
       try {
-        const high = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+        const high = gl.getShaderPrecisionFormat(
+          gl.FRAGMENT_SHADER,
+          gl.HIGH_FLOAT,
+        );
         if (high && Number.isFinite(high.precision) && high.precision > 0) {
           return "highp";
         }
@@ -3024,14 +3307,7 @@ void main() {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
       gl.bufferData(
         gl.ARRAY_BUFFER,
-        new Float32Array([
-          -1, -1,
-          1, -1,
-          -1, 1,
-          -1, 1,
-          1, -1,
-          1, 1,
-        ]),
+        new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
         gl.STATIC_DRAW,
       );
 
@@ -3118,7 +3394,11 @@ void main() {
     }
 
     sampleLogoAccentColors(count = 9) {
-      const targetCount = this.clampNumber(Math.round(this.numberOrFallback(count, 9)), 1, 24);
+      const targetCount = this.clampNumber(
+        Math.round(this.numberOrFallback(count, 9)),
+        1,
+        24,
+      );
       if (!this.canvas || this.canvas.width <= 0 || this.canvas.height <= 0) {
         return null;
       }
@@ -3129,28 +3409,41 @@ void main() {
       const targetW = Math.max(64, targetCount * 12);
       const targetH = 32;
       if (
-        this.logoSampleCanvas.width !== targetW
-        || this.logoSampleCanvas.height !== targetH
+        this.logoSampleCanvas.width !== targetW ||
+        this.logoSampleCanvas.height !== targetH
       ) {
         this.logoSampleCanvas.width = targetW;
         this.logoSampleCanvas.height = targetH;
       }
       if (!this.logoSampleCtx) {
-        this.logoSampleCtx = this.logoSampleCanvas.getContext("2d", { willReadFrequently: true });
+        this.logoSampleCtx = this.logoSampleCanvas.getContext("2d", {
+          willReadFrequently: true,
+        });
       }
       if (!this.logoSampleCtx) return null;
 
       this.logoSampleCtx.drawImage(this.canvas, 0, 0, targetW, targetH);
-      const image = this.logoSampleCtx.getImageData(0, 0, targetW, targetH).data;
+      const image = this.logoSampleCtx.getImageData(
+        0,
+        0,
+        targetW,
+        targetH,
+      ).data;
       const colors = [];
       for (let i = 0; i < targetCount; i += 1) {
-        const x = this.clampNumber(Math.round(((i + 0.5) / targetCount) * (targetW - 1)), 0, targetW - 1);
+        const x = this.clampNumber(
+          Math.round(((i + 0.5) / targetCount) * (targetW - 1)),
+          0,
+          targetW - 1,
+        );
         const y = Math.round(targetH * 0.5);
         const idx = (y * targetW + x) * 4;
         const r = image[idx] ?? 0;
         const g = image[idx + 1] ?? 0;
         const b = image[idx + 2] ?? 0;
-        colors.push(`#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+        colors.push(
+          `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`,
+        );
       }
       return colors;
     }
@@ -3158,7 +3451,10 @@ void main() {
     createProgram(vertexSource, fragmentSource) {
       const gl = this.gl;
       const vertexShader = this.createShader(gl.VERTEX_SHADER, vertexSource);
-      const fragmentShader = this.createShader(gl.FRAGMENT_SHADER, fragmentSource);
+      const fragmentShader = this.createShader(
+        gl.FRAGMENT_SHADER,
+        fragmentSource,
+      );
       if (!vertexShader || !fragmentShader) return null;
 
       const program = gl.createProgram();
@@ -3167,7 +3463,10 @@ void main() {
       gl.linkProgram(program);
 
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error("[video-synth] program link failed:", gl.getProgramInfoLog(program));
+        console.error(
+          "[video-synth] program link failed:",
+          gl.getProgramInfoLog(program),
+        );
         gl.deleteProgram(program);
         return null;
       }
@@ -3183,7 +3482,10 @@ void main() {
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error("[video-synth] shader compile failed:", gl.getShaderInfoLog(shader));
+        console.error(
+          "[video-synth] shader compile failed:",
+          gl.getShaderInfoLog(shader),
+        );
         gl.deleteShader(shader);
         return null;
       }
@@ -3232,7 +3534,9 @@ void main() {
         this.hud.parentElement.removeChild(this.hud);
       }
       if (this.audioSourceStatus && this.audioSourceStatus.parentElement) {
-        this.audioSourceStatus.parentElement.removeChild(this.audioSourceStatus);
+        this.audioSourceStatus.parentElement.removeChild(
+          this.audioSourceStatus,
+        );
       }
 
       this.shell = null;
@@ -3246,7 +3550,7 @@ void main() {
       this.songIo = null;
       this.songJson = null;
       this.songJsonHighlight = null;
-      this.logoVideoBackgroundBtn = null;
+      this.logoVideoBackgroundModeInput = null;
       this.logoVideoCropBtn = null;
       this.logoCropOverlay = null;
       this.logoCropRect = null;

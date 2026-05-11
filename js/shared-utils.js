@@ -1,5 +1,6 @@
 (() => {
-  const TOKEN_RE = /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
+  const TOKEN_RE =
+    /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g;
 
   function numberOrFallback(value, fallback) {
     const n = Number(value);
@@ -68,9 +69,12 @@
   }
 
   function normalizeIntervalChoice(value, allowed, fallback) {
-    const options = Array.isArray(allowed) && allowed.length > 0
-      ? allowed.map((n) => Math.round(numberOrFallback(n, 0))).filter((n) => Number.isFinite(n))
-      : [1, 5, 10, 15, 30, 60];
+    const options =
+      Array.isArray(allowed) && allowed.length > 0
+        ? allowed
+            .map((n) => Math.round(numberOrFallback(n, 0)))
+            .filter((n) => Number.isFinite(n))
+        : [1, 5, 10, 15, 30, 60];
 
     const next = Math.round(numberOrFallback(value, fallback));
     if (options.includes(next)) return next;
@@ -88,7 +92,8 @@
   }
 
   function makeUniquePresetName(base, existingNames, defaultBase) {
-    const baseName = String(base || "").trim() || String(defaultBase || "preset");
+    const baseName =
+      String(base || "").trim() || String(defaultBase || "preset");
     const existing = new Set(existingNames);
     if (!existing.has(baseName)) return baseName;
     let i = 2;

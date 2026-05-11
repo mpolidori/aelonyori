@@ -93,36 +93,44 @@
   const activeSources = new Set();
 
   const shared = window.AelonyoriShared || {};
-  const numberOrFallback = shared.numberOrFallback || ((value, fallback) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-  });
-  const clampNumberSafe = shared.clampNumberSafe || ((value, min, max) => {
-    const next = numberOrFallback(value, min);
-    return Math.min(max, Math.max(min, next));
-  });
-  const fileSafeStem = shared.fileSafeStem || ((value, fallback = "sample-pack") => {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
-  });
-  const triggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
-    const type = String(mimeType || "application/json");
-    const blob = new Blob([data], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = String(filename || "download");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  });
+  const numberOrFallback =
+    shared.numberOrFallback ||
+    ((value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    });
+  const clampNumberSafe =
+    shared.clampNumberSafe ||
+    ((value, min, max) => {
+      const next = numberOrFallback(value, min);
+      return Math.min(max, Math.max(min, next));
+    });
+  const fileSafeStem =
+    shared.fileSafeStem ||
+    ((value, fallback = "sample-pack") => {
+      const stem = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_ ]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return stem || fallback;
+    });
+  const triggerBlobDownload =
+    shared.triggerBlobDownload ||
+    ((data, filename, mimeType) => {
+      const type = String(mimeType || "application/json");
+      const blob = new Blob([data], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = String(filename || "download");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
 
   function clampNumber(value, min, max) {
     return clampNumberSafe(value, min, max);
@@ -251,7 +259,11 @@
   function normalizePatternCell(cell) {
     if (!cell || typeof cell !== "object") return null;
     if (!cell.on) return null;
-    const corner = clampNumber(Math.round(numberOrFallback(cell.corner, 0)), 0, 3);
+    const corner = clampNumber(
+      Math.round(numberOrFallback(cell.corner, 0)),
+      0,
+      3,
+    );
     return {
       on: true,
       corner,
@@ -325,7 +337,9 @@
 
     const sourcePattern = Array.isArray(pack.pattern) ? pack.pattern : [];
     pattern = Array.from({ length: NUM_PADS }, (_, row) => {
-      const srcRow = Array.isArray(sourcePattern[row]) ? sourcePattern[row] : [];
+      const srcRow = Array.isArray(sourcePattern[row])
+        ? sourcePattern[row]
+        : [];
       const outRow = new Array(stepsCount).fill(null);
       for (let col = 0; col < stepsCount; col += 1) {
         outRow[col] = normalizePatternCell(srcRow[col]);
@@ -335,7 +349,8 @@
 
     const pads = Array.isArray(pack.pads) ? pack.pads : [];
     for (let i = 0; i < NUM_PADS; i += 1) {
-      const b64 = typeof pads[i] === "string" && pads[i].length > 0 ? pads[i] : "";
+      const b64 =
+        typeof pads[i] === "string" && pads[i].length > 0 ? pads[i] : "";
       if (!b64) continue;
       try {
         const ab = base64ToArrayBuffer(b64);
@@ -369,7 +384,11 @@
     const name = getSamplerPackNameFromUi();
     const stem = fileSafeStem(name || "sample-pack", "sample-pack");
     const text = buildCurrentSamplerPackJson();
-    triggerBlobDownload(text, `${stem}.aelonyori-pack.json`, "application/json");
+    triggerBlobDownload(
+      text,
+      `${stem}.aelonyori-pack.json`,
+      "application/json",
+    );
     setGlobalStatus("downloading pack");
   }
 
@@ -853,7 +872,8 @@
         const overlapPenalty = intersectsAnchor(candidate.left, candidate.top)
           ? 100000
           : 0;
-        const score = overlapPenalty + overflowAmount(candidate.left, candidate.top);
+        const score =
+          overlapPenalty + overflowAmount(candidate.left, candidate.top);
         if (score < bestScore) {
           bestScore = score;
           best = candidate;
@@ -1447,13 +1467,27 @@
 
   (async () => {
     try {
-      const res = await fetch("configs/sampler/defaults.json", { cache: "no-store" });
+      const res = await fetch("configs/sampler/defaults.json", {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const cfg = await res.json();
       if (!cfg || typeof cfg !== "object") return;
-      const nextBpm = clampNumber(Math.round(numberOrFallback(cfg.bpm, bpm)), 20, 360);
-      const nextSteps = clampNumber(Math.round(numberOrFallback(cfg.steps, stepsCount)), 4, 256);
-      const nextBeat = clampNumber(Math.round(numberOrFallback(cfg.beat, beatSteps)), 1, 16);
+      const nextBpm = clampNumber(
+        Math.round(numberOrFallback(cfg.bpm, bpm)),
+        20,
+        360,
+      );
+      const nextSteps = clampNumber(
+        Math.round(numberOrFallback(cfg.steps, stepsCount)),
+        4,
+        256,
+      );
+      const nextBeat = clampNumber(
+        Math.round(numberOrFallback(cfg.beat, beatSteps)),
+        1,
+        16,
+      );
       setBpm(nextBpm);
       setSteps(nextSteps);
       setBeat(nextBeat);

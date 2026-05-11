@@ -1,77 +1,103 @@
 (async () => {
   const shared = window.AelonyoriShared || {};
-  const clampNumber = shared.clampNumber || ((value, min, max) => Math.min(max, Math.max(min, value)));
-  const numberOrFallback = shared.numberOrFallback || ((value, fallback) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-  });
-  const safeJsonParse = shared.safeJsonParse || ((text) => {
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch (error) {
-      return { ok: false, error };
-    }
-  });
-  const fileSafeStem = shared.fileSafeStem || ((value, fallback = "song") => {
-    const stem = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-_ ]+/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return stem || fallback;
-  });
-  const highlightJson = shared.highlightJson || ((text) => String(text));
-  const isQuotaExceededError = shared.isQuotaExceededError || ((error) => {
-    if (!error) return false;
-    const code = Number(error.code);
-    const name = String(error.name || "");
-    return (
-      name === "QuotaExceededError" ||
-      name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-      code === 22 ||
-      code === 1014
-    );
-  });
-  const normalizeIntervalChoice = shared.normalizeIntervalChoice || ((value, allowed, fallback) => {
-    const options = Array.isArray(allowed) && allowed.length > 0
-      ? allowed
-      : [1, 5, 10, 15, 30, 60];
-    const next = Math.round(numberOrFallback(value, fallback));
-    if (options.includes(next)) return next;
-    let best = options[0];
-    let bestDist = Math.abs(next - best);
-    for (let i = 1; i < options.length; i += 1) {
-      const dist = Math.abs(next - options[i]);
-      if (dist < bestDist) {
-        best = options[i];
-        bestDist = dist;
+  const clampNumber =
+    shared.clampNumber ||
+    ((value, min, max) => Math.min(max, Math.max(min, value)));
+  const numberOrFallback =
+    shared.numberOrFallback ||
+    ((value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    });
+  const safeJsonParse =
+    shared.safeJsonParse ||
+    ((text) => {
+      try {
+        return { ok: true, value: JSON.parse(text) };
+      } catch (error) {
+        return { ok: false, error };
       }
-    }
-    return best;
-  });
+    });
+  const fileSafeStem =
+    shared.fileSafeStem ||
+    ((value, fallback = "song") => {
+      const stem = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_ ]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return stem || fallback;
+    });
+  const highlightJson = shared.highlightJson || ((text) => String(text));
+  const isQuotaExceededError =
+    shared.isQuotaExceededError ||
+    ((error) => {
+      if (!error) return false;
+      const code = Number(error.code);
+      const name = String(error.name || "");
+      return (
+        name === "QuotaExceededError" ||
+        name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        code === 22 ||
+        code === 1014
+      );
+    });
+  const normalizeIntervalChoice =
+    shared.normalizeIntervalChoice ||
+    ((value, allowed, fallback) => {
+      const options =
+        Array.isArray(allowed) && allowed.length > 0
+          ? allowed
+          : [1, 5, 10, 15, 30, 60];
+      const next = Math.round(numberOrFallback(value, fallback));
+      if (options.includes(next)) return next;
+      let best = options[0];
+      let bestDist = Math.abs(next - best);
+      for (let i = 1; i < options.length; i += 1) {
+        const dist = Math.abs(next - options[i]);
+        if (dist < bestDist) {
+          best = options[i];
+          bestDist = dist;
+        }
+      }
+      return best;
+    });
 
-  const makeUniquePresetName = shared.makeUniquePresetName || ((base, existingNames, defaultBase) => {
-    const baseName = String(base || "").trim() || String(defaultBase || "preset");
-    const existing = new Set(existingNames);
-    if (!existing.has(baseName)) return baseName;
-    let i = 2;
-    while (existing.has(`${baseName} ${i}`)) i += 1;
-    return `${baseName} ${i}`;
-  });
-  const triggerBlobDownload = shared.triggerBlobDownload || ((data, filename, mimeType) => {
-    const type = String(mimeType || "application/json");
-    const blob = new Blob([data], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = String(filename || "download");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  });
+  function normalizeVideoBackgroundMode(nextMode, fallback = "off") {
+    const mode = String(nextMode || "").toLowerCase();
+    if (mode === "custom" || mode === "daw" || mode === "off") {
+      return mode;
+    }
+    return fallback;
+  }
+
+  const makeUniquePresetName =
+    shared.makeUniquePresetName ||
+    ((base, existingNames, defaultBase) => {
+      const baseName =
+        String(base || "").trim() || String(defaultBase || "preset");
+      const existing = new Set(existingNames);
+      if (!existing.has(baseName)) return baseName;
+      let i = 2;
+      while (existing.has(`${baseName} ${i}`)) i += 1;
+      return `${baseName} ${i}`;
+    });
+  const triggerBlobDownload =
+    shared.triggerBlobDownload ||
+    ((data, filename, mimeType) => {
+      const type = String(mimeType || "application/json");
+      const blob = new Blob([data], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = String(filename || "download");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
 
   const userAgent = String(navigator.userAgent || "");
   const isAndroidChrome =
@@ -92,7 +118,9 @@
   const themeStarBtn = document.getElementById("themeStarBtn");
   const navToVideoSynthBtn = document.getElementById("navToVideoSynthBtn");
   const navToTextVideoBtn = document.getElementById("navToTextVideoBtn");
-  const navToVideoFromTextBtn = document.getElementById("navToVideoFromTextBtn");
+  const navToVideoFromTextBtn = document.getElementById(
+    "navToVideoFromTextBtn",
+  );
   const navToSamplerBtn = document.getElementById("navToSamplerBtn");
   const navToDawBtn = document.getElementById("navToDawBtn");
   const navToDawFromVideoBtn = document.getElementById("navToDawFromVideoBtn");
@@ -104,21 +132,32 @@
   const textVideoInput = document.getElementById("textVideoInput");
   const textVideoCount = document.getElementById("textVideoCount");
   const textVideoResetBtn = document.getElementById("textVideoResetBtn");
-  const textVideoFullscreenBtn = document.getElementById("textVideoFullscreenBtn");
+  const textVideoFullscreenBtn = document.getElementById(
+    "textVideoFullscreenBtn",
+  );
   const textVideoPadTopInput = document.getElementById("textVideoPadTop");
   const textVideoPadTopOut = document.getElementById("textVideoPadTopOut");
   const textVideoPadBottomInput = document.getElementById("textVideoPadBottom");
-  const textVideoPadBottomOut = document.getElementById("textVideoPadBottomOut");
+  const textVideoPadBottomOut = document.getElementById(
+    "textVideoPadBottomOut",
+  );
   const textVideoPadLeftInput = document.getElementById("textVideoPadLeft");
   const textVideoPadLeftOut = document.getElementById("textVideoPadLeftOut");
   const textVideoPadRightInput = document.getElementById("textVideoPadRight");
   const textVideoPadRightOut = document.getElementById("textVideoPadRightOut");
-  const textVideoVideoScaleInput = document.getElementById("textVideoVideoScale");
-  const textVideoVideoScaleOut = document.getElementById("textVideoVideoScaleOut");
+  const textVideoVideoScaleInput = document.getElementById(
+    "textVideoVideoScale",
+  );
+  const textVideoVideoScaleOut = document.getElementById(
+    "textVideoVideoScaleOut",
+  );
   const textVideoVideoXInput = document.getElementById("textVideoVideoX");
   const textVideoVideoXOut = document.getElementById("textVideoVideoXOut");
   const textVideoVideoYInput = document.getElementById("textVideoVideoY");
   const textVideoVideoYOut = document.getElementById("textVideoVideoYOut");
+  const textVideoSplitSpacesToggleBtn = document.getElementById(
+    "textVideoSplitSpacesToggleBtn",
+  );
   const samplePadWrap = document.getElementById("samplePadWrap");
   const samplePadGrid = document.getElementById("samplePadGrid");
   const samplePadRollWrap = document.getElementById("samplePadRollWrap");
@@ -198,15 +237,9 @@
   const subtitlesSpeedRow = document.getElementById("subtitlesSpeedRow");
   const subtitlesSpeedInput = document.getElementById("subtitlesSpeed");
   const subtitlesSpeedOut = document.getElementById("subtitlesSpeedOut");
-  const subtitleStack = document.getElementById(
-    "subtitleStack",
-  );
-  const subtitleLower = document.getElementById(
-    "subtitleLower",
-  );
-  const subtitleUpper = document.getElementById(
-    "subtitleUpper",
-  );
+  const subtitleStack = document.getElementById("subtitleStack");
+  const subtitleLower = document.getElementById("subtitleLower");
+  const subtitleUpper = document.getElementById("subtitleUpper");
   const autoscrollToggleBtn = document.getElementById("autoscrollToggleBtn");
 
   const tempoInput = document.getElementById("tempo");
@@ -402,6 +435,7 @@
       autoscrollEnabled: true,
       gradientAnimationEnabled: true,
       logoVideoBackgroundEnabled: false,
+      videoBackgroundMode: "off",
       logoVideoCropX: 50,
       logoVideoCropY: 60,
       logoVideoCropSize: 88,
@@ -575,7 +609,10 @@
         DEFAULT_APP_DEFAULTS.globals,
         parsed && parsed.globals,
       );
-      const ui = mergeDefaultSection(DEFAULT_APP_DEFAULTS.ui, parsed && parsed.ui);
+      const ui = mergeDefaultSection(
+        DEFAULT_APP_DEFAULTS.ui,
+        parsed && parsed.ui,
+      );
       const trackDefaults = mergeDefaultSection(
         DEFAULT_APP_DEFAULTS.trackDefaults,
         parsed && parsed.trackDefaults,
@@ -652,19 +689,30 @@
       typeof appDefaults.trackDefaults?.collapsed === "boolean"
         ? appDefaults.trackDefaults.collapsed
         : true,
-    seqMode:
-      appDefaults.trackDefaults?.seqMode === "roll" ? "roll" : "single",
+    seqMode: appDefaults.trackDefaults?.seqMode === "roll" ? "roll" : "single",
     gridCollapsed: Boolean(appDefaults.trackDefaults?.gridCollapsed),
   });
 
   function normalizeEnvDefaults(raw, fallback) {
     const input = raw && typeof raw === "object" ? raw : {};
     return {
-      attack: clampNumber(numberOrFallback(input.attack, fallback.attack), 0, 127),
+      attack: clampNumber(
+        numberOrFallback(input.attack, fallback.attack),
+        0,
+        127,
+      ),
       hold: clampNumber(numberOrFallback(input.hold, fallback.hold), 0, 100),
       decay: clampNumber(numberOrFallback(input.decay, fallback.decay), 0, 127),
-      sustain: clampNumber(numberOrFallback(input.sustain, fallback.sustain), 0, 127),
-      release: clampNumber(numberOrFallback(input.release, fallback.release), 0, 127),
+      sustain: clampNumber(
+        numberOrFallback(input.sustain, fallback.sustain),
+        0,
+        127,
+      ),
+      release: clampNumber(
+        numberOrFallback(input.release, fallback.release),
+        0,
+        127,
+      ),
     };
   }
 
@@ -685,25 +733,49 @@
   }
 
   function normalizeSoundKind(kind, fallback = "kick") {
-    const raw = String(kind || "").trim().toLowerCase();
+    const raw = String(kind || "")
+      .trim()
+      .toLowerCase();
     const mapped = raw === "stack" ? DUAL_OSC_SOUND : raw;
     const safeFallback = SOUND_OPTIONS.some((o) => o.value === fallback)
       ? fallback
       : "kick";
-    return SOUND_OPTIONS.some((o) => o.value === mapped) ? mapped : safeFallback;
+    return SOUND_OPTIONS.some((o) => o.value === mapped)
+      ? mapped
+      : safeFallback;
   }
 
   function normalizeSoundDefaults(raw, fallback, kind) {
     const input = raw && typeof raw === "object" ? raw : {};
     return {
-      pitch: clampNumber(numberOrFallback(input.pitch, fallback.pitch), PITCH_MIN, PITCH_MAX),
-      tuneCents: clampNumber(numberOrFallback(input.tuneCents, fallback.tuneCents), -100, 100),
-      volume: clampNumber(numberOrFallback(input.volume, fallback.volume), 0, 127),
+      pitch: clampNumber(
+        numberOrFallback(input.pitch, fallback.pitch),
+        PITCH_MIN,
+        PITCH_MAX,
+      ),
+      tuneCents: clampNumber(
+        numberOrFallback(input.tuneCents, fallback.tuneCents),
+        -100,
+        100,
+      ),
+      volume: clampNumber(
+        numberOrFallback(input.volume, fallback.volume),
+        0,
+        127,
+      ),
       pan: clampNumber(numberOrFallback(input.pan, fallback.pan), -100, 100),
       swing: clampNumber(numberOrFallback(input.swing, fallback.swing), 0, 127),
-      offsetMs: clampNumber(numberOrFallback(input.offsetMs, fallback.offsetMs), -100, 100),
-      muted: typeof input.muted === "boolean" ? input.muted : Boolean(fallback.muted),
-      solo: typeof input.solo === "boolean" ? input.solo : Boolean(fallback.solo),
+      offsetMs: clampNumber(
+        numberOrFallback(input.offsetMs, fallback.offsetMs),
+        -100,
+        100,
+      ),
+      muted:
+        typeof input.muted === "boolean"
+          ? input.muted
+          : Boolean(fallback.muted),
+      solo:
+        typeof input.solo === "boolean" ? input.solo : Boolean(fallback.solo),
       collapsed:
         typeof input.collapsed === "boolean"
           ? input.collapsed
@@ -718,20 +790,49 @@
           : Boolean(fallback.gridCollapsed),
       noteMode: normalizeNoteMode(input.noteMode, fallback.noteMode),
       osc1Wave: normalizeOscWave(input.osc1Wave, fallback.osc1Wave),
-      osc1Level: clampNumber(numberOrFallback(input.osc1Level, fallback.osc1Level), 0, 127),
-      osc1Octave: clampNumber(numberOrFallback(input.osc1Octave, fallback.osc1Octave), -2, 2),
-      osc1Detune: clampNumber(numberOrFallback(input.osc1Detune, fallback.osc1Detune), -100, 100),
+      osc1Level: clampNumber(
+        numberOrFallback(input.osc1Level, fallback.osc1Level),
+        0,
+        127,
+      ),
+      osc1Octave: clampNumber(
+        numberOrFallback(input.osc1Octave, fallback.osc1Octave),
+        -2,
+        2,
+      ),
+      osc1Detune: clampNumber(
+        numberOrFallback(input.osc1Detune, fallback.osc1Detune),
+        -100,
+        100,
+      ),
       osc2Wave: normalizeOscWave(input.osc2Wave, fallback.osc2Wave),
-      osc2Level: clampNumber(numberOrFallback(input.osc2Level, fallback.osc2Level), 0, 127),
-      osc2Octave: clampNumber(numberOrFallback(input.osc2Octave, fallback.osc2Octave), -2, 2),
-      osc2Detune: clampNumber(numberOrFallback(input.osc2Detune, fallback.osc2Detune), -100, 100),
-      oscBlend: clampNumber(numberOrFallback(input.oscBlend, fallback.oscBlend), -100, 100),
+      osc2Level: clampNumber(
+        numberOrFallback(input.osc2Level, fallback.osc2Level),
+        0,
+        127,
+      ),
+      osc2Octave: clampNumber(
+        numberOrFallback(input.osc2Octave, fallback.osc2Octave),
+        -2,
+        2,
+      ),
+      osc2Detune: clampNumber(
+        numberOrFallback(input.osc2Detune, fallback.osc2Detune),
+        -100,
+        100,
+      ),
+      oscBlend: clampNumber(
+        numberOrFallback(input.oscBlend, fallback.oscBlend),
+        -100,
+        100,
+      ),
     };
   }
 
   const ENV_DEFAULTS_BY_SOUND = Object.freeze({
     kick: normalizeEnvDefaults(
-      appDefaults.envDefaultsBySound?.kick ?? appDefaults.envDefaultsBySound?.default,
+      appDefaults.envDefaultsBySound?.kick ??
+        appDefaults.envDefaultsBySound?.default,
       DEFAULT_APP_DEFAULTS.envDefaultsBySound.kick,
     ),
     snare: normalizeEnvDefaults(
@@ -878,7 +979,9 @@
   }
 
   function normalizeOscWave(value, fallback = "sine") {
-    const wave = String(value || "").trim().toLowerCase();
+    const wave = String(value || "")
+      .trim()
+      .toLowerCase();
     if (OSC_WAVE_OPTIONS.includes(wave)) return wave;
     return fallback;
   }
@@ -897,7 +1000,10 @@
     };
   }
 
-  let tempo = numberOrFallback(appDefaults.globals.tempo, Number(tempoInput.value));
+  let tempo = numberOrFallback(
+    appDefaults.globals.tempo,
+    Number(tempoInput.value),
+  );
   let globalSwing = numberOrFallback(
     appDefaults.globals.globalSwing,
     Number(globalSwingInput.value),
@@ -980,7 +1086,13 @@
     typeof appDefaults.ui.gradientAnimationEnabled === "boolean"
       ? appDefaults.ui.gradientAnimationEnabled
       : true;
-  let logoVideoBackgroundEnabled = Boolean(appDefaults.ui.logoVideoBackgroundEnabled);
+  let logoVideoBackgroundEnabled = Boolean(
+    appDefaults.ui.logoVideoBackgroundEnabled,
+  );
+  let videoBackgroundMode = normalizeVideoBackgroundMode(
+    appDefaults.ui.videoBackgroundMode,
+    logoVideoBackgroundEnabled ? "daw" : "off",
+  );
   let logoVideoCropX = clampNumber(
     Math.round(numberOrFallback(appDefaults.ui.logoVideoCropX, 50)),
     0,
@@ -1025,7 +1137,14 @@
   let subtitleCycleActive = false;
   let subtitleCycleToken = 0;
   let subtitleEntriesSinceMusic = 0;
-  let subtitleNextMusicAfter = appConfig.subtitles.musicIntervalMin + Math.floor(Math.random() * (appConfig.subtitles.musicIntervalMax - appConfig.subtitles.musicIntervalMin + 1));
+  let subtitleNextMusicAfter =
+    appConfig.subtitles.musicIntervalMin +
+    Math.floor(
+      Math.random() *
+        (appConfig.subtitles.musicIntervalMax -
+          appConfig.subtitles.musicIntervalMin +
+          1),
+    );
   let subtitleLastTake = null;
   let subtitleLastTier = "short";
   let subtitleCursorIndex = 0;
@@ -1044,7 +1163,7 @@
   let perfDebugChipEl = null;
   let perfDebugTimerId = null;
 
-  const TEXT_VIDEO_MAX_LENGTH = 56;
+  const TEXT_VIDEO_MAX_LENGTH = 128;
   const TEXT_VIDEO_DEFAULT_TEXT = "aelonyori";
   const TEXT_VIDEO_CROP_SIZE_MIN = 30;
   const TEXT_VIDEO_CROP_SIZE_MAX = 100;
@@ -1059,6 +1178,8 @@
   let textVideoPadBottom = 0;
   let textVideoPadLeft = 0;
   let textVideoPadRight = 0;
+  let textVideoColor = themeEnabled ? "#ffffff" : "#000000";
+  let textVideoSplitOnSpaces = true;
   const samplePadHoldStates = new Map();
   let themeColorThrottleTimerId = null;
   let queuedThemeColorA = null;
@@ -1086,6 +1207,7 @@
     autoscrollEnabled,
     gradientAnimationEnabled,
     logoVideoBackgroundEnabled,
+    videoBackgroundMode,
     logoVideoCropX,
     logoVideoCropY,
     logoVideoCropSize,
@@ -1300,7 +1422,12 @@
   const NOTE_LENGTH_MIN = 1;
   const NOTE_LENGTH_MAX = 8;
 
-  function normalizeNoteCellValueGrid(values, defaultValue, minValue, maxValue) {
+  function normalizeNoteCellValueGrid(
+    values,
+    defaultValue,
+    minValue,
+    maxValue,
+  ) {
     const safeDefault = clampNumber(
       Math.round(numberOrFallback(defaultValue, 1)),
       minValue,
@@ -1312,7 +1439,12 @@
       const row = new Array(NOTE_ROWS);
       for (let noteRow = 0; noteRow < NOTE_ROWS; noteRow += 1) {
         row[noteRow] = clampNumber(
-          Math.round(numberOrFallback(srcRow ? srcRow[noteRow] : safeDefault, safeDefault)),
+          Math.round(
+            numberOrFallback(
+              srcRow ? srcRow[noteRow] : safeDefault,
+              safeDefault,
+            ),
+          ),
           minValue,
           maxValue,
         );
@@ -1334,10 +1466,19 @@
       NOTE_ROWS - 1,
     );
     const row = Array.isArray(values) ? values[safeStep] : null;
-    return Math.round(numberOrFallback(row ? row[safeRow] : fallback, fallback));
+    return Math.round(
+      numberOrFallback(row ? row[safeRow] : fallback, fallback),
+    );
   }
 
-  function setNoteCellValue(values, stepIndex, rowIndex, nextValue, minValue, maxValue) {
+  function setNoteCellValue(
+    values,
+    stepIndex,
+    rowIndex,
+    nextValue,
+    minValue,
+    maxValue,
+  ) {
     const safeStep = clampNumber(
       Math.round(numberOrFallback(stepIndex, 0)),
       0,
@@ -1498,9 +1639,26 @@
 
   function getCurrentSongExtensions() {
     const extensions = cloneSongExtensions(loadedSongExtensions);
+    extensions.textVideo = {
+      text: textVideoValue,
+      padTop: textVideoPadTop,
+      padBottom: textVideoPadBottom,
+      padLeft: textVideoPadLeft,
+      padRight: textVideoPadRight,
+      textColor: textVideoColor,
+      splitOnSpaces: Boolean(textVideoSplitOnSpaces),
+      cropX: logoVideoCropX,
+      cropY: logoVideoCropY,
+      cropSize: logoVideoCropSize,
+      backgroundEnabled: Boolean(logoVideoBackgroundEnabled),
+      backgroundMode: videoBackgroundMode,
+      letterStates: getTextVideoLetters()
+        .map((button) => getTextVideoLetterState(button))
+        .join(""),
+    };
     if (
-      videoSynthPlugin
-      && typeof videoSynthPlugin.exportState === "function"
+      videoSynthPlugin &&
+      typeof videoSynthPlugin.exportState === "function"
     ) {
       const videoSynthState = videoSynthPlugin.exportState();
       if (videoSynthState && typeof videoSynthState === "object") {
@@ -1515,16 +1673,69 @@
   function applySongExtensions(extensions) {
     loadedSongExtensions = cloneSongExtensions(extensions);
 
+    // TEMP DISABLED: Text-video state restoration causing freeze
+    // const textVideoState =
+    //   loadedSongExtensions.textVideo
+    //   && typeof loadedSongExtensions.textVideo === "object"
+    //     ? loadedSongExtensions.textVideo
+    //     : null;
+    //
+    // if (textVideoState) {
+    //   const nextText = normalizeTextVideoValue(textVideoState.text);
+    //   if (textVideoInput) textVideoInput.value = nextText || TEXT_VIDEO_DEFAULT_TEXT;
+    //   renderTextVideoWord(nextText, { resetSelection: true });
+    //   setTextVideoInset("top", textVideoState.padTop);
+    //   setTextVideoInset("bottom", textVideoState.padBottom);
+    //   setTextVideoInset("left", textVideoState.padLeft);
+    //   setTextVideoInset("right", textVideoState.padRight);
+    //   setLogoVideoCrop(
+    //     textVideoState.cropX,
+    //     textVideoState.cropY,
+    //     textVideoState.cropSize,
+    //   );
+    //   setLogoVideoBackgroundEnabled(
+    //     typeof textVideoState.backgroundEnabled === "boolean"
+    //       ? textVideoState.backgroundEnabled
+    //       : logoVideoBackgroundEnabled,
+    //     { allowWithoutTheme: true },
+    //   );
+    //
+    //   const letterStates = String(textVideoState.letterStates || "");
+    //   const letters = getTextVideoLetters();
+    //   for (let i = 0; i < letters.length; i += 1) {
+    //     const nextState = letterStates[i] || TEXT_VIDEO_STATE_OUTLINE;
+    //     setTextVideoLetterState(letters[i], nextState);
+    //   }
+    //   syncTextVideoCount();
+    //   fitTextVideoWordToStage();
+    //   updatePerfDebugChip();
+    // }
+
+    // Restore just the video background mode (non-rendering, safe)
+    const textVideoState =
+      loadedSongExtensions.textVideo &&
+      typeof loadedSongExtensions.textVideo === "object"
+        ? loadedSongExtensions.textVideo
+        : null;
+    if (textVideoState && typeof textVideoState.backgroundMode === "string") {
+      setVideoBackgroundMode(textVideoState.backgroundMode);
+    }
+    if (textVideoState) {
+      if (typeof textVideoState.textColor === "string") {
+        setTextVideoColor(textVideoState.textColor);
+      }
+      if (typeof textVideoState.splitOnSpaces === "boolean") {
+        setTextVideoSplitOnSpaces(textVideoState.splitOnSpaces);
+      }
+    }
+
     const videoSynthState =
-      loadedSongExtensions.videoSynth
-      && typeof loadedSongExtensions.videoSynth === "object"
+      loadedSongExtensions.videoSynth &&
+      typeof loadedSongExtensions.videoSynth === "object"
         ? loadedSongExtensions.videoSynth
         : null;
 
-    if (
-      videoSynthPlugin
-      && typeof videoSynthPlugin.applyState === "function"
-    ) {
+    if (videoSynthPlugin && typeof videoSynthPlugin.applyState === "function") {
       if (videoSynthState) {
         videoSynthPlugin.applyState(videoSynthState);
       } else if (typeof videoSynthPlugin.resetParams === "function") {
@@ -1703,7 +1914,10 @@
     const song = getSongObject();
     const requestedName = String(presetNameInput.value || "").trim();
     const selectedName = String(presetSelect.value || "").trim();
-    const name = requestedName || selectedName || makeUniquePresetName("song", readPresetIndex(), "song");
+    const name =
+      requestedName ||
+      selectedName ||
+      makeUniquePresetName("song", readPresetIndex(), "song");
 
     const ok = savePreset(name, song);
     if (!ok) {
@@ -1796,7 +2010,12 @@
   function getTrackCellRatchet(state, stepIndex, rowIndex) {
     ensureTrackNoteMeta(state);
     return clampNumber(
-      getNoteCellValue(state.noteRatchets, stepIndex, rowIndex, NOTE_RATCHET_MIN),
+      getNoteCellValue(
+        state.noteRatchets,
+        stepIndex,
+        rowIndex,
+        NOTE_RATCHET_MIN,
+      ),
       NOTE_RATCHET_MIN,
       NOTE_RATCHET_MAX,
     );
@@ -1871,12 +2090,24 @@
         tuneCents: numberOrFallback(state.tuneCents, soundDefaults.tuneCents),
         osc1Wave: normalizeOscWave(state.osc1Wave, soundDefaults.osc1Wave),
         osc1Level: numberOrFallback(state.osc1Level, soundDefaults.osc1Level),
-        osc1Octave: numberOrFallback(state.osc1Octave, soundDefaults.osc1Octave),
-        osc1Detune: numberOrFallback(state.osc1Detune, soundDefaults.osc1Detune),
+        osc1Octave: numberOrFallback(
+          state.osc1Octave,
+          soundDefaults.osc1Octave,
+        ),
+        osc1Detune: numberOrFallback(
+          state.osc1Detune,
+          soundDefaults.osc1Detune,
+        ),
         osc2Wave: normalizeOscWave(state.osc2Wave, soundDefaults.osc2Wave),
         osc2Level: numberOrFallback(state.osc2Level, soundDefaults.osc2Level),
-        osc2Octave: numberOrFallback(state.osc2Octave, soundDefaults.osc2Octave),
-        osc2Detune: numberOrFallback(state.osc2Detune, soundDefaults.osc2Detune),
+        osc2Octave: numberOrFallback(
+          state.osc2Octave,
+          soundDefaults.osc2Octave,
+        ),
+        osc2Detune: numberOrFallback(
+          state.osc2Detune,
+          soundDefaults.osc2Detune,
+        ),
         oscBlend: numberOrFallback(state.oscBlend, soundDefaults.oscBlend),
         noteMode: normalizeNoteMode(state.noteMode, soundDefaults.noteMode),
         hold: numberOrFallback(state.hold, envDefaults.hold),
@@ -1893,7 +2124,10 @@
         collapsed: Boolean(state.collapsed),
         seqMode: state.seqMode === "roll" ? "roll" : "single",
         gridCollapsed: Boolean(state.gridCollapsed),
-        dualTab: state.dualTab === "osc1" || state.dualTab === "osc2" ? state.dualTab : "main",
+        dualTab:
+          state.dualTab === "osc1" || state.dualTab === "osc2"
+            ? state.dualTab
+            : "main",
       };
     });
 
@@ -1936,6 +2170,10 @@
       autoscrollEnabled: Boolean(autoscrollEnabled),
       gradientAnimationEnabled: Boolean(gradientAnimationEnabled),
       logoVideoBackgroundEnabled: Boolean(logoVideoBackgroundEnabled),
+      videoBackgroundMode: normalizeVideoBackgroundMode(
+        videoBackgroundMode,
+        logoVideoBackgroundEnabled ? "daw" : "off",
+      ),
       logoVideoCropX: clampNumber(
         Math.round(numberOrFallback(logoVideoCropX, 0)),
         0,
@@ -2010,7 +2248,7 @@
         ? song.extensions
         : song.videoSynth && typeof song.videoSynth === "object"
           ? { videoSynth: song.videoSynth }
-        : null;
+          : null;
     const nextTempo = clampNumber(
       numberOrFallback(globals.tempo, tempo),
       20,
@@ -2110,12 +2348,7 @@
         ? ui.subtitlesEnabled
         : INITIAL_UI.subtitlesEnabled;
     const nextSubtitlesSpeed = clampNumber(
-      Math.round(
-        numberOrFallback(
-          ui.subtitlesSpeed,
-          subtitlesSpeed,
-        ),
-      ),
+      Math.round(numberOrFallback(ui.subtitlesSpeed, subtitlesSpeed)),
       20,
       200,
     );
@@ -2149,6 +2382,12 @@
       typeof ui.logoVideoBackgroundEnabled === "boolean"
         ? ui.logoVideoBackgroundEnabled
         : INITIAL_UI.logoVideoBackgroundEnabled;
+    const nextLogoVideoBackgroundMode =
+      typeof ui.videoBackgroundMode === "string"
+        ? normalizeVideoBackgroundMode(ui.videoBackgroundMode, "off")
+        : nextLogoVideoBackgroundEnabled
+          ? "daw"
+          : "off";
 
     const nextLogoVideoCropX = clampNumber(
       Math.round(numberOrFallback(ui.logoVideoCropX, logoVideoCropX)),
@@ -2204,7 +2443,7 @@
           ? ui.darkMode
           : INITIAL_UI.themeEnabled;
     setThemeEnabled(nextThemeEnabled);
-    setLogoVideoBackgroundEnabled(nextLogoVideoBackgroundEnabled);
+    setVideoBackgroundMode(nextLogoVideoBackgroundMode);
 
     const nextBumpEnabled =
       typeof ui.bumpEnabled === "boolean"
@@ -2287,12 +2526,24 @@
         tuneCents: numberOrFallback(entry.tuneCents, soundDefaults.tuneCents),
         osc1Wave: normalizeOscWave(entry.osc1Wave, soundDefaults.osc1Wave),
         osc1Level: numberOrFallback(entry.osc1Level, soundDefaults.osc1Level),
-        osc1Octave: numberOrFallback(entry.osc1Octave, soundDefaults.osc1Octave),
-        osc1Detune: numberOrFallback(entry.osc1Detune, soundDefaults.osc1Detune),
+        osc1Octave: numberOrFallback(
+          entry.osc1Octave,
+          soundDefaults.osc1Octave,
+        ),
+        osc1Detune: numberOrFallback(
+          entry.osc1Detune,
+          soundDefaults.osc1Detune,
+        ),
         osc2Wave: normalizeOscWave(entry.osc2Wave, soundDefaults.osc2Wave),
         osc2Level: numberOrFallback(entry.osc2Level, soundDefaults.osc2Level),
-        osc2Octave: numberOrFallback(entry.osc2Octave, soundDefaults.osc2Octave),
-        osc2Detune: numberOrFallback(entry.osc2Detune, soundDefaults.osc2Detune),
+        osc2Octave: numberOrFallback(
+          entry.osc2Octave,
+          soundDefaults.osc2Octave,
+        ),
+        osc2Detune: numberOrFallback(
+          entry.osc2Detune,
+          soundDefaults.osc2Detune,
+        ),
         oscBlend: numberOrFallback(entry.oscBlend, soundDefaults.oscBlend),
         noteMode: normalizeNoteMode(entry.noteMode, soundDefaults.noteMode),
         hold: numberOrFallback(entry.hold, envDefaults.hold),
@@ -2305,13 +2556,8 @@
         sustain: numberOrFallback(entry.sustain, envDefaults.sustain),
         release: numberOrFallback(entry.release, envDefaults.release),
         muted:
-          typeof entry.muted === "boolean"
-            ? entry.muted
-            : soundDefaults.muted,
-        solo:
-          typeof entry.solo === "boolean"
-            ? entry.solo
-            : soundDefaults.solo,
+          typeof entry.muted === "boolean" ? entry.muted : soundDefaults.muted,
+        solo: typeof entry.solo === "boolean" ? entry.solo : soundDefaults.solo,
         collapsed: entryCollapsed,
         seqMode:
           entry.seqMode === "roll" || entry.seqMode === "single"
@@ -2422,12 +2668,15 @@
 
     setThemeColors(INITIAL_UI.themeA, INITIAL_UI.themeB);
     setThemeEnabled(INITIAL_UI.themeEnabled);
-    setLogoVideoBackgroundEnabled(INITIAL_UI.logoVideoBackgroundEnabled);
+    setVideoBackgroundMode(INITIAL_UI.videoBackgroundMode);
 
     setAutosaveInterval(INITIAL_UI.autosaveIntervalMinutes);
     setAutosaveEnabled(INITIAL_UI.autosaveEnabled);
 
-    if (videoSynthPlugin && typeof videoSynthPlugin.resetSession === "function") {
+    if (
+      videoSynthPlugin &&
+      typeof videoSynthPlugin.resetSession === "function"
+    ) {
       videoSynthPlugin.resetSession();
     }
 
@@ -2460,7 +2709,10 @@
     setPresetStatus("new");
 
     if (themeStarBtn) {
-      themeStarBtn.classList.remove("is-star-daw-intro", "is-star-bounce-intro");
+      themeStarBtn.classList.remove(
+        "is-star-daw-intro",
+        "is-star-bounce-intro",
+      );
     }
     if (starBounceIntroDelayTimerId != null) {
       window.clearTimeout(starBounceIntroDelayTimerId);
@@ -2624,9 +2876,13 @@
       127,
     );
     state.muted =
-      typeof state.muted === "boolean" ? state.muted : Boolean(soundDefaults.muted);
+      typeof state.muted === "boolean"
+        ? state.muted
+        : Boolean(soundDefaults.muted);
     state.solo =
-      typeof state.solo === "boolean" ? state.solo : Boolean(soundDefaults.solo);
+      typeof state.solo === "boolean"
+        ? state.solo
+        : Boolean(soundDefaults.solo);
     state.collapsed =
       typeof state.collapsed === "boolean"
         ? state.collapsed
@@ -2932,8 +3188,14 @@
   function buildDocsUrl() {
     const url = new URL("/docs/", window.location.origin);
     if (themeEnabled) {
-      url.searchParams.set("themeA", normalizeHexColor(themeA, DEFAULT_THEME_A));
-      url.searchParams.set("themeB", normalizeHexColor(themeB, DEFAULT_THEME_B));
+      url.searchParams.set(
+        "themeA",
+        normalizeHexColor(themeA, DEFAULT_THEME_A),
+      );
+      url.searchParams.set(
+        "themeB",
+        normalizeHexColor(themeB, DEFAULT_THEME_B),
+      );
     }
     return url.toString();
   }
@@ -3070,7 +3332,7 @@
 
   function applyLetterHitAccentPalette() {
     if (!Array.isArray(letters) || letters.length < 2) return;
-    if (logoVideoBackgroundEnabled) return;
+    if (logoVideoBackgroundEnabled && videoBackgroundMode === "daw") return;
 
     if (themeEnabled) {
       for (const btn of letters) {
@@ -3091,6 +3353,7 @@
       new CustomEvent("video-synth:logo-video-state", {
         detail: {
           enabled: Boolean(logoVideoBackgroundEnabled),
+          mode: videoBackgroundMode,
           cropX: logoVideoCropX,
           cropY: logoVideoCropY,
           cropSize: logoVideoCropSize,
@@ -3125,8 +3388,7 @@
     }
   }
 
-  function clearTextVideoFrameObjectUrl() {
-  }
+  function clearTextVideoFrameObjectUrl() {}
 
   function resetLogoVideoPalette() {
     const logoEl = letters[0] && letters[0].closest(".logo");
@@ -3148,6 +3410,7 @@
     const textLetters = getTextVideoLetters();
     if (textVideoWord instanceof HTMLElement) {
       textVideoWord.style.removeProperty("--logo-video-frame");
+      textVideoWord.removeAttribute("data-has-video-frame");
     }
     for (const btn of textLetters) {
       btn.style.removeProperty("color");
@@ -3179,8 +3442,8 @@
       logoVideoBgSampleCanvas = document.createElement("canvas");
     }
     if (
-      logoVideoBgSampleCanvas.width !== targetW
-      || logoVideoBgSampleCanvas.height !== targetH
+      logoVideoBgSampleCanvas.width !== targetW ||
+      logoVideoBgSampleCanvas.height !== targetH
     ) {
       logoVideoBgSampleCanvas.width = targetW;
       logoVideoBgSampleCanvas.height = targetH;
@@ -3194,7 +3457,12 @@
     if (!logoVideoBgSampleCtx) return null;
 
     logoVideoBgSampleCtx.drawImage(canvas, 0, 0, targetW, targetH);
-    const image = logoVideoBgSampleCtx.getImageData(0, 0, targetW, targetH).data;
+    const image = logoVideoBgSampleCtx.getImageData(
+      0,
+      0,
+      targetW,
+      targetH,
+    ).data;
     const colors = [];
     for (let i = 0; i < targetCount; i += 1) {
       const x = clampNumber(
@@ -3207,7 +3475,9 @@
       const r = image[idx] ?? 0;
       const g = image[idx + 1] ?? 0;
       const b = image[idx + 2] ?? 0;
-      colors.push(`#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+      colors.push(
+        `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`,
+      );
     }
     return colors;
   }
@@ -3242,6 +3512,7 @@
     if (wordW <= 0 || wordH <= 0) return;
 
     wordEl.style.setProperty("--logo-video-frame", `url("${dataUrl}")`);
+    wordEl.setAttribute("data-has-video-frame", "true");
 
     for (const btn of wordLetters) {
       const btnRect = btn.getBoundingClientRect();
@@ -3250,7 +3521,10 @@
       btn.style.setProperty("-webkit-background-clip", "text");
       btn.style.setProperty("background-clip", "text");
       btn.style.setProperty("background-size", `${wordW}px ${wordH}px`);
-      btn.style.setProperty("background-position", `-${offsetX}px -${offsetY}px`);
+      btn.style.setProperty(
+        "background-position",
+        `-${offsetX}px -${offsetY}px`,
+      );
       btn.style.setProperty("color", "transparent");
       btn.style.setProperty("-webkit-text-fill-color", "transparent");
       btn.style.setProperty("text-shadow", "none");
@@ -3260,79 +3534,114 @@
   function sampleLogoVideoPalette() {
     if (!logoVideoBackgroundEnabled) return;
 
+    const textViewOpen = isTextVideoViewOpen();
+
+    // CRITICAL MODE ISOLATION: Only apply video frames to the correct view.
+    // Text view open + custom mode = apply to textVideoWord
+    // Text view closed (DAW) + daw mode = apply to mainLogo
+    // Any other combination = reset and return (DO NOT apply frames to wrong elements)
+    if (textViewOpen && videoBackgroundMode !== "custom") {
+      // Text view is open but NOT in custom mode, reset frames
+      const logoEl = letters[0] && letters[0].closest(".logo");
+      const hasFrame = Boolean(
+        (textVideoWord instanceof HTMLElement &&
+          textVideoWord.style.getPropertyValue("--logo-video-frame")) ||
+        (logoEl instanceof HTMLElement &&
+          logoEl.style.getPropertyValue("--logo-video-frame")),
+      );
+      if (hasFrame) resetLogoVideoPalette();
+      return;
+    }
+    if (!textViewOpen && videoBackgroundMode !== "daw") {
+      // Text view is closed (DAW) but NOT in daw mode, reset frames
+      const logoEl = letters[0] && letters[0].closest(".logo");
+      const hasFrame = Boolean(
+        (textVideoWord instanceof HTMLElement &&
+          textVideoWord.style.getPropertyValue("--logo-video-frame")) ||
+        (logoEl instanceof HTMLElement &&
+          logoEl.style.getPropertyValue("--logo-video-frame")),
+      );
+      if (hasFrame) resetLogoVideoPalette();
+      return;
+    }
+
     const logoEl = letters[0] && letters[0].closest(".logo");
     const videoCanvas = document.querySelector(".videoSynthCanvas");
-    if (!logoEl || !(videoCanvas instanceof HTMLCanvasElement)) return;
+    if (!(videoCanvas instanceof HTMLCanvasElement)) return;
     if (videoCanvas.width <= 0 || videoCanvas.height <= 0) return;
-
-    const logoRect = logoEl.getBoundingClientRect();
-    const logoW = Math.round(logoRect.width);
-    const logoH = Math.round(logoRect.height);
-    if (logoW <= 0 || logoH <= 0) return;
-
-    if (!logoVideoBgSampleCanvas) {
-      logoVideoBgSampleCanvas = document.createElement("canvas");
-    }
-    if (
-      logoVideoBgSampleCanvas.width !== logoW
-      || logoVideoBgSampleCanvas.height !== logoH
-    ) {
-      logoVideoBgSampleCanvas.width = logoW;
-      logoVideoBgSampleCanvas.height = logoH;
-      logoVideoBgSampleCtx = null;
-    }
-    if (!logoVideoBgSampleCtx) {
-      logoVideoBgSampleCtx = logoVideoBgSampleCanvas.getContext("2d");
-    }
-    if (!logoVideoBgSampleCtx) return;
 
     const sourceW = Math.max(1, videoCanvas.width);
     const sourceH = Math.max(1, videoCanvas.height);
-    const logoAspect = logoW / logoH;
-
-    let maxCropW = sourceW;
-    let maxCropH = sourceH;
     const sourceAspect = sourceW / sourceH;
-    if (sourceAspect > logoAspect) {
-      maxCropH = sourceH;
-      maxCropW = maxCropH * logoAspect;
-    } else {
-      maxCropW = sourceW;
-      maxCropH = maxCropW / logoAspect;
-    }
-
     const sizeRatio =
       clampNumber(
         numberOrFallback(logoVideoCropSize, 88),
         TEXT_VIDEO_CROP_SIZE_MIN,
         TEXT_VIDEO_CROP_SIZE_MAX,
       ) / 100;
-    const sw = Math.max(1, maxCropW * sizeRatio);
-    const sh = Math.max(1, maxCropH * sizeRatio);
-    const sx = (sourceW - sw)
-      * (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
-    const sy = (sourceH - sh)
-      * (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
 
-    logoVideoBgSampleCtx.drawImage(
-      videoCanvas,
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      0,
-      logoW,
-      logoH,
-    );
-    const dataUrl = logoVideoBgSampleCanvas.toDataURL("image/jpeg", 0.58);
-    applyVideoFrameToWord(logoEl, letters, dataUrl);
+    if (!textViewOpen && logoEl) {
+      const logoRect = logoEl.getBoundingClientRect();
+      const logoW = Math.round(logoRect.width);
+      const logoH = Math.round(logoRect.height);
+      if (logoW > 0 && logoH > 0) {
+        if (!logoVideoBgSampleCanvas) {
+          logoVideoBgSampleCanvas = document.createElement("canvas");
+        }
+        if (
+          logoVideoBgSampleCanvas.width !== logoW ||
+          logoVideoBgSampleCanvas.height !== logoH
+        ) {
+          logoVideoBgSampleCanvas.width = logoW;
+          logoVideoBgSampleCanvas.height = logoH;
+          logoVideoBgSampleCtx = null;
+        }
+        if (!logoVideoBgSampleCtx) {
+          logoVideoBgSampleCtx = logoVideoBgSampleCanvas.getContext("2d");
+        }
+        if (!logoVideoBgSampleCtx) return;
+
+        const logoAspect = logoW / logoH;
+        let maxCropW = sourceW;
+        let maxCropH = sourceH;
+        if (sourceAspect > logoAspect) {
+          maxCropH = sourceH;
+          maxCropW = maxCropH * logoAspect;
+        } else {
+          maxCropW = sourceW;
+          maxCropH = maxCropW / logoAspect;
+        }
+
+        const sw = Math.max(1, maxCropW * sizeRatio);
+        const sh = Math.max(1, maxCropH * sizeRatio);
+        const sx =
+          (sourceW - sw) *
+          (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
+        const sy =
+          (sourceH - sh) *
+          (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
+
+        logoVideoBgSampleCtx.drawImage(
+          videoCanvas,
+          sx,
+          sy,
+          sw,
+          sh,
+          0,
+          0,
+          logoW,
+          logoH,
+        );
+        const dataUrl = logoVideoBgSampleCanvas.toDataURL("image/jpeg", 0.58);
+        applyVideoFrameToWord(logoEl, letters, dataUrl);
+      }
+    }
 
     const textLetters = getTextVideoLetters();
-    if (!(textVideoWord instanceof HTMLElement) || textLetters.length === 0) return;
+    if (!(textVideoWord instanceof HTMLElement) || textLetters.length === 0)
+      return;
 
-    if (!isTextVideoViewOpen()) {
-      applyVideoFrameToWord(textVideoWord, textLetters, dataUrl);
+    if (!textViewOpen) {
       return;
     }
 
@@ -3342,9 +3651,9 @@
     if (textW <= 0 || textH <= 0) return;
 
     const renderScale = clampNumber(
-      numberOrFallback(window.devicePixelRatio, 1) * 1.15,
-      1.15,
-      2.05,
+      numberOrFallback(window.devicePixelRatio, 1),
+      1,
+      1.45,
     );
     let renderW = Math.max(1, Math.round(textW * renderScale));
     let renderH = Math.max(1, Math.round(textH * renderScale));
@@ -3359,8 +3668,8 @@
       textVideoBgSampleCanvas = document.createElement("canvas");
     }
     if (
-      textVideoBgSampleCanvas.width !== renderW
-      || textVideoBgSampleCanvas.height !== renderH
+      textVideoBgSampleCanvas.width !== renderW ||
+      textVideoBgSampleCanvas.height !== renderH
     ) {
       textVideoBgSampleCanvas.width = renderW;
       textVideoBgSampleCanvas.height = renderH;
@@ -3384,10 +3693,12 @@
 
     const textSw = Math.max(1, textMaxCropW * sizeRatio);
     const textSh = Math.max(1, textMaxCropH * sizeRatio);
-    const textSx = (sourceW - textSw)
-      * (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
-    const textSy = (sourceH - textSh)
-      * (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
+    const textSx =
+      (sourceW - textSw) *
+      (clampNumber(numberOrFallback(logoVideoCropX, 50), 0, 100) / 100);
+    const textSy =
+      (sourceH - textSh) *
+      (clampNumber(numberOrFallback(logoVideoCropY, 60), 0, 100) / 100);
 
     textVideoBgSampleCtx.drawImage(
       videoCanvas,
@@ -3438,7 +3749,9 @@
   function updatePerfDebugChip() {
     const el = ensurePerfDebugChip();
     const shouldShow =
-      isTextVideoViewOpen() || isVideoSynthViewOpen() || logoVideoBackgroundEnabled;
+      isTextVideoViewOpen() ||
+      isVideoSynthViewOpen() ||
+      logoVideoBackgroundEnabled;
     el.hidden = !shouldShow;
     if (!shouldShow) return;
 
@@ -3471,7 +3784,7 @@
     const tick = (ts) => {
       if (!logoVideoBackgroundEnabled) return;
       const now = Number.isFinite(ts) ? ts : Date.now();
-      const sampleIntervalMs = isTextVideoViewOpen() ? 60 : 42;
+      const sampleIntervalMs = isTextVideoViewOpen() ? 120 : 42;
       logoVideoBgLastSampleIntervalMs = sampleIntervalMs;
       if (now - logoVideoBgLastSampleAt >= sampleIntervalMs) {
         logoVideoBgLastSampleAt = now;
@@ -3489,10 +3802,18 @@
     const allowWithoutTheme = Boolean(options.allowWithoutTheme);
     const canEnable = themeEnabled || allowWithoutTheme;
     logoVideoBackgroundEnabled = canEnable ? Boolean(nextEnabled) : false;
-    if (logoVideoBackgroundEnabled && bumpEnabled && !skipBumpSync) {
+    if (
+      logoVideoBackgroundEnabled &&
+      bumpEnabled &&
+      !skipBumpSync &&
+      videoBackgroundMode !== "custom"
+    ) {
       setBumpEnabled(false, { skipVideoBackgroundSync: true });
     }
-    document.body.classList.toggle("is-logo-video-bg", logoVideoBackgroundEnabled);
+    document.body.classList.toggle(
+      "is-logo-video-bg",
+      logoVideoBackgroundEnabled && videoBackgroundMode === "daw",
+    );
     if (logoVideoBackgroundToggleBtn) {
       logoVideoBackgroundToggleBtn.setAttribute(
         "aria-pressed",
@@ -3504,8 +3825,8 @@
     }
 
     if (
-      videoSynthPlugin
-      && typeof videoSynthPlugin.setLogoFeedActive === "function"
+      videoSynthPlugin &&
+      typeof videoSynthPlugin.setLogoFeedActive === "function"
     ) {
       videoSynthPlugin.setLogoFeedActive(logoVideoBackgroundEnabled);
     }
@@ -3523,22 +3844,33 @@
     updatePerfDebugChip();
   }
 
+  function setVideoBackgroundMode(nextMode) {
+    const mode = normalizeVideoBackgroundMode(nextMode, "off");
+    videoBackgroundMode = mode;
+    if (mode === "off") {
+      setLogoVideoBackgroundEnabled(false);
+      return;
+    }
+
+    setLogoVideoBackgroundEnabled(true, { allowWithoutTheme: true });
+    if (logoVideoBackgroundEnabled) {
+      resetLogoVideoPalette();
+      logoVideoBgLastSampleAt = 0;
+      sampleLogoVideoPalette();
+    }
+  }
+
   function syncLogoVideoBackgroundAvailability() {
-    const available = Boolean(themeEnabled);
+    const available = true;
     if (logoVideoBackgroundToggleBtn) {
-      logoVideoBackgroundToggleBtn.disabled = !available;
-      logoVideoBackgroundToggleBtn.setAttribute(
-        "aria-disabled",
-        available ? "false" : "true",
-      );
-      logoVideoBackgroundToggleBtn.title = available
-        ? logoVideoBackgroundEnabled
-          ? "video background: on"
-          : "video background: off"
-        : "video background: enable theme mode first";
+      logoVideoBackgroundToggleBtn.disabled = false;
+      logoVideoBackgroundToggleBtn.setAttribute("aria-disabled", "false");
+      logoVideoBackgroundToggleBtn.title = logoVideoBackgroundEnabled
+        ? "video background: on"
+        : "video background: off";
     }
     if (logoVideoBackgroundRow) {
-      logoVideoBackgroundRow.classList.toggle("is-disabled", !available);
+      logoVideoBackgroundRow.classList.toggle("is-disabled", false);
     }
   }
 
@@ -3566,7 +3898,9 @@
     if (!button) return;
     const holdMs = Math.max(
       BUMP_GHOST_HOLD_MIN_MS,
-      Math.round(numberOrFallback(hitDurationMs, 90) * BUMP_GHOST_HOLD_MULTIPLIER),
+      Math.round(
+        numberOrFallback(hitDurationMs, 90) * BUMP_GHOST_HOLD_MULTIPLIER,
+      ),
     );
     button.style.setProperty("--bump-ghost-level", "1");
     const existing = hitGhostTimeouts.get(button);
@@ -4001,7 +4335,8 @@
     updateTransportControls();
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = !hasTracks || samplerOpen || videoSynthOpen || textVideoOpen;
+      navToSamplerBtn.disabled =
+        !hasTracks || samplerOpen || videoSynthOpen || textVideoOpen;
     }
     if (navToDawBtn) {
       navToDawBtn.hidden = false;
@@ -4009,7 +4344,8 @@
     }
     if (navToVideoSynthBtn) {
       navToVideoSynthBtn.hidden = false;
-      navToVideoSynthBtn.disabled = samplerOpen || videoSynthOpen || textVideoOpen;
+      navToVideoSynthBtn.disabled =
+        samplerOpen || videoSynthOpen || textVideoOpen;
     }
     if (navToDawFromVideoBtn) {
       navToDawFromVideoBtn.hidden = false;
@@ -4028,11 +4364,7 @@
       themeStarBtn.hidden = !hasTracks;
     }
 
-    if (
-      hasTracks &&
-      !starDawIntroPlayed &&
-      themeStarBtn
-    ) {
+    if (hasTracks && !starDawIntroPlayed && themeStarBtn) {
       starDawIntroPlayed = true;
       themeStarBtn.classList.remove("is-star-bounce-intro");
       themeStarBtn.classList.add("is-star-daw-intro");
@@ -4042,7 +4374,8 @@
         () => {
           const STAR_BOUNCE_POST_INTRO_DELAY_MS = 1500;
           themeStarBtn.classList.remove("is-star-daw-intro");
-          starBounceIntroDelayUntil = Date.now() + STAR_BOUNCE_POST_INTRO_DELAY_MS;
+          starBounceIntroDelayUntil =
+            Date.now() + STAR_BOUNCE_POST_INTRO_DELAY_MS;
           if (starBounceIntroDelayTimerId != null) {
             window.clearTimeout(starBounceIntroDelayTimerId);
           }
@@ -4077,16 +4410,44 @@
     document.documentElement.classList.toggle("is-text-video-view", open);
 
     if (open) {
-      if (!logoVideoBackgroundEnabled) {
+      if (!logoVideoBackgroundEnabled && videoBackgroundMode === "custom") {
         setLogoVideoBackgroundEnabled(true, { allowWithoutTheme: true });
       }
       if (videoSynthPlugin) videoSynthPlugin.setActive(true);
       if (settingsOpen) setSettingsOpen(false);
       if (textVideoInput) textVideoInput.focus({ preventScroll: true });
-      logoVideoBgLastSampleAt = 0;
-      sampleLogoVideoPalette();
+      if (textVideoWord) {
+        textVideoWord.style.removeProperty("font-size");
+      }
       fitTextVideoWordToStage();
+      window.requestAnimationFrame(() => {
+        fitTextVideoWordToStage();
+      });
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          fitTextVideoWordToStage();
+        });
+      });
+      if (logoVideoBackgroundEnabled && videoBackgroundMode !== "custom") {
+        resetLogoVideoPalette();
+      }
+      // Defer initial sample to next frame so canvas is ready
+      window.requestAnimationFrame(() => {
+        sampleLogoVideoPalette();
+      });
     } else {
+      if (logoVideoBackgroundEnabled && videoBackgroundMode !== "daw") {
+        resetLogoVideoPalette();
+      }
+      // Restart palette loop if background is still enabled (for DAW view)
+      if (logoVideoBackgroundEnabled) {
+        window.requestAnimationFrame(() => {
+          runLogoVideoPaletteLoop();
+          sampleLogoVideoPalette();
+        });
+      } else {
+        stopLogoVideoPaletteLoop();
+      }
       if (document.fullscreenElement === textVideoStage) {
         document.exitFullscreen().catch(() => {});
       }
@@ -4117,7 +4478,8 @@
     }
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = open || !tracks.size || isVideoSynthViewOpen() || isTextVideoViewOpen();
+      navToSamplerBtn.disabled =
+        open || !tracks.size || isVideoSynthViewOpen() || isTextVideoViewOpen();
     }
     if (navToVideoSynthBtn) {
       navToVideoSynthBtn.hidden = false;
@@ -4164,7 +4526,8 @@
     }
     if (navToSamplerBtn) {
       navToSamplerBtn.hidden = false;
-      navToSamplerBtn.disabled = open || !tracks.size || isSamplerViewOpen() || isTextVideoViewOpen();
+      navToSamplerBtn.disabled =
+        open || !tracks.size || isSamplerViewOpen() || isTextVideoViewOpen();
     }
     if (navToDawBtn) {
       navToDawBtn.hidden = false;
@@ -4821,7 +5184,8 @@
         const overlapPenalty = intersectsAnchor(candidate.left, candidate.top)
           ? 100000
           : 0;
-        const score = overlapPenalty + overflowAmount(candidate.left, candidate.top);
+        const score =
+          overlapPenalty + overflowAmount(candidate.left, candidate.top);
         if (score < bestScore) {
           bestScore = score;
           best = candidate;
@@ -4895,8 +5259,12 @@
               ? track.button.dataset.letter
               : track.key) || "",
           ).toLowerCase();
-          const soundOption = SOUND_OPTIONS.find((o) => o.value === state.sound);
-          const instrumentLabel = soundOption ? soundOption.label : String(state.sound || "").toLowerCase();
+          const soundOption = SOUND_OPTIONS.find(
+            (o) => o.value === state.sound,
+          );
+          const instrumentLabel = soundOption
+            ? soundOption.label
+            : String(state.sound || "").toLowerCase();
           const label = `${letter} ${instrumentLabel}`.trim();
           if (!label) continue;
           chunks.push({ label, index: step });
@@ -5017,7 +5385,11 @@
   function resetSubtitleMusicSpacing() {
     const cfg = appConfig.subtitles;
     subtitleEntriesSinceMusic = 0;
-    subtitleNextMusicAfter = cfg.musicIntervalMin + Math.floor(Math.random() * (cfg.musicIntervalMax - cfg.musicIntervalMin + 1));
+    subtitleNextMusicAfter =
+      cfg.musicIntervalMin +
+      Math.floor(
+        Math.random() * (cfg.musicIntervalMax - cfg.musicIntervalMin + 1),
+      );
     subtitleLastTake = null;
     subtitleLastTier = "short";
     subtitleLastText = "";
@@ -5028,14 +5400,24 @@
     const cfg = appConfig.subtitles;
     const makeRange = (min, max) =>
       Array.from({ length: max - min + 1 }, (_, i) => min + i);
-    const shortChoices = makeRange(cfg.shortChunkMin, cfg.shortChunkMax).filter((n) => n <= clampedMax);
-    const mediumChoices = makeRange(cfg.mediumChunkMin, cfg.mediumChunkMax).filter((n) => n <= clampedMax);
-    const longChoices = makeRange(cfg.longChunkMin, cfg.longChunkMax).filter((n) => n <= clampedMax);
+    const shortChoices = makeRange(cfg.shortChunkMin, cfg.shortChunkMax).filter(
+      (n) => n <= clampedMax,
+    );
+    const mediumChoices = makeRange(
+      cfg.mediumChunkMin,
+      cfg.mediumChunkMax,
+    ).filter((n) => n <= clampedMax);
+    const longChoices = makeRange(cfg.longChunkMin, cfg.longChunkMax).filter(
+      (n) => n <= clampedMax,
+    );
 
     const usedLongLastTime = Number(subtitleLastTake) >= cfg.longChunkMin;
     const allowLong =
-      longChoices.length > 0 && Math.random() < (usedLongLastTime ? cfg.longAfterLongChunkProb : cfg.longChunkProb);
-    const allowMedium = mediumChoices.length > 0 && Math.random() < cfg.mediumChunkProb;
+      longChoices.length > 0 &&
+      Math.random() <
+        (usedLongLastTime ? cfg.longAfterLongChunkProb : cfg.longChunkProb);
+    const allowMedium =
+      mediumChoices.length > 0 && Math.random() < cfg.mediumChunkProb;
 
     let pool = shortChoices;
     let tier = "short";
@@ -5080,31 +5462,56 @@
     const virtualBeatMs = 500;
     const speed = clampNumber(numberOrFallback(subtitlesSpeed, 100), 20, 200);
     const cfg = appConfig.subtitles;
-    const speedFactor = clampNumber(100 / speed, cfg.speedFactorMin, cfg.speedFactorMax);
+    const speedFactor = clampNumber(
+      100 / speed,
+      cfg.speedFactorMin,
+      cfg.speedFactorMax,
+    );
 
     return {
       leadDelayMs:
         randomBetweenPreferSlow(
-          clampNumber(virtualBeatMs * cfg.leadDelayLoFactor, cfg.leadDelayLoMin, cfg.leadDelayLoMax),
-          clampNumber(virtualBeatMs * cfg.leadDelayHiFactor, cfg.leadDelayHiMin, cfg.leadDelayHiMax),
+          clampNumber(
+            virtualBeatMs * cfg.leadDelayLoFactor,
+            cfg.leadDelayLoMin,
+            cfg.leadDelayLoMax,
+          ),
+          clampNumber(
+            virtualBeatMs * cfg.leadDelayHiFactor,
+            cfg.leadDelayHiMin,
+            cfg.leadDelayHiMax,
+          ),
         ) * speedFactor,
       holdDelayMs:
         randomBetweenPreferSlow(
-          clampNumber(virtualBeatMs * cfg.holdDelayLoFactor, cfg.holdDelayLoMin, cfg.holdDelayLoMax),
-          clampNumber(virtualBeatMs * cfg.holdDelayHiFactor, cfg.holdDelayHiMin, cfg.holdDelayHiMax),
+          clampNumber(
+            virtualBeatMs * cfg.holdDelayLoFactor,
+            cfg.holdDelayLoMin,
+            cfg.holdDelayLoMax,
+          ),
+          clampNumber(
+            virtualBeatMs * cfg.holdDelayHiFactor,
+            cfg.holdDelayHiMin,
+            cfg.holdDelayHiMax,
+          ),
         ) * speedFactor,
       gapDelayMs:
         randomBetweenPreferSlow(
-          clampNumber(virtualBeatMs * cfg.gapDelayLoFactor, cfg.gapDelayLoMin, cfg.gapDelayLoMax),
-          clampNumber(virtualBeatMs * cfg.gapDelayHiFactor, cfg.gapDelayHiMin, cfg.gapDelayHiMax),
+          clampNumber(
+            virtualBeatMs * cfg.gapDelayLoFactor,
+            cfg.gapDelayLoMin,
+            cfg.gapDelayLoMax,
+          ),
+          clampNumber(
+            virtualBeatMs * cfg.gapDelayHiFactor,
+            cfg.gapDelayHiMin,
+            cfg.gapDelayHiMax,
+          ),
         ) * speedFactor,
     };
   }
 
-  function sampleSubtitleText(
-    advanceChunks = 0,
-    { allowMusic = true } = {},
-  ) {
+  function sampleSubtitleText(advanceChunks = 0, { allowMusic = true } = {}) {
     const model = getSubtitlesModel();
     const chunks = model.chunks;
     if (!chunks.length) return "";
@@ -5119,7 +5526,7 @@
     const buildTextAt = (baseIndex) => {
       const labels = [];
       for (let i = 0; i < take; i += 1) {
-        const idx = ((baseIndex + i) % chunkCount + chunkCount) % chunkCount;
+        const idx = (((baseIndex + i) % chunkCount) + chunkCount) % chunkCount;
         const chunk = chunks[idx];
         if (!chunk || !chunk.label) continue;
         labels.push(String(chunk.label));
@@ -5128,7 +5535,8 @@
     };
 
     let baseIndex =
-      ((subtitleCursorIndex + advance) % chunkCount + chunkCount) % chunkCount;
+      (((subtitleCursorIndex + advance) % chunkCount) + chunkCount) %
+      chunkCount;
     let text = buildTextAt(baseIndex);
 
     if (chunkCount > 1) {
@@ -5141,12 +5549,15 @@
     }
 
     const shouldUseMusic =
-      allowMusic &&
-      subtitleEntriesSinceMusic >= subtitleNextMusicAfter;
+      allowMusic && subtitleEntriesSinceMusic >= subtitleNextMusicAfter;
     if (shouldUseMusic) {
       subtitleEntriesSinceMusic = 0;
       const scfg = appConfig.subtitles;
-      subtitleNextMusicAfter = scfg.musicIntervalMin + Math.floor(Math.random() * (scfg.musicIntervalMax - scfg.musicIntervalMin + 1));
+      subtitleNextMusicAfter =
+        scfg.musicIntervalMin +
+        Math.floor(
+          Math.random() * (scfg.musicIntervalMax - scfg.musicIntervalMin + 1),
+        );
       return "(music)";
     }
 
@@ -5170,8 +5581,7 @@
 
     setSubtitleLines("", first);
 
-    const { leadDelayMs, holdDelayMs, gapDelayMs } =
-      getSubtitleTiming();
+    const { leadDelayMs, holdDelayMs, gapDelayMs } = getSubtitleTiming();
     subtitleTimerId = window.setTimeout(() => {
       if (cycleToken !== subtitleCycleToken) return;
       subtitleTimerId = null;
@@ -5180,7 +5590,12 @@
         return;
       }
 
-      const secondAdvance = Math.round(randomBetween(appConfig.subtitles.secondAdvanceMin, appConfig.subtitles.secondAdvanceMax));
+      const secondAdvance = Math.round(
+        randomBetween(
+          appConfig.subtitles.secondAdvanceMin,
+          appConfig.subtitles.secondAdvanceMax,
+        ),
+      );
       let second = sampleSubtitleText(secondAdvance, {
         allowMusic: first !== "(music)",
       });
@@ -5396,12 +5811,18 @@
     pulseSeconds,
     lastFiredAtSeconds = null,
   ) {
-    const safePulseSeconds = Math.max(SAMPLE_PAD_HOLD_MIN_GAP_SEC, pulseSeconds);
+    const safePulseSeconds = Math.max(
+      SAMPLE_PAD_HOLD_MIN_GAP_SEC,
+      pulseSeconds,
+    );
     const fromLast = Number.isFinite(lastFiredAtSeconds)
       ? lastFiredAtSeconds +
         Math.max(SAMPLE_PAD_HOLD_MIN_GAP_SEC, safePulseSeconds * 0.35)
       : -Infinity;
-    const minTarget = Math.max(nowSeconds + SAMPLE_PAD_HOLD_MIN_LEAD_SEC, fromLast);
+    const minTarget = Math.max(
+      nowSeconds + SAMPLE_PAD_HOLD_MIN_LEAD_SEC,
+      fromLast,
+    );
     const anchor = getSamplePadClockAnchorSeconds();
     const cycles = Math.ceil((minTarget - anchor) / safePulseSeconds);
     return anchor + Math.max(0, cycles) * safePulseSeconds;
@@ -5509,7 +5930,11 @@
         scheduleSamplePadHoldTick(holdState, step, samplePadKeyHoldStates);
       } else if (activeNow && existing) {
         const nextPulse = getSamplePadPulseSeconds(step);
-        if (Math.abs(nextPulse - numberOrFallback(existing.pulseSeconds, nextPulse)) > 0.0001) {
+        if (
+          Math.abs(
+            nextPulse - numberOrFallback(existing.pulseSeconds, nextPulse),
+          ) > 0.0001
+        ) {
           existing.pulseSeconds = nextPulse;
           scheduleSamplePadHoldTick(existing, step, samplePadKeyHoldStates);
         }
@@ -6054,7 +6479,9 @@
         btn.classList.toggle("is-on", on);
         btn.classList.toggle("is-tied", tied);
         btn.classList.toggle("is-current", isPlaying && i === uiStep);
-        const ratchet = on ? getTrackCellRatchet(state, i, row) : NOTE_RATCHET_MIN;
+        const ratchet = on
+          ? getTrackCellRatchet(state, i, row)
+          : NOTE_RATCHET_MIN;
         const length = on ? getTrackCellLength(state, i, row) : NOTE_LENGTH_MIN;
         const showRatchet = on && ratchet > NOTE_RATCHET_MIN;
         const showLength = on && length > NOTE_LENGTH_MIN;
@@ -6267,7 +6694,9 @@
 
     const showDualFields = state.sound === DUAL_OSC_SOUND;
     const activeDualTab =
-      state.dualTab === "osc1" || state.dualTab === "osc2" ? state.dualTab : "main";
+      state.dualTab === "osc1" || state.dualTab === "osc2"
+        ? state.dualTab
+        : "main";
 
     track.dualTabBar.hidden = !showDualFields;
     track.dualTabOsc1Btn.setAttribute(
@@ -6361,7 +6790,10 @@
       track.seqModeSelect.value = state.seqMode === "roll" ? "roll" : "single";
     }
     if (track.noteModeSelect) {
-      track.noteModeSelect.value = normalizeNoteMode(state.noteMode, "one-shot");
+      track.noteModeSelect.value = normalizeNoteMode(
+        state.noteMode,
+        "one-shot",
+      );
     }
 
     renderTrackRollLabels(track);
@@ -7455,7 +7887,8 @@
     });
 
     const getStepButtonFromEvent = (event) => {
-      const target = event && event.target instanceof Element ? event.target : null;
+      const target =
+        event && event.target instanceof Element ? event.target : null;
       const directBtn = target ? target.closest("button.step") : null;
       if (directBtn) return directBtn;
 
@@ -7515,7 +7948,7 @@
             NOTE_MASK_ALL,
           );
         } else {
-          ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+          ties[stepIndex] = ties[stepIndex] & ~bit & NOTE_MASK_ALL;
           s.pattern[stepIndex] = next;
         }
 
@@ -7527,25 +7960,25 @@
               NOTE_MASK_ALL,
             );
             if ((nextMask & bit) !== 0 && !Number.isFinite(linkFromStep)) {
-              ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+              ties[stepIndex + 1] = ties[stepIndex + 1] & ~bit & NOTE_MASK_ALL;
             }
           }
         }
       } else if (paintMode === "draw-single") {
         const next = prev | bit;
         s.pattern[stepIndex] = next;
-        ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+        ties[stepIndex] = ties[stepIndex] & ~bit & NOTE_MASK_ALL;
         if (stepIndex + 1 < ties.length) {
-          ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+          ties[stepIndex + 1] = ties[stepIndex + 1] & ~bit & NOTE_MASK_ALL;
         }
       } else {
         const next = prev & ~bit;
         if (next === prev) return;
         s.pattern[stepIndex] = next;
         clearTrackCellMeta(s, stepIndex, rowIndex);
-        ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+        ties[stepIndex] = ties[stepIndex] & ~bit & NOTE_MASK_ALL;
         if (stepIndex + 1 < ties.length) {
-          ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+          ties[stepIndex + 1] = ties[stepIndex + 1] & ~bit & NOTE_MASK_ALL;
         }
       }
 
@@ -7554,8 +7987,11 @@
     };
 
     const getStepButtonAt = (stepIndex, rowIndex) => {
-      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex)) return null;
-      const rows = Array.isArray(track.stepButtonsByRow) ? track.stepButtonsByRow : [];
+      if (!Number.isFinite(stepIndex) || !Number.isFinite(rowIndex))
+        return null;
+      const rows = Array.isArray(track.stepButtonsByRow)
+        ? track.stepButtonsByRow
+        : [];
       const rowButtons = rows[rowIndex];
       if (!Array.isArray(rowButtons)) return null;
       return rowButtons[stepIndex] || null;
@@ -7581,9 +8017,9 @@
       if ((next & bit) === 0) {
         clearTrackCellMeta(s, stepIndex, rowIndex);
       }
-      ties[stepIndex] = (ties[stepIndex] & ~bit) & NOTE_MASK_ALL;
+      ties[stepIndex] = ties[stepIndex] & ~bit & NOTE_MASK_ALL;
       if (stepIndex + 1 < ties.length) {
-        ties[stepIndex + 1] = (ties[stepIndex + 1] & ~bit) & NOTE_MASK_ALL;
+        ties[stepIndex + 1] = ties[stepIndex + 1] & ~bit & NOTE_MASK_ALL;
       }
       s.noteTies = normalizeNoteTies(ties, s.pattern);
       renderTrackGrid(track);
@@ -7607,7 +8043,8 @@
 
       if (editMode === "ratchet") {
         const current = getTrackCellRatchet(s, stepIndex, rowIndex);
-        const next = current >= NOTE_RATCHET_MAX ? NOTE_RATCHET_MIN : current + 1;
+        const next =
+          current >= NOTE_RATCHET_MAX ? NOTE_RATCHET_MIN : current + 1;
         setTrackCellRatchet(s, stepIndex, rowIndex, next);
       } else {
         const current = getTrackCellLength(s, stepIndex, rowIndex);
@@ -7654,9 +8091,17 @@
       }
 
       const s = getOrInitState(key);
-      const rowIndex = clampNumber(Math.round(track.rollPaintStartRow), 0, NOTE_ROWS - 1);
+      const rowIndex = clampNumber(
+        Math.round(track.rollPaintStartRow),
+        0,
+        NOTE_ROWS - 1,
+      );
       const bit = 1 << rowIndex;
-      const targetStep = clampNumber(Math.round(targetStepRaw), 0, stepsCount - 1);
+      const targetStep = clampNumber(
+        Math.round(targetStepRaw),
+        0,
+        stepsCount - 1,
+      );
 
       const basePattern = Array.isArray(track.rollPaintBasePattern)
         ? track.rollPaintBasePattern.slice()
@@ -7669,10 +8114,18 @@
       const ties = baseTies.slice();
 
       const sourceStart = Number.isFinite(track.rollPaintStretchSourceStart)
-        ? clampNumber(Math.round(track.rollPaintStretchSourceStart), 0, stepsCount - 1)
+        ? clampNumber(
+            Math.round(track.rollPaintStretchSourceStart),
+            0,
+            stepsCount - 1,
+          )
         : null;
       const sourceEnd = Number.isFinite(track.rollPaintStretchSourceEnd)
-        ? clampNumber(Math.round(track.rollPaintStretchSourceEnd), 0, stepsCount - 1)
+        ? clampNumber(
+            Math.round(track.rollPaintStretchSourceEnd),
+            0,
+            stepsCount - 1,
+          )
         : null;
 
       if (sourceStart != null && sourceEnd != null) {
@@ -7751,7 +8204,7 @@
 
     rollRows.addEventListener("pointermove", (event) => {
       if (!event || track.rollPaintPointerId !== event.pointerId) return;
-      
+
       // If we don't have a pending paint ready, might be active from previous action
       if (String(event.pointerType || "") === "mouse" && event.buttons === 0) {
         track.rollPaintActive = false;
@@ -7834,7 +8287,9 @@
 
       paintStepButton(btn, track.rollPaintMode, {
         linkFromStep:
-          track.rollPaintMode === "draw-linked" ? track.rollPaintLastStep : null,
+          track.rollPaintMode === "draw-linked"
+            ? track.rollPaintLastStep
+            : null,
         linkFromRow:
           track.rollPaintMode === "draw-linked" ? track.rollPaintLastRow : null,
       });
@@ -8680,13 +9135,26 @@
     osc.stop(endTime + 0.05);
   }
 
-  function triggerDualOsc(time, duration, frequency, volume, env, pan = 0, stack = {}) {
+  function triggerDualOsc(
+    time,
+    duration,
+    frequency,
+    volume,
+    env,
+    pan = 0,
+    stack = {},
+  ) {
     const safeDuration = Math.max(0.04, duration);
     const safeFrequency = Math.max(20, numberOrFallback(frequency, 440));
     const panner = createPanNode(time, pan);
 
-    const blend = clampNumber(numberOrFallback(stack.oscBlend, 0), -100, 100) / 100;
-    const osc1Base = clampNumber(numberOrFallback(stack.osc1Level, 127), 0, 127);
+    const blend =
+      clampNumber(numberOrFallback(stack.oscBlend, 0), -100, 100) / 100;
+    const osc1Base = clampNumber(
+      numberOrFallback(stack.osc1Level, 127),
+      0,
+      127,
+    );
     const osc2Base = clampNumber(numberOrFallback(stack.osc2Level, 84), 0, 127);
     const osc1Level = osc1Base * (blend > 0 ? 1 - blend : 1);
     const osc2Level = osc2Base * (blend < 0 ? 1 + blend : 1);
@@ -8695,7 +9163,13 @@
 
     const sharedGain = audio.createGain();
     const peak = 0.7 * volume;
-    const { endTime } = applyAdsr(sharedGain.gain, time, safeDuration, peak, env);
+    const { endTime } = applyAdsr(
+      sharedGain.gain,
+      time,
+      safeDuration,
+      peak,
+      env,
+    );
     if (panner) sharedGain.connect(panner);
     else sharedGain.connect(master);
 
@@ -8723,7 +9197,10 @@
       osc.type = layer.wave;
       const octaveRatio = Math.pow(2, layer.octave);
       const detuneRatio = Math.pow(2, layer.detune / 1200);
-      osc.frequency.setValueAtTime(safeFrequency * octaveRatio * detuneRatio, time);
+      osc.frequency.setValueAtTime(
+        safeFrequency * octaveRatio * detuneRatio,
+        time,
+      );
       osc.connect(layerGain);
       layerGain.connect(sharedGain);
       osc.start(time);
@@ -8749,7 +9226,15 @@
     else if (kind === "bass")
       triggerBass(time, duration ?? 0.15, frequency ?? 110, v, env, pan);
     else if (kind === DUAL_OSC_SOUND)
-      triggerDualOsc(time, duration ?? 0.12, frequency ?? 440, v, env, pan, stack);
+      triggerDualOsc(
+        time,
+        duration ?? 0.12,
+        frequency ?? 440,
+        v,
+        env,
+        pan,
+        stack,
+      );
     else triggerTonalBlip(time, duration ?? 0.1, frequency ?? 440, v, env, pan);
   }
 
@@ -8876,7 +9361,8 @@
           if (holdNotes && getTieAt(stepIndex) !== 0) {
             continue;
           }
-          const duration = stepDuration * (holdNotes ? getRunLength(stepIndex) : 1);
+          const duration =
+            stepDuration * (holdNotes ? getRunLength(stepIndex) : 1);
           scheduleCell(0, duration);
         } else {
           for (let row = 0; row < NOTE_ROWS; row += 1) {
@@ -8885,7 +9371,8 @@
             if (holdNotes && (getTieAt(stepIndex) & rowBit) !== 0) {
               continue;
             }
-            const duration = stepDuration * (holdNotes ? getRunLength(stepIndex, rowBit) : 1);
+            const duration =
+              stepDuration * (holdNotes ? getRunLength(stepIndex, rowBit) : 1);
             scheduleCell(row, duration);
           }
         }
@@ -9229,11 +9716,11 @@
   }
 
   function normalizeTextVideoValue(value) {
-    const collapsed = String(value || "")
-      .replace(/\s+/g, " ")
+    const normalized = String(value || "")
+      .replace(/\r\n?/g, "\n")
       .slice(0, TEXT_VIDEO_MAX_LENGTH);
-    const hasVisibleChars = /\S/.test(collapsed);
-    return hasVisibleChars ? collapsed : "";
+    const hasVisibleChars = /\S/.test(normalized);
+    return hasVisibleChars ? normalized : "";
   }
 
   function getTextVideoLetters() {
@@ -9249,7 +9736,8 @@
 
   function getTextVideoLetterState(button) {
     if (!button) return TEXT_VIDEO_STATE_OUTLINE;
-    if (button.classList.contains("tv-state-text")) return TEXT_VIDEO_STATE_TEXT;
+    if (button.classList.contains("tv-state-text"))
+      return TEXT_VIDEO_STATE_TEXT;
     if (button.classList.contains("is-selected")) return TEXT_VIDEO_STATE_VIDEO;
     return TEXT_VIDEO_STATE_OUTLINE;
   }
@@ -9261,10 +9749,7 @@
     const isText = state === TEXT_VIDEO_STATE_TEXT;
     button.classList.toggle("is-selected", isVideo);
     button.classList.toggle("tv-state-text", isText);
-    button.classList.toggle(
-      "tv-state-outline",
-      !isVideo && !isText,
-    );
+    button.classList.toggle("tv-state-outline", !isVideo && !isText);
     button.setAttribute("aria-pressed", isVideo ? "true" : "false");
     button.setAttribute("data-tv-state", getTextVideoLetterState(button));
   }
@@ -9285,30 +9770,100 @@
   function fitTextVideoWordToStage() {
     if (!textVideoWord || !textVideoStage) return;
 
-    const fitHost = textVideoInterior || textVideoStage;
+    // Get precise measurements of available space
+    const stageStyles = window.getComputedStyle(textVideoStage);
+    const stagePadLeft = numberOrFallback(stageStyles.paddingLeft, 0);
+    const stagePadRight = numberOrFallback(stageStyles.paddingRight, 0);
+    const stagePadTop = numberOrFallback(stageStyles.paddingTop, 0);
+    const stagePadBottom = numberOrFallback(stageStyles.paddingBottom, 0);
 
-    const stageStyles = window.getComputedStyle(fitHost);
-    const padX = numberOrFallback(stageStyles.paddingLeft, 0)
-      + numberOrFallback(stageStyles.paddingRight, 0);
-    const padY = numberOrFallback(stageStyles.paddingTop, 0)
-      + numberOrFallback(stageStyles.paddingBottom, 0);
+    // Calculate content box (inside padding)
+    const stageContentW = Math.max(
+      1,
+      textVideoStage.clientWidth - stagePadLeft - stagePadRight,
+    );
+    const stageContentH = Math.max(
+      1,
+      textVideoStage.clientHeight - stagePadTop - stagePadBottom,
+    );
 
-    const descenderSafetyPx = 20;
-    const maxWidth = Math.max(1, fitHost.clientWidth - padX - 8);
-    const maxHeight = Math.max(1, fitHost.clientHeight - padY - 8 - descenderSafetyPx);
+    const insetXRatio = clampNumber(
+      (textVideoPadLeft + textVideoPadRight) / 100,
+      0,
+      0.9,
+    );
+    const insetYRatio = clampNumber(
+      (textVideoPadTop + textVideoPadBottom) / 100,
+      0,
+      0.9,
+    );
+    const descenderSafetyPx = 12;
 
-    let low = 8;
-    let high = Math.max(24, Math.min(maxHeight * 0.9, maxWidth * 0.9));
-    let best = low;
+    // CRITICAL: Account for user margin settings (text-video-pad controls)
+    // Both width AND height constraints are ESSENTIAL for stable text fitting.
+    const maxWidth = Math.max(1, stageContentW * (1 - insetXRatio) - 8);
+    const maxHeight = Math.max(
+      1,
+      stageContentH * (1 - insetYRatio) - 8 - descenderSafetyPx,
+    );
+
+    // Avoid locking to microscopic font sizes when layout isn't ready yet.
+    if (maxWidth < 24 || maxHeight < 24) {
+      window.requestAnimationFrame(() => {
+        fitTextVideoWordToStage();
+      });
+      return;
+    }
+
+    // Clear any inherited CSS font-size before fitting
+    textVideoWord.style.fontSize = "";
 
     const fits = (sizePx) => {
       textVideoWord.style.fontSize = `${sizePx}px`;
-      const w = textVideoWord.scrollWidth;
-      const h = textVideoWord.scrollHeight;
+      // Force synchronous layout recalculation before measuring
+      void textVideoWord.offsetHeight;
+
+      // CRITICAL: Measure actual content bounds, not scrollWidth which includes full element width
+      let minX = Infinity,
+        maxX = -Infinity,
+        minY = Infinity,
+        maxY = -Infinity;
+      let hasContent = false;
+
+      const letters = textVideoWord.querySelectorAll(".letter");
+      letters.forEach((letter) => {
+        hasContent = true;
+        const rect = letter.getBoundingClientRect();
+        minX = Math.min(minX, rect.left);
+        maxX = Math.max(maxX, rect.right);
+        minY = Math.min(minY, rect.top);
+        maxY = Math.max(maxY, rect.bottom);
+      });
+
+      if (!hasContent) {
+        // No content yet, assume it fits
+        return true;
+      }
+
+      const w = maxX - minX;
+      const h = maxY - minY;
+
+      // CRITICAL: DO NOT REMOVE THE WIDTH CHECK. This prevents text from being sized to microscopic or massive values.
+      // Both width AND height constraints are ESSENTIAL for stable text fitting.
       return w <= maxWidth && h <= maxHeight;
     };
 
-    for (let i = 0; i < 14; i += 1) {
+    // Find the largest possible size that fits current content in the margin box.
+    let low = 10;
+    let high = Math.max(24, Math.round(Math.max(maxHeight, maxWidth)));
+
+    while (fits(high) && high < 2048) {
+      low = high;
+      high = Math.round(high * 1.35);
+    }
+
+    let best = low;
+    for (let i = 0; i < 20; i += 1) {
       const mid = (low + high) / 2;
       if (fits(mid)) {
         best = mid;
@@ -9321,6 +9876,37 @@
     textVideoWord.style.fontSize = `${Math.max(8, Math.floor(best))}px`;
   }
 
+  function setTextVideoColor(rawValue) {
+    const normalized = normalizeHexColor(rawValue, textVideoColor);
+    textVideoColor = normalized;
+    if (textVideoRoot) {
+      textVideoRoot.style.setProperty("--text-video-user-color", normalized);
+    }
+  }
+
+  function setTextVideoSplitOnSpaces(nextEnabled) {
+    textVideoSplitOnSpaces = Boolean(nextEnabled);
+    if (textVideoWord) {
+      textVideoWord.setAttribute(
+        "data-split-on-spaces",
+        textVideoSplitOnSpaces ? "true" : "false",
+      );
+      renderTextVideoWord(textVideoValue, {
+        resetSelection: false,
+        preserveLetterStates: true,
+      });
+    }
+    if (textVideoSplitSpacesToggleBtn) {
+      textVideoSplitSpacesToggleBtn.setAttribute(
+        "aria-pressed",
+        textVideoSplitOnSpaces ? "true" : "false",
+      );
+      textVideoSplitSpacesToggleBtn.title = textVideoSplitOnSpaces
+        ? "split on spaces: on"
+        : "split on spaces: off";
+    }
+  }
+
   function blurTextVideoInputForSliderInteraction() {
     if (!textVideoInput) return;
     if (document.activeElement !== textVideoInput) return;
@@ -9329,10 +9915,22 @@
 
   function applyTextVideoInsets() {
     if (!textVideoStage) return;
-    textVideoStage.style.setProperty("--text-video-pad-top", `${textVideoPadTop}%`);
-    textVideoStage.style.setProperty("--text-video-pad-bottom", `${textVideoPadBottom}%`);
-    textVideoStage.style.setProperty("--text-video-pad-left", `${textVideoPadLeft}%`);
-    textVideoStage.style.setProperty("--text-video-pad-right", `${textVideoPadRight}%`);
+    textVideoStage.style.setProperty(
+      "--text-video-pad-top",
+      `${textVideoPadTop}%`,
+    );
+    textVideoStage.style.setProperty(
+      "--text-video-pad-bottom",
+      `${textVideoPadBottom}%`,
+    );
+    textVideoStage.style.setProperty(
+      "--text-video-pad-left",
+      `${textVideoPadLeft}%`,
+    );
+    textVideoStage.style.setProperty(
+      "--text-video-pad-right",
+      `${textVideoPadRight}%`,
+    );
     fitTextVideoWordToStage();
 
     if (logoVideoBackgroundEnabled) {
@@ -9359,7 +9957,8 @@
       100,
     );
 
-    if (textVideoVideoScaleInput) textVideoVideoScaleInput.value = String(uiSize);
+    if (textVideoVideoScaleInput)
+      textVideoVideoScaleInput.value = String(uiSize);
     if (textVideoVideoScaleOut) textVideoVideoScaleOut.value = String(uiSize);
     if (textVideoVideoXInput) textVideoVideoXInput.value = String(x);
     if (textVideoVideoXOut) textVideoVideoXOut.value = String(x);
@@ -9378,8 +9977,8 @@
     const ratio = (uiValue - TEXT_VIDEO_CROP_UI_MIN) / uiRange;
     return clampNumber(
       Math.round(
-        TEXT_VIDEO_CROP_SIZE_MIN
-          + ratio * (TEXT_VIDEO_CROP_SIZE_MAX - TEXT_VIDEO_CROP_SIZE_MIN),
+        TEXT_VIDEO_CROP_SIZE_MIN +
+          ratio * (TEXT_VIDEO_CROP_SIZE_MAX - TEXT_VIDEO_CROP_SIZE_MIN),
       ),
       TEXT_VIDEO_CROP_SIZE_MIN,
       TEXT_VIDEO_CROP_SIZE_MAX,
@@ -9397,8 +9996,8 @@
     const ratio = (cropSize - TEXT_VIDEO_CROP_SIZE_MIN) / cropRange;
     return clampNumber(
       Math.round(
-        TEXT_VIDEO_CROP_UI_MIN
-          + ratio * (TEXT_VIDEO_CROP_UI_MAX - TEXT_VIDEO_CROP_UI_MIN),
+        TEXT_VIDEO_CROP_UI_MIN +
+          ratio * (TEXT_VIDEO_CROP_UI_MAX - TEXT_VIDEO_CROP_UI_MIN),
       ),
       TEXT_VIDEO_CROP_UI_MIN,
       TEXT_VIDEO_CROP_UI_MAX,
@@ -9406,18 +10005,15 @@
   }
 
   function setTextVideoInset(side, rawValue) {
-    const value = clampNumber(
-      Math.round(numberOrFallback(rawValue, 0)),
-      0,
-      25,
-    );
+    const value = clampNumber(Math.round(numberOrFallback(rawValue, 0)), 0, 25);
     if (side === "top") {
       textVideoPadTop = value;
       if (textVideoPadTopInput) textVideoPadTopInput.value = String(value);
       if (textVideoPadTopOut) textVideoPadTopOut.value = String(value);
     } else if (side === "bottom") {
       textVideoPadBottom = value;
-      if (textVideoPadBottomInput) textVideoPadBottomInput.value = String(value);
+      if (textVideoPadBottomInput)
+        textVideoPadBottomInput.value = String(value);
       if (textVideoPadBottomOut) textVideoPadBottomOut.value = String(value);
     } else if (side === "left") {
       textVideoPadLeft = value;
@@ -9433,18 +10029,65 @@
     applyTextVideoInsets();
   }
 
-  function renderTextVideoWord(rawValue, { resetSelection = true } = {}) {
+  function renderTextVideoWord(
+    rawValue,
+    { resetSelection = true, preserveLetterStates = false } = {},
+  ) {
     if (!textVideoWord) return;
     const nextValue = normalizeTextVideoValue(rawValue);
     const renderValue = nextValue || TEXT_VIDEO_DEFAULT_TEXT;
+    const existingLetterStates = preserveLetterStates
+      ? getTextVideoLetters().map((button) => getTextVideoLetterState(button))
+      : [];
+    const defaultLetterState = resetSelection
+      ? TEXT_VIDEO_STATE_VIDEO
+      : TEXT_VIDEO_STATE_OUTLINE;
+    let letterStateIndex = 0;
+
     textVideoValue = nextValue;
     textVideoWord.textContent = "";
+    textVideoWord.setAttribute(
+      "data-split-on-spaces",
+      textVideoSplitOnSpaces ? "true" : "false",
+    );
+
+    let currentWordChunk = null;
+    const flushWordChunk = () => {
+      if (!currentWordChunk) return;
+      if (currentWordChunk.childNodes.length > 0) {
+        textVideoWord.appendChild(currentWordChunk);
+      }
+      currentWordChunk = null;
+    };
+    const appendLetter = (button) => {
+      if (!textVideoSplitOnSpaces) {
+        textVideoWord.appendChild(button);
+        return;
+      }
+      if (!currentWordChunk) {
+        currentWordChunk = document.createElement("span");
+        currentWordChunk.className = "textVideoWordChunk";
+      }
+      currentWordChunk.appendChild(button);
+    };
 
     for (const ch of renderValue) {
+      if (ch === "\n") {
+        flushWordChunk();
+        const lineBreak = document.createElement("span");
+        lineBreak.className = "textVideoBreak";
+        lineBreak.setAttribute("aria-hidden", "true");
+        textVideoWord.appendChild(lineBreak);
+        continue;
+      }
       if (ch === " ") {
+        if (textVideoSplitOnSpaces) {
+          flushWordChunk();
+          continue;
+        }
         const spacer = document.createElement("span");
         spacer.className = "textVideoSpace";
-        spacer.textContent = "\u00a0";
+        spacer.textContent = " ";
         textVideoWord.appendChild(spacer);
         continue;
       }
@@ -9452,11 +10095,9 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "letter";
-      if (resetSelection) {
-        setTextVideoLetterState(button, TEXT_VIDEO_STATE_VIDEO);
-      } else {
-        setTextVideoLetterState(button, TEXT_VIDEO_STATE_OUTLINE);
-      }
+      const preservedState = existingLetterStates[letterStateIndex] || "";
+      setTextVideoLetterState(button, preservedState || defaultLetterState);
+      letterStateIndex += 1;
       button.textContent = ch;
       button.dataset.letter = ch;
       button.setAttribute(
@@ -9480,10 +10121,13 @@
         toggleTextVideoLetter(button);
       });
 
-      textVideoWord.appendChild(button);
+      appendLetter(button);
     }
 
+    flushWordChunk();
+
     textVideoWord.setAttribute("aria-label", renderValue);
+    textVideoWord.dataset.align = "left";
     syncTextVideoCount();
     fitTextVideoWordToStage();
 
@@ -9496,7 +10140,9 @@
   function syncTextVideoFullscreenButton() {
     if (!textVideoFullscreenBtn || !textVideoStage) return;
     const active = document.fullscreenElement === textVideoStage;
-    textVideoFullscreenBtn.textContent = active ? "exit fullscreen" : "fullscreen";
+    textVideoFullscreenBtn.textContent = active
+      ? "exit fullscreen"
+      : "fullscreen";
   }
 
   for (const button of letters) {
@@ -9530,6 +10176,8 @@
     textVideoInput.value = textVideoValue;
   }
   syncTextVideoCropControls();
+  setTextVideoColor(textVideoColor);
+  setTextVideoSplitOnSpaces(textVideoSplitOnSpaces);
   setTextVideoInset("top", textVideoPadTop);
   setTextVideoInset("bottom", textVideoPadBottom);
   setTextVideoInset("left", textVideoPadLeft);
@@ -9593,6 +10241,12 @@
   if (textVideoInput) {
     textVideoInput.addEventListener("input", () => {
       renderTextVideoWord(textVideoInput.value, { resetSelection: true });
+    });
+  }
+
+  if (textVideoSplitSpacesToggleBtn) {
+    textVideoSplitSpacesToggleBtn.addEventListener("click", () => {
+      setTextVideoSplitOnSpaces(!textVideoSplitOnSpaces);
     });
   }
 
@@ -9661,7 +10315,9 @@
       blurTextVideoInputForSliderInteraction();
     });
     textVideoVideoScaleInput.addEventListener("input", () => {
-      const size = mapTextVideoUiScaleToCropSize(textVideoVideoScaleInput.value);
+      const size = mapTextVideoUiScaleToCropSize(
+        textVideoVideoScaleInput.value,
+      );
       setLogoVideoCrop(logoVideoCropX, logoVideoCropY, size);
     });
   }
@@ -9679,7 +10335,9 @@
     });
     textVideoVideoXInput.addEventListener("input", () => {
       const x = clampNumber(
-        Math.round(numberOrFallback(textVideoVideoXInput.value, logoVideoCropX)),
+        Math.round(
+          numberOrFallback(textVideoVideoXInput.value, logoVideoCropX),
+        ),
         0,
         100,
       );
@@ -9704,7 +10362,9 @@
     });
     textVideoVideoYInput.addEventListener("input", () => {
       const y = clampNumber(
-        Math.round(numberOrFallback(textVideoVideoYInput.value, logoVideoCropY)),
+        Math.round(
+          numberOrFallback(textVideoVideoYInput.value, logoVideoCropY),
+        ),
         0,
         100,
       );
@@ -9728,6 +10388,8 @@
       if (textVideoInput) {
         textVideoInput.value = TEXT_VIDEO_DEFAULT_TEXT;
       }
+      setTextVideoColor(themeEnabled ? "#ffffff" : "#000000");
+      setTextVideoSplitOnSpaces(true);
       setLogoVideoCrop(50, 60, 88);
       setTextVideoInset("top", 0);
       setTextVideoInset("bottom", 0);
@@ -9796,10 +10458,19 @@
     });
   }
 
-  document.addEventListener("video-synth:set-logo-video-background", (event) => {
-    const nextEnabled = Boolean(event?.detail?.enabled);
-    setLogoVideoBackgroundEnabled(nextEnabled);
-  });
+  document.addEventListener(
+    "video-synth:set-logo-video-background",
+    (event) => {
+      const detail = event?.detail || {};
+      if (typeof detail.mode === "string") {
+        setVideoBackgroundMode(detail.mode);
+        return;
+      }
+      if (typeof detail.enabled === "boolean") {
+        setLogoVideoBackgroundEnabled(Boolean(detail.enabled));
+      }
+    },
+  );
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
@@ -9816,11 +10487,7 @@
 
   document.addEventListener("video-synth:set-logo-video-crop", (event) => {
     const detail = event?.detail || {};
-    setLogoVideoCrop(
-      detail.cropX,
-      detail.cropY,
-      detail.cropSize,
-    );
+    setLogoVideoCrop(detail.cropX, detail.cropY, detail.cropSize);
   });
 
   if (starBounceToggleBtn) {
@@ -10507,6 +11174,9 @@
   );
 
   function setThemeEnabled(nextEnabled) {
+    const prevThemeEnabled = themeEnabled;
+    const previousDefaultTextColor = prevThemeEnabled ? "#ffffff" : "#000000";
+    const nextDefaultTextColor = Boolean(nextEnabled) ? "#ffffff" : "#000000";
     themeEnabled = Boolean(nextEnabled);
     applyThemeVars();
     document.documentElement.classList.toggle("is-theme", themeEnabled);
@@ -10536,6 +11206,13 @@
     }
     syncLogoVideoBackgroundAvailability();
 
+    // Keep text-video plain text readable across theme toggles, but preserve custom user colors.
+    if (
+      String(textVideoColor || "").toLowerCase() === previousDefaultTextColor
+    ) {
+      setTextVideoColor(nextDefaultTextColor);
+    }
+
     applyLetterHitAccentPalette();
     syncBumpModeClass();
 
@@ -10551,7 +11228,7 @@
   function isStarBounceBlockedByIntro() {
     return Boolean(
       (themeStarBtn && themeStarBtn.classList.contains("is-star-daw-intro")) ||
-        Date.now() < starBounceIntroDelayUntil,
+      Date.now() < starBounceIntroDelayUntil,
     );
   }
 
@@ -10560,10 +11237,7 @@
       starBounceEnabled &&
       (isPlaying || starBounceAlwaysEnabled) &&
       !isStarBounceBlockedByIntro();
-    document.documentElement.classList.toggle(
-      "is-star-bouncing",
-      bounceActive,
-    );
+    document.documentElement.classList.toggle("is-star-bouncing", bounceActive);
   }
 
   function setStarBounceEnabled(nextEnabled) {
@@ -10677,7 +11351,11 @@
       0,
       1,
     );
-    const nonThemeGhostShadowHitMix = clampNumber(nonThemeGhostHitMix - 0.06, 0, 1);
+    const nonThemeGhostShadowHitMix = clampNumber(
+      nonThemeGhostHitMix - 0.06,
+      0,
+      1,
+    );
     root.style.setProperty(
       "--bump-underline-length",
       String(BUMP_UNDERLINE_LENGTH),
@@ -10934,12 +11612,10 @@
   setAutosaveEnabled(autosaveEnabled);
   setAutoscrollEnabled(autoscrollEnabled);
   setGradientAnimationEnabled(gradientAnimationEnabled);
-  setLogoVideoCrop(
-    logoVideoCropX,
-    logoVideoCropY,
-    logoVideoCropSize,
+  setLogoVideoCrop(logoVideoCropX, logoVideoCropY, logoVideoCropSize);
+  setVideoBackgroundMode(
+    logoVideoBackgroundEnabled ? videoBackgroundMode : "off",
   );
-  setLogoVideoBackgroundEnabled(logoVideoBackgroundEnabled);
   setStarBounceEnabled(starBounceEnabled);
   setStarBounceAlwaysEnabled(starBounceAlwaysEnabled);
   setBumpHeight(bumpHeight);
@@ -11110,8 +11786,12 @@
       );
       const segment = pattern.slice(start, end + 1);
       const tieSegment = ties.slice(start, end + 1);
-      const ratchetSegment = ratchets.slice(start, end + 1).map((row) => row.slice());
-      const lengthSegment = lengths.slice(start, end + 1).map((row) => row.slice());
+      const ratchetSegment = ratchets
+        .slice(start, end + 1)
+        .map((row) => row.slice());
+      const lengthSegment = lengths
+        .slice(start, end + 1)
+        .map((row) => row.slice());
       for (let i = 0; i < len; i += 1) {
         const targetIndex = insertAt + i;
         if (targetIndex >= stepsCount) break;
@@ -11174,7 +11854,12 @@
         NOTE_LENGTH_MIN,
         NOTE_LENGTH_MAX,
       );
-      snapshots.set(track.key, { pattern, noteTies, noteRatchets, noteLengths });
+      snapshots.set(track.key, {
+        pattern,
+        noteTies,
+        noteRatchets,
+        noteLengths,
+      });
     }
 
     applyStepsCount(nextSteps);

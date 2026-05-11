@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>aelonyori</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="stylesheet" href="css/style.css?v=20">
+    <link rel="stylesheet" href="css/style.css?v=24">
     <link rel="stylesheet" href="css/sampler.css?v=6">
-    <link rel="stylesheet" href="css/video-synth.css?v=4">
+    <link rel="stylesheet" href="css/video-synth.css?v=6">
 </head>
 <body>
     <button type="button" id="navToVideoSynthBtn" class="edgeNav edgeNavLeft edgeNavVideoOpen" aria-label="open video synth">&lt;</button>
@@ -69,20 +69,32 @@
             </section>
 
             <section class="textVideoControls" aria-label="text controls">
-                <label class="field textVideoField">
+                <label class="field textVideoInsetField textVideoTextField">
                     <span class="fieldLabel">text</span>
-                    <input id="textVideoInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="56" placeholder="artist name" aria-label="text to render" />
+                    <textarea id="textVideoInput" inputmode="text" autocomplete="off" spellcheck="false" maxlength="128" placeholder="artist name" aria-label="text to render" rows="2"></textarea>
                     <span id="textVideoCount" class="status textVideoCount" aria-live="polite"></span>
                 </label>
 
+                <div class="textVideoStyleGrid" aria-label="text wrap">
+                    <label class="field textVideoInsetField textVideoWrapToggleField">
+                        <span class="fieldLabel">split spaces</span>
+                        <button type="button" class="switchToggle" id="textVideoSplitSpacesToggleBtn" aria-label="split on spaces" aria-pressed="true"></button>
+                    </label>
+                    <label class="field textVideoInsetField">
+                        <span class="fieldLabel">video scale</span>
+                        <input id="textVideoVideoScale" type="range" min="1" max="100" step="1" value="84" aria-label="video scale" />
+                        <input id="textVideoVideoScaleOut" class="num" type="number" min="1" max="100" step="1" value="84" aria-label="video scale value" />
+                    </label>
+                </div>
+
                 <div class="textVideoInsetGrid" aria-label="text margins">
                     <label class="field textVideoInsetField">
-                        <span class="fieldLabel">top</span>
+                        <span class="fieldLabel">top margin</span>
                         <input id="textVideoPadTop" type="range" min="0" max="25" step="1" value="0" aria-label="top margin" />
                         <input id="textVideoPadTopOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="top margin value" />
                     </label>
                     <label class="field textVideoInsetField">
-                        <span class="fieldLabel">bottom</span>
+                        <span class="fieldLabel">bottom margin</span>
                         <input id="textVideoPadBottom" type="range" min="0" max="25" step="1" value="0" aria-label="bottom margin" />
                         <input id="textVideoPadBottomOut" class="num" type="number" min="0" max="25" step="1" value="0" aria-label="bottom margin value" />
                     </label>
@@ -98,21 +110,16 @@
                     </label>
                 </div>
 
-                <div class="textVideoVideoGrid" aria-label="video framing">
+                <div class="textVideoVideoPositionGrid" aria-label="video framing position">
                     <label class="field textVideoInsetField">
-                        <span class="fieldLabel">scale</span>
-                        <input id="textVideoVideoScale" type="range" min="1" max="100" step="1" value="84" aria-label="video scale" />
-                        <input id="textVideoVideoScaleOut" class="num" type="number" min="1" max="100" step="1" value="84" aria-label="video scale value" />
+                        <span class="fieldLabel">rotate video x</span>
+                        <input id="textVideoVideoX" type="range" min="0" max="100" step="1" value="50" aria-label="rotate video x position" />
+                        <input id="textVideoVideoXOut" class="num" type="number" min="0" max="100" step="1" value="50" aria-label="rotate video x position value" />
                     </label>
                     <label class="field textVideoInsetField">
-                        <span class="fieldLabel">x</span>
-                        <input id="textVideoVideoX" type="range" min="0" max="100" step="1" value="50" aria-label="video x position" />
-                        <input id="textVideoVideoXOut" class="num" type="number" min="0" max="100" step="1" value="50" aria-label="video x position value" />
-                    </label>
-                    <label class="field textVideoInsetField">
-                        <span class="fieldLabel">y</span>
-                        <input id="textVideoVideoY" type="range" min="0" max="100" step="1" value="60" aria-label="video y position" />
-                        <input id="textVideoVideoYOut" class="num" type="number" min="0" max="100" step="1" value="60" aria-label="video y position value" />
+                        <span class="fieldLabel">rotate video y</span>
+                        <input id="textVideoVideoY" type="range" min="0" max="100" step="1" value="60" aria-label="rotate video y position" />
+                        <input id="textVideoVideoYOut" class="num" type="number" min="0" max="100" step="1" value="60" aria-label="rotate video y position value" />
                     </label>
                 </div>
 
@@ -489,7 +496,7 @@
     <script src="js/shared-utils.js?v=1" defer></script>
     <script src="js/status-hub.js?v=1" defer></script>
     <script src="js/sampler.js?v=4" defer></script>
-    <script src="js/video-synth.js?v=4" defer></script>
-    <script src="js/app.js?v=8" defer></script>
+    <script src="js/video-synth.js?v=6" defer></script>
+    <script src="js/app.js?v=11" defer></script>
 </body>
 </html>
