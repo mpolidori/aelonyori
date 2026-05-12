@@ -468,6 +468,14 @@ html.is-theme .videoSynthAudioSourceStatus {
   border-radius: 0;
 }
 
+html.is-theme .videoSynthField input[type="range"]::-webkit-slider-thumb,
+html.is-theme .videoSynthModeSlider::-webkit-slider-thumb,
+html.is-theme .videoSynthField input[type="range"]::-moz-range-thumb,
+html.is-theme .videoSynthModeSlider::-moz-range-thumb {
+  background: var(--t-fg, rgba(255, 255, 255, 0.92));
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+}
+
 .videoSynthPreview:fullscreen .videoSynthHud,
 .videoSynthPreview:-webkit-full-screen .videoSynthHud {
   display: none;

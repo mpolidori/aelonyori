@@ -99,8 +99,9 @@ body {
   z-index: 70;
   width: 1.9rem;
   height: 2.2rem;
-  border: 0;
-  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: 2px;
   color: rgba(0, 0, 0, 0.72);
   font: inherit;
   font-size: 1.5rem;
@@ -131,6 +132,21 @@ body {
 .edgeNav:focus-visible {
   outline: 1px solid rgba(0, 0, 0, 0.26);
   outline-offset: 2px;
+}
+
+html.is-theme .edgeNav {
+  border-color: var(--t-22, rgba(255, 255, 255, 0.22));
+  background: var(--t-14, rgba(255, 255, 255, 0.14));
+  color: var(--t-72, rgba(255, 255, 255, 0.72));
+}
+
+html.is-theme .edgeNav:hover,
+html.is-theme .edgeNav:focus-visible {
+  color: var(--t-92, rgba(255, 255, 255, 0.92));
+}
+
+html.is-theme .edgeNav:focus-visible {
+  outline-color: var(--t-22, rgba(255, 255, 255, 0.22));
 }
 
 .edgeNavLeft {
@@ -187,6 +203,11 @@ body.is-text-video-view .edgeNavTextVideoOpen {
 
 body.is-text-video-view .edgeNavTextVideoBack {
   display: flex;
+}
+
+.videoSynthHud,
+.perfDebugChip {
+  display: none !important;
 }
 
 .textVideoRoot {
@@ -310,19 +331,12 @@ body.is-text-video-view .textVideoRoot {
   white-space: normal !important;
   gap: 0 !important;
   padding-bottom: 0.1em;
+  pointer-events: none !important;
+  cursor: default !important;
 }
 
-/* Remove hover effects from text-video letters */
-#textVideoWord .letter:hover,
-#textVideoWord .letter:focus-visible {
-  color: var(--text-video-user-color, #000000) !important;
-  text-shadow: none !important;
-}
-
-#textVideoWord .letter:hover::before,
-#textVideoWord .letter:focus-visible::before {
-  opacity: 0 !important;
-  display: none !important;
+html.is-theme .textVideoRoot {
+  --text-video-user-color: var(--t-fg, rgba(255, 255, 255, 0.92));
 }
 
 /* Word chunks: make them inline-block so they wrap at word boundaries */
@@ -466,6 +480,7 @@ body.is-text-video-view .textVideoRoot {
   min-width: 0;
   justify-self: stretch;
   margin: 0;
+  padding-inline: 0.16rem;
 }
 
 @media (max-width: 860px) {
@@ -498,16 +513,6 @@ body.is-text-video-view .textVideoRoot {
   align-self: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-.textVideoStage:fullscreen {
-  background: var(--page-bg, #000000);
-  padding: 0;
-  border: 0;
-}
-
-.textVideoStage:fullscreen .textVideoWord {
-  line-height: 1.02;
 }
 
 html.is-theme .textVideoControls,
@@ -600,9 +605,9 @@ body.is-text-video-view .textVideoWord .letter.is-selected:focus-visible {
   opacity: 1 !important;
 }
 
-body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter.is-selected,
-body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter.is-selected:hover,
-body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter.is-selected:focus-visible {
+body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter,
+body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter:hover,
+body.is-text-video-view #textVideoWord[data-has-video-frame="true"] .letter:focus-visible {
   background-image: var(--logo-video-frame) !important;
   background-repeat: no-repeat !important;
   color: transparent !important;

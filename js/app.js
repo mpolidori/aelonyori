@@ -432,7 +432,7 @@
       subtitlesSpeed: 100,
       autosaveEnabled: false,
       autosaveIntervalMinutes: 5,
-      autoscrollEnabled: true,
+      autoscrollEnabled: false,
       gradientAnimationEnabled: true,
       logoVideoBackgroundEnabled: false,
       videoBackgroundMode: "off",
@@ -3729,14 +3729,7 @@
   }
 
   function ensurePerfDebugChip() {
-    if (perfDebugChipEl) return perfDebugChipEl;
-    const el = document.createElement("div");
-    el.className = "perfDebugChip";
-    el.setAttribute("aria-hidden", "true");
-    el.hidden = true;
-    document.body.appendChild(el);
-    perfDebugChipEl = el;
-    return perfDebugChipEl;
+    return null;
   }
 
   function getPerfViewLabel() {
@@ -3747,30 +3740,11 @@
   }
 
   function updatePerfDebugChip() {
-    const el = ensurePerfDebugChip();
-    const shouldShow =
-      isTextVideoViewOpen() ||
-      isVideoSynthViewOpen() ||
-      logoVideoBackgroundEnabled;
-    el.hidden = !shouldShow;
-    if (!shouldShow) return;
-
-    const now = Date.now();
-    const lastAge = logoVideoBgLastSampleAt
-      ? Math.max(0, Math.round(now - logoVideoBgLastSampleAt))
-      : -1;
-    const synthActive = Boolean(videoSynthPlugin && videoSynthPlugin.active);
-    const loopState = logoVideoBgRaf != null ? "raf" : "off";
-    const interval = logoVideoBgLastSampleIntervalMs || 0;
-    const ageText = lastAge >= 0 ? `${lastAge}ms` : "--";
-
-    el.textContent = `perf ${getPerfViewLabel()} | synth:${synthActive ? "on" : "off"} | logo:${logoVideoBackgroundEnabled ? "on" : "off"} | loop:${loopState} | interval:${interval}ms | age:${ageText}`;
+    return;
   }
 
   function startPerfDebugChipLoop() {
-    if (perfDebugTimerId != null) return;
-    perfDebugTimerId = window.setInterval(updatePerfDebugChip, 500);
-    updatePerfDebugChip();
+    return;
   }
 
   function runLogoVideoPaletteLoop() {
@@ -3814,15 +3788,6 @@
       "is-logo-video-bg",
       logoVideoBackgroundEnabled && videoBackgroundMode === "daw",
     );
-    if (logoVideoBackgroundToggleBtn) {
-      logoVideoBackgroundToggleBtn.setAttribute(
-        "aria-pressed",
-        logoVideoBackgroundEnabled ? "true" : "false",
-      );
-      logoVideoBackgroundToggleBtn.title = logoVideoBackgroundEnabled
-        ? "video background: on"
-        : "video background: off";
-    }
 
     if (
       videoSynthPlugin &&
@@ -3861,17 +3826,7 @@
   }
 
   function syncLogoVideoBackgroundAvailability() {
-    const available = true;
-    if (logoVideoBackgroundToggleBtn) {
-      logoVideoBackgroundToggleBtn.disabled = false;
-      logoVideoBackgroundToggleBtn.setAttribute("aria-disabled", "false");
-      logoVideoBackgroundToggleBtn.title = logoVideoBackgroundEnabled
-        ? "video background: on"
-        : "video background: off";
-    }
-    if (logoVideoBackgroundRow) {
-      logoVideoBackgroundRow.classList.toggle("is-disabled", false);
-    }
+    return;
   }
 
   applyLetterHitAccentPalette();
@@ -4413,7 +4368,7 @@
       if (!logoVideoBackgroundEnabled && videoBackgroundMode === "custom") {
         setLogoVideoBackgroundEnabled(true, { allowWithoutTheme: true });
       }
-      if (videoSynthPlugin) videoSynthPlugin.setActive(true);
+      if (videoSynthPlugin) videoSynthPlugin.setActive(false);
       if (settingsOpen) setSettingsOpen(false);
       if (textVideoInput) textVideoInput.focus({ preventScroll: true });
       if (textVideoWord) {
@@ -5358,10 +5313,15 @@
 
     const maxSubtitleLength = 40;
     const truncateSubtitle = (text) => {
-      const str = String(text || "");
-      return str.length > maxSubtitleLength
-        ? str.slice(0, maxSubtitleLength) + "…"
-        : str;
+      const str = String(text || "").trim();
+      if (!str) return "";
+      if (str.length <= maxSubtitleLength) return str;
+
+      // Keep only full items that fit and never append ellipsis.
+      const clipped = str.slice(0, maxSubtitleLength + 1).trimEnd();
+      const boundary = clipped.lastIndexOf(" ");
+      if (boundary <= 0) return "";
+      return clipped.slice(0, boundary).trimEnd();
     };
 
     const lower = truncateSubtitle(lowerText);
@@ -10039,9 +9999,7 @@
     const existingLetterStates = preserveLetterStates
       ? getTextVideoLetters().map((button) => getTextVideoLetterState(button))
       : [];
-    const defaultLetterState = resetSelection
-      ? TEXT_VIDEO_STATE_VIDEO
-      : TEXT_VIDEO_STATE_OUTLINE;
+    const defaultLetterState = TEXT_VIDEO_STATE_TEXT;
     let letterStateIndex = 0;
 
     textVideoValue = nextValue;
@@ -10092,36 +10050,14 @@
         continue;
       }
 
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "letter";
+      const letter = document.createElement("span");
+      letter.className = "letter";
       const preservedState = existingLetterStates[letterStateIndex] || "";
-      setTextVideoLetterState(button, preservedState || defaultLetterState);
+      setTextVideoLetterState(letter, preservedState || defaultLetterState);
       letterStateIndex += 1;
-      button.textContent = ch;
-      button.dataset.letter = ch;
-      button.setAttribute(
-        "aria-label",
-        `toggle ${ch.toLowerCase ? ch.toLowerCase() : ch}`,
-      );
-
-      button.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse") return;
-        event.preventDefault();
-        button.dataset.skipClickOnce = "1";
-        toggleTextVideoLetter(button);
-        button.blur();
-      });
-
-      button.addEventListener("click", () => {
-        if (button.dataset.skipClickOnce === "1") {
-          button.dataset.skipClickOnce = "0";
-          return;
-        }
-        toggleTextVideoLetter(button);
-      });
-
-      appendLetter(button);
+      letter.textContent = ch;
+      letter.dataset.letter = ch;
+      appendLetter(letter);
     }
 
     flushWordChunk();
@@ -10449,12 +10385,6 @@
   if (gradientAnimationToggleBtn) {
     gradientAnimationToggleBtn.addEventListener("click", () => {
       setGradientAnimationEnabled(!gradientAnimationEnabled);
-    });
-  }
-
-  if (logoVideoBackgroundToggleBtn) {
-    logoVideoBackgroundToggleBtn.addEventListener("click", () => {
-      setLogoVideoBackgroundEnabled(!logoVideoBackgroundEnabled);
     });
   }
 

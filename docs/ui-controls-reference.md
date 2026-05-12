@@ -48,7 +48,7 @@ This reference lists user-facing controls currently rendered by the app UI.
 | Toggle | Purpose |
 |---|---|
 | Follow playhead | Grid autoscroll with transport |
-| Sample pad | Show DAW sample pad tools |
+| Sample pad | Show the DAW-integrated sample pad overlay tools |
 | Theme | Theme mode enable |
 | Gradient | Background gradient animation |
 | Star bounce | Enable star bounce effect |

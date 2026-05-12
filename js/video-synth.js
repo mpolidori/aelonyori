@@ -407,6 +407,7 @@
       this.hud = document.createElement("div");
       this.hud.className = "videoSynthHud";
       this.hud.textContent = "waveform";
+      this.hud.hidden = true;
 
       this.audioSourceStatus = document.createElement("span");
       this.audioSourceStatus.className = "status videoSynthAudioSourceStatus";
@@ -1920,7 +1921,7 @@
 
     syncHudVisibility() {
       if (!this.hud) return;
-      this.hud.hidden = document.fullscreenElement === this.preview;
+      this.hud.hidden = true;
     }
 
     syncParamInputs() {

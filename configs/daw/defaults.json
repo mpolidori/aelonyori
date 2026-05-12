@@ -17,7 +17,7 @@
     "subtitlesSpeed": 50,
     "autosaveEnabled": false,
     "autosaveIntervalMinutes": 5,
-    "autoscrollEnabled": true,
+    "autoscrollEnabled": false,
     "gradientAnimationEnabled": true,
     "themeEnabled": false,
     "bumpEnabled": true,

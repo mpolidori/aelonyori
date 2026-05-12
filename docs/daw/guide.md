@@ -110,6 +110,7 @@ Use presets for iterative composition; use song JSON for external backup/version
 
 - Letter keys can trigger or hold sample-pad actions when configured.
 - Touch/long-press behaviors are used in both sampler and sequence UIs.
+- On touch devices, the logo is styled to avoid leaving a stale hover appearance after a tap completes.
 - Sequencer drag paint uses larger touch deadzones so vertical navigation is less likely to add accidental notes.
 - Sample-pad hold repeats follow the shared transport tempo grid instead of per-pad isolated intervals.
 - Drag interactions are intentionally tuned for dense rhythmic editing.

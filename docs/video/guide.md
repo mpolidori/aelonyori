@@ -111,6 +111,8 @@ Both are off by default; text renders in normal orientation.
 
 Enable **video background** to use the logo video element as a sampled backdrop behind the pattern. The shader composites the pattern layers on top of this background.
 
+In the main DAW logo, the idle selected letter uses the live sampled video frame. Hover and keyboard focus use the same clean outline behavior as the rest of the app, so loop letters keep a readable counter shape instead of a broken inner stroke.
+
 Use the **crop** toggle to show a drag handle over the preview. You can:
 
 - Drag the rectangle body to move the sampled region.
@@ -138,4 +140,5 @@ Presets persist across page reloads via `localStorage`. Use the JSON export in t
 
 - WebGL rendering is paused automatically when the tab is hidden and resumed on return.
 - The text texture is only re-uploaded when the text content or size changes, not every frame.
+- Logo video background sampling uses canvas draw/readback and JPEG serialization, so it is intentionally throttled rather than sampled every animation frame.
 - High glitch, split, and noise values simultaneously can be visually intense; reduce individual values to isolate effects.

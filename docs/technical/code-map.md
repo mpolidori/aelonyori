@@ -22,6 +22,7 @@ This map highlights important code regions and where to make common changes.
 | Visual effects | theme, star bounce, bump envelopes, subtitle stack |
 | Persistence | presets, autosave, JSON copy/apply/download/upload, embedded video synth state |
 | Sample pad overlay | DAW-side sample pad edit/playback controls |
+| Logo/video coupling | sampled logo frames, throttled canvas readback, touch hover cleanup |
 
 ### Common edit examples
 
@@ -84,6 +85,7 @@ Certain app.js flags drive CSS states via classes and CSS variables:
 - Theme enable/disable toggles class-driven style branches.
 - Bump enable/tuning writes CSS custom properties.
 - Envelope persistence values influence pseudo-element opacity and transforms.
+- Logo video background styling in `css/style.css` depends on whether the selected letter is idle, hovered, focused, or tapped on a coarse pointer device.
 
 When changing animation behavior, update both JavaScript variable writes and corresponding CSS selectors.
 

@@ -107,6 +107,8 @@ All synthesis uses native Web Audio nodes:
 
 Per-note node graphs are created and disposed per trigger, with values scheduled against AudioContext time.
 
+Video/background sampling is handled separately from the audio graph, using canvas capture and throttled readback rather than audio nodes.
+
 ## 5. Interaction and UX Patterns
 
 The codebase heavily uses:
@@ -115,6 +117,8 @@ The codebase heavily uses:
 - Touch-aware behavior for mobile consistency.
 - Keyboard shortcuts for sequencing and sampler triggers.
 - Progressive panels and overlays for compact UI density.
+
+Touch interactions explicitly clear transient hover/focus state on tap so mobile browsers do not leave the logo in a stale hover appearance after selection changes.
 
 ## 6. Persistence and I/O
 
